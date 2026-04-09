@@ -335,20 +335,18 @@ class NovaService: ObservableObject {
                         if !final.isEmpty { await self.sendMessage(final) }
                     }
                 } else if let error = error {
-                    print("[speech] \(error.localizedDescription)")
+                    let desc = error.localizedDescription
+                    // Ignoruj běžné SR errory (209=no speech, 216=too many requests, Corrupt)
+                    if desc.contains("209") || desc.contains("Corrupt") {
+                        // Tiché timeout — normální, SR prostě neslyšel nic
+                        return
+                    }
+                    print("[speech] error: \(desc)")
                     let partial = self.interimText
                     self.interimText = ""
                     self.stopSpeechEngine()
                     if !partial.isEmpty {
                         await self.sendMessage(partial)
-                    } else if self.conversationActive {
-                        // SR timeout/error — restartuj po 3s pauze
-                        self.state = .idle
-                        Task {
-                            try? await Task.sleep(nanoseconds: 3_000_000_000)
-                            guard self.conversationActive else { return }
-                            self.listenForCommand()
-                        }
                     } else {
                         self.state = .idle
                     }
