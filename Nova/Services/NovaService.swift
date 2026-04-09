@@ -12,20 +12,8 @@ class NovaService: ObservableObject {
     @Published var isMuted = false
     @Published var interimText = ""
     @Published var pendingConfirmation: PendingConfirmation?
-    @Published var voiceMode: VoiceMode = .wakeWord
+    @Published var conversationActive = false // Tap orb = zapni/vypni konverzaci
     private var speechDebounceTask: Task<Void, Never>?
-    private var silenceTimer: Task<Void, Never>?
-    private var sessionPrefix = ""
-
-    enum VoiceMode {
-        case wakeWord   // Čeká na "Nova"/"Novo"/"Hey Nova"
-        case active     // Aktivně poslouchá příkaz
-        case off        // Vypnuto (muted)
-    }
-
-    private let wakeWords = ["nova", "novo", "nová", "hey nova", "hej nova"]
-    private var isRecognitionRunning = false
-    private var restartCooldown = false
 
     struct PendingConfirmation: Identifiable {
         let id = UUID()
@@ -176,26 +164,8 @@ class NovaService: ObservableObject {
             state = .speaking
             await playTTS(reply)
 
-            // Po odpovědi → conversation mode (10s na follow-up, pak zpět na wake word)
-            if !isMuted {
-                voiceMode = .active
-                sessionPrefix = ""
-                // Pauza po TTS než se restartne mic
-                try? await Task.sleep(nanoseconds: 500_000_000)
-                startListening()
-                silenceTimer?.cancel()
-                silenceTimer = Task {
-                    try? await Task.sleep(nanoseconds: 10_000_000_000)
-                    guard !Task.isCancelled else { return }
-                    if self.state == .listening {
-                        self.voiceMode = .wakeWord
-                        self.stopListening()
-                        self.startListening() // Restart v wake word mode
-                    }
-                }
-            } else {
-                state = .idle
-            }
+            // Po odpovědi → pokračuj v konverzaci
+            continueConversation()
 
         } catch {
             let errorMsg = Message(role: "ai", content: "Chyba: \(error.localizedDescription)")
@@ -236,52 +206,85 @@ class NovaService: ObservableObject {
         }
     }
 
-    // MARK: - Speech Recognition
-    func startListening() {
-        guard !isMuted else { print("[speech] muted"); return }
-        guard let recognizer = speechRecognizer else { print("[speech] no recognizer"); return }
-        guard recognizer.isAvailable else { print("[speech] recognizer not available"); return }
+    // MARK: - Conversation Mode
+    // Tap orb = zapni konverzaci. Nova poslouchá → odpoví → zase poslouchá. Tap = vypni.
 
-        let authStatus = SFSpeechRecognizer.authorizationStatus()
-        if authStatus == .authorized {
-            beginRecognition()
+    func toggleConversation() {
+        if conversationActive {
+            endConversation()
         } else {
-            SFSpeechRecognizer.requestAuthorization { [weak self] status in
-                print("[speech] auth status: \(status.rawValue)")
-                guard status == .authorized else { return }
-                Task { @MainActor in
-                    self?.beginRecognition()
-                }
-            }
+            startConversation()
         }
     }
 
-    private func beginRecognition() {
-        guard !isRecognitionRunning else { print("[speech] already running, skip"); return }
-        isRecognitionRunning = true
+    func startConversation() {
+        guard !isMuted else { return }
+        conversationActive = true
+        listenForCommand()
+    }
 
-        recognitionTask?.cancel()
-        recognitionTask = nil
+    func endConversation() {
+        conversationActive = false
+        speechDebounceTask?.cancel()
+        stopSpeechEngine()
+        state = .idle
+    }
 
-        // Audio session setup
-        do {
-            let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
-            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-        } catch {
-            print("[speech] audio session failed: \(error)")
+    // Po odpovědi Novy — automaticky zase poslouchej
+    func continueConversation() {
+        guard conversationActive && !isMuted else {
+            state = .idle
+            return
+        }
+        // Krátká pauza po TTS než zapneme mic
+        Task {
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            guard conversationActive else { return }
+            listenForCommand()
+        }
+    }
+
+    // MARK: - Speech Recognition (čistý jednorázový recognition)
+    private func listenForCommand() {
+        guard let recognizer = speechRecognizer, recognizer.isAvailable else {
+            print("[speech] recognizer not available")
             return
         }
 
+        // Auth check
+        let authStatus = SFSpeechRecognizer.authorizationStatus()
+        guard authStatus == .authorized else {
+            SFSpeechRecognizer.requestAuthorization { [weak self] status in
+                if status == .authorized {
+                    Task { @MainActor in self?.listenForCommand() }
+                }
+            }
+            return
+        }
+
+        // Stop previous if running
+        stopSpeechEngine()
+
+        // Audio session
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("[speech] audio session error: \(error)")
+            return
+        }
+
+        // Recognition request
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.taskHint = .dictation
         recognitionRequest = request
 
+        // Audio tap
         let inputNode = audioEngine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
-
-        inputNode.removeTap(onBus: 0) // Remove old tap if exists
+        inputNode.removeTap(onBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
             request.append(buffer)
         }
@@ -289,95 +292,56 @@ class NovaService: ObservableObject {
         do {
             audioEngine.prepare()
             try audioEngine.start()
-            if voiceMode == .wakeWord {
-                state = .idle // Wake word mode — orb ukazuje idle
-                print("[speech] wake word mode started")
-            } else {
-                state = .listening
-                print("[speech] active listening started")
-            }
+            state = .listening
+            print("[speech] listening...")
         } catch {
-            print("[speech] engine start failed: \(error)")
+            print("[speech] engine error: \(error)")
             state = .idle
             return
         }
 
-        recognitionTask = speechRecognizer?.recognitionTask(with: request) { [weak self] result, error in
+        // Recognition task
+        recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             Task { @MainActor in
+                guard let self = self else { return }
+
                 if let result = result {
-                    let text = result.bestTranscription.formattedString.lowercased()
+                    let text = result.bestTranscription.formattedString
+                    self.interimText = text
 
-                    if self?.voiceMode == .wakeWord {
-                        // Wake word detection
-                        print("[wake] heard: \(text)")
-                        if self?.wakeWords.contains(where: { text.contains($0) }) == true {
-                            print("[wake] MATCH! activating...")
-                            self?.voiceMode = .active
-                            self?.state = .listening
-                            self?.interimText = ""
-                            self?.sessionPrefix = text
-                            // Greeting
-                            let greeting = Message(role: "ai", content: "Tady Nova, co potřebuješ?")
-                            self?.messages.append(greeting)
-                            self?.saveMessages()
-                            // Restart recognition v active mode (1s pauza)
-                            self?.stopListening()
-                            Task {
-                                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                                self?.beginRecognition()
-                            }
-                        }
-                        return
+                    // Debounce: 2s ticha → pošli
+                    self.speechDebounceTask?.cancel()
+                    self.speechDebounceTask = Task {
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        guard !Task.isCancelled, !self.interimText.isEmpty else { return }
+                        let final = self.interimText
+                        self.interimText = ""
+                        self.stopSpeechEngine()
+                        await self.sendMessage(final)
                     }
 
-                    // Active mode — zobraz interim a pošli po pauze
-                    // Odstraň session prefix (Apple SR kumuluje text)
-                    var clean = text
-                    if !self!.sessionPrefix.isEmpty && text.hasPrefix(self!.sessionPrefix) {
-                        clean = String(text.dropFirst(self!.sessionPrefix.count)).trimmingCharacters(in: .whitespaces)
-                    }
-                    self?.interimText = clean.isEmpty ? text : clean
-
-                    self?.speechDebounceTask?.cancel()
-                    self?.speechDebounceTask = Task {
-                        try? await Task.sleep(nanoseconds: 2_500_000_000)
-                        guard !Task.isCancelled else { return }
-                        let finalText = self?.interimText ?? ""
-                        if !finalText.isEmpty {
-                            self?.interimText = ""
-                            self?.stopListening()
-                            await self?.sendMessage(finalText)
-                        }
-                    }
-
+                    // isFinal → pošli hned
                     if result.isFinal {
-                        self?.speechDebounceTask?.cancel()
-                        let finalText = self?.interimText ?? ""
-                        self?.interimText = ""
-                        self?.stopListening()
-                        if !finalText.isEmpty { await self?.sendMessage(finalText) }
+                        self.speechDebounceTask?.cancel()
+                        let final = self.interimText
+                        self.interimText = ""
+                        self.stopSpeechEngine()
+                        if !final.isEmpty { await self.sendMessage(final) }
                     }
-                } else if error != nil {
-                    print("[speech] error: \(error!.localizedDescription)")
-                    if self?.voiceMode == .active {
-                        // Pošli co máme pokud je interim text
-                        let partial = self?.interimText ?? ""
-                        if !partial.isEmpty {
-                            self?.interimText = ""
-                            self?.stopListening()
-                            await self?.sendMessage(partial)
-                            return
-                        }
-                    }
-                    // Auto-restart wake word listeneru po erroru/timeout (s cooldown)
-                    self?.stopListening()
-                    if self?.voiceMode != .off && !(self?.isMuted ?? true) && !(self?.restartCooldown ?? false) {
-                        self?.restartCooldown = true
-                        self?.voiceMode = .wakeWord
+                } else if let error = error {
+                    print("[speech] \(error.localizedDescription)")
+                    // Pošli partial pokud máme
+                    let partial = self.interimText
+                    self.interimText = ""
+                    self.stopSpeechEngine()
+                    if !partial.isEmpty {
+                        await self.sendMessage(partial)
+                    } else if self.conversationActive {
+                        // SR timeout — restartuj po pauze
                         Task {
-                            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2s cooldown
-                            self?.restartCooldown = false
-                            self?.startListening()
+                            try? await Task.sleep(nanoseconds: 1_000_000_000)
+                            guard self.conversationActive else { return }
+                            self.listenForCommand()
                         }
                     }
                 }
@@ -385,9 +349,8 @@ class NovaService: ObservableObject {
         }
     }
 
-    func stopListening() {
-        isRecognitionRunning = false
-        audioEngine.stop()
+    private func stopSpeechEngine() {
+        if audioEngine.isRunning { audioEngine.stop() }
         audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
@@ -395,6 +358,10 @@ class NovaService: ObservableObject {
         recognitionRequest = nil
         if state == .listening { state = .idle }
     }
+
+    // Legacy compatibility
+    func startListening() { startConversation() }
+    func stopListening() { endConversation() }
 
     func toggleMute() {
         isMuted.toggle()
