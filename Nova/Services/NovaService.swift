@@ -404,6 +404,7 @@ class NovaService: ObservableObject {
             "read_calendar": "/api/action/read-calendar",
             "read_email": "/api/action/read-email",
             "weather": "/api/action/weather",
+            "web_search": "/api/action/web-search",
             "read_news": "/api/action/read-news",
         ]
         guard let endpoint = endpointMap[action.action],
