@@ -325,7 +325,6 @@ class NovaService: ObservableObject {
             } catch {
                 print("[speech] DictationTranscriber error: \(error)")
                 await MainActor.run { self?.state = .idle }
-                }
             }
         }
     }
