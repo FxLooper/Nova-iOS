@@ -80,32 +80,29 @@ struct ChatView: View {
             Color(hex: "f5f0e8").ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header with orb
-                VStack(spacing: 4) {
+                // Header: nova title + orb + state label
+                VStack(spacing: 0) {
+                    // Title + mute
                     HStack {
-                        Circle()
-                            .fill(nova.isConnected ? Color.green.opacity(0.6) : Color.red.opacity(0.4))
-                            .frame(width: 8, height: 8)
-
                         Text("nova")
-                            .font(.system(size: 18, weight: .light))
-                            .tracking(6)
-                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                            .font(.system(size: 20, weight: .ultraLight))
+                            .tracking(8)
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
 
                         Spacer()
 
                         Button(action: { nova.toggleMute() }) {
                             Image(systemName: nova.isMuted ? "mic.slash" : "mic")
-                                .font(.system(size: 16))
-                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                                .font(.system(size: 16, weight: .light))
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(nova.isMuted ? 0.6 : 0.25))
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 24)
                     .padding(.top, 8)
 
                     // Orb (Three.js — identický jako desktop)
                     OrbWebView(state: nova.state.rawValue, audioLevel: 0)
-                        .frame(height: 200)
+                        .frame(height: 180)
                         .onTapGesture {
                             if nova.state == .listening {
                                 nova.stopListening()
@@ -113,6 +110,14 @@ struct ChatView: View {
                                 nova.startListening()
                             }
                         }
+
+                    // State label pod orbem
+                    Text(stateLabel)
+                        .font(.system(size: 11, weight: .light))
+                        .tracking(3)
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(nova.state == .idle ? 0.2 : 0.45))
+                        .padding(.bottom, 8)
+                        .animation(.easeInOut(duration: 0.3), value: nova.state)
                 }
                 .background(Color(hex: "f5f0e8").opacity(0.95))
 

@@ -183,6 +183,16 @@ class NovaService: ObservableObject {
         recognitionTask?.cancel()
         recognitionTask = nil
 
+        // Audio session setup
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("[speech] audio session failed: \(error)")
+            return
+        }
+
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.taskHint = .dictation
@@ -191,11 +201,13 @@ class NovaService: ObservableObject {
         let inputNode = audioEngine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
 
+        inputNode.removeTap(onBus: 0) // Remove old tap if exists
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
             request.append(buffer)
         }
 
         do {
+            audioEngine.prepare()
             try audioEngine.start()
             state = .listening
         } catch {
