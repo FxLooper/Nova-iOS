@@ -24,6 +24,8 @@ class NovaService: ObservableObject {
     }
 
     private let wakeWords = ["nova", "novo", "nová", "hey nova", "hej nova"]
+    private var isRecognitionRunning = false
+    private var restartCooldown = false
 
     struct PendingConfirmation: Identifiable {
         let id = UUID()
@@ -255,6 +257,9 @@ class NovaService: ObservableObject {
     }
 
     private func beginRecognition() {
+        guard !isRecognitionRunning else { print("[speech] already running, skip"); return }
+        isRecognitionRunning = true
+
         recognitionTask?.cancel()
         recognitionTask = nil
 
@@ -315,10 +320,10 @@ class NovaService: ObservableObject {
                             let greeting = Message(role: "ai", content: "Tady Nova, co potřebuješ?")
                             self?.messages.append(greeting)
                             self?.saveMessages()
-                            // Restart recognition v active mode
+                            // Restart recognition v active mode (1s pauza)
                             self?.stopListening()
                             Task {
-                                try? await Task.sleep(nanoseconds: 500_000_000)
+                                try? await Task.sleep(nanoseconds: 1_000_000_000)
                                 self?.beginRecognition()
                             }
                         }
@@ -364,12 +369,14 @@ class NovaService: ObservableObject {
                             return
                         }
                     }
-                    // Auto-restart wake word listeneru po erroru/timeout
+                    // Auto-restart wake word listeneru po erroru/timeout (s cooldown)
                     self?.stopListening()
-                    if self?.voiceMode != .off && !(self?.isMuted ?? true) {
+                    if self?.voiceMode != .off && !(self?.isMuted ?? true) && !(self?.restartCooldown ?? false) {
+                        self?.restartCooldown = true
                         self?.voiceMode = .wakeWord
                         Task {
-                            try? await Task.sleep(nanoseconds: 500_000_000)
+                            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2s cooldown
+                            self?.restartCooldown = false
                             self?.startListening()
                         }
                     }
@@ -379,6 +386,7 @@ class NovaService: ObservableObject {
     }
 
     func stopListening() {
+        isRecognitionRunning = false
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest?.endAudio()
