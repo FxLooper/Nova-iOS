@@ -131,7 +131,7 @@ class NovaService: ObservableObject {
         do {
             let payload: [String: Any] = [
                 "messages": messages.suffix(20).map { ["role": $0.role == "user" ? "user" : "assistant", "content": $0.content] },
-                "profile": ["lang": "cs", "name": "Ondřej", "city": "Plzeň", "agentName": "Nova"]
+                "profile": profile.isEmpty ? ["lang": "cs", "name": "Ondřej", "city": "Plzeň", "agentName": "Nova"] : profile
             ]
             let jsonData = try JSONSerialization.data(withJSONObject: payload)
 

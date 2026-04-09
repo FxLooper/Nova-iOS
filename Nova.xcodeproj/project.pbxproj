@@ -12,6 +12,7 @@
 		A1000003 /* NovaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003 /* NovaService.swift */; };
 		A1000004 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004 /* KeychainHelper.swift */; };
 		A1000005 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000005 /* Message.swift */; };
+		A1000011 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000011 /* Localization.swift */; };
 		A1000007 /* OrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000007 /* OrbView.swift */; };
 		A1000008 /* ConfirmButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000008 /* ConfirmButtons.swift */; };
 		A1000009 /* OrbWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000009 /* OrbWebView.swift */; };
@@ -25,6 +26,7 @@
 		B1000003 /* NovaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaService.swift; sourceTree = "<group>"; };
 		B1000004 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		B1000005 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
+		B1000011 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		B1000006 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1000007 /* OrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbView.swift; sourceTree = "<group>"; };
 		B1000008 /* ConfirmButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmButtons.swift; sourceTree = "<group>"; };
@@ -110,6 +112,7 @@
 			isa = PBXGroup;
 			children = (
 				B1000005 /* Message.swift */,
+				B1000011 /* Localization.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -178,6 +181,7 @@
 				A1000008 /* ConfirmButtons.swift in Sources */,
 				A1000009 /* OrbWebView.swift in Sources */,
 				A1000010 /* SettingsView.swift in Sources */,
+				A1000011 /* Localization.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

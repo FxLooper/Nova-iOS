@@ -15,7 +15,7 @@ struct ContentView: View {
 // MARK: - Setup View (first launch)
 struct SetupView: View {
     @EnvironmentObject var nova: NovaService
-    @State private var server = "http://127.0.0.1:3000"
+    @State private var server = "http://192.168.0.183:3000"
     @State private var token = ""
 
     var body: some View {
@@ -197,7 +197,7 @@ struct ChatView: View {
                             )
                     }
 
-                    TextField("Napiš Nově...", text: $inputText)
+                    TextField(L10n.t("write_nova"), text: $inputText)
                         .font(.system(size: 15, weight: .light))
                         .focused($isInputFocused)
                         .onSubmit { sendText() }
@@ -227,10 +227,10 @@ struct ChatView: View {
 
     private var stateLabel: String {
         switch nova.state {
-        case .idle: return "Připravena"
-        case .listening: return "Poslouchám..."
-        case .thinking: return "Přemýšlím..."
-        case .speaking: return "Mluvím..."
+        case .idle: return L10n.t("ready")
+        case .listening: return L10n.t("listening")
+        case .thinking: return L10n.t("thinking")
+        case .speaking: return L10n.t("speaking")
         }
     }
 
@@ -252,7 +252,7 @@ struct MessageBubble: View {
             if message.role == "user" { Spacer(minLength: 60) }
 
             VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: 4) {
-                Text(message.role == "user" ? "Ty" : "Nova")
+                Text(message.role == "user" ? L10n.t("you") : "Nova")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
 

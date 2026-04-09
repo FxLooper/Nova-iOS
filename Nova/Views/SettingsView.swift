@@ -67,15 +67,16 @@ struct SettingsView: View {
                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                     }
                     Spacer()
-                    Text("Nastavení")
+                    Text(L10n.t("settings"))
                         .font(.system(size: 16, weight: .light))
                         .tracking(3)
                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
                     Spacer()
-                    // Placeholder for symmetry
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 16))
-                        .opacity(0)
+                    Button(action: { saveAndDismiss() }) {
+                        Text(L10n.t("save"))
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
@@ -84,8 +85,8 @@ struct SettingsView: View {
                     VStack(spacing: 32) {
 
                         // Jméno
-                        SettingsSection(title: "Jméno") {
-                            TextField("Tvoje jméno", text: $userName)
+                        SettingsSection(title: L10n.t("name")) {
+                            TextField(L10n.t("name_placeholder"), text: $userName)
                                 .font(.system(size: 16, weight: .light))
                                 .padding(14)
                                 .background(Color(hex: "1a1a2e").opacity(0.04))
@@ -93,8 +94,8 @@ struct SettingsView: View {
                         }
 
                         // Město
-                        SettingsSection(title: "Domovské město") {
-                            TextField("Město", text: $selectedCity)
+                        SettingsSection(title: L10n.t("city")) {
+                            TextField(L10n.t("city_placeholder"), text: $selectedCity)
                                 .font(.system(size: 16, weight: .light))
                                 .padding(14)
                                 .background(Color(hex: "1a1a2e").opacity(0.04))
@@ -102,7 +103,7 @@ struct SettingsView: View {
                         }
 
                         // Jazyk
-                        SettingsSection(title: "Jazyk") {
+                        SettingsSection(title: L10n.t("language")) {
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], spacing: 8) {
                                 ForEach(Self.languages, id: \.code) { lang in
                                     Button(action: { selectedLang = lang.code }) {
@@ -132,16 +133,16 @@ struct SettingsView: View {
                         }
 
                         // Hlas
-                        SettingsSection(title: "Hlas asistenta") {
+                        SettingsSection(title: L10n.t("voice")) {
                             HStack(spacing: 12) {
                                 VoiceButton(
-                                    label: "Ženský",
+                                    label: L10n.t("female"),
                                     icon: "person.fill",
                                     isSelected: selectedVoiceGender == "female",
                                     action: { selectedVoiceGender = "female" }
                                 )
                                 VoiceButton(
-                                    label: "Mužský",
+                                    label: L10n.t("male"),
                                     icon: "person.fill",
                                     isSelected: selectedVoiceGender == "male",
                                     action: { selectedVoiceGender = "male" }
@@ -150,19 +151,19 @@ struct SettingsView: View {
                         }
 
                         // Server info
-                        SettingsSection(title: "Připojení") {
+                        SettingsSection(title: L10n.t("connection")) {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Circle()
                                         .fill(nova.isConnected ? Color.green.opacity(0.6) : Color.red.opacity(0.4))
                                         .frame(width: 8, height: 8)
-                                    Text(nova.isConnected ? "Připojeno" : "Odpojeno")
+                                    Text(nova.isConnected ? L10n.t("connected") : L10n.t("disconnected"))
                                         .font(.system(size: 14, weight: .light))
                                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                                 }
 
                                 Button(action: { nova.resetConfig() }) {
-                                    Text("Změnit server")
+                                    Text(L10n.t("change_server"))
                                         .font(.system(size: 14, weight: .light))
                                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
                                         .padding(.vertical, 8)
