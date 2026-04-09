@@ -218,9 +218,9 @@ class NovaService: ObservableObject {
     func startConversation() {
         guard !isMuted else { return }
         conversationActive = true
-        // Přímý start — bez async locale check (čeština = vždy legacy)
+        // TEST: zkusíme en-US aby se zjistilo jestli SFSpeechRecognizer vůbec funguje na iOS 26
         useLegacySR = true
-        startWithLegacySR(locale: Locale(identifier: speechLocale))
+        startWithLegacySR(locale: Locale(identifier: "en-US"))
     }
 
     func endConversation() {
