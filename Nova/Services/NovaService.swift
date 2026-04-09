@@ -218,7 +218,9 @@ class NovaService: ObservableObject {
     func startConversation() {
         guard !isMuted else { return }
         conversationActive = true
-        startAnalyzer()
+        // Přímý start — bez async locale check (čeština = vždy legacy)
+        useLegacySR = true
+        startWithLegacySR(locale: Locale(identifier: speechLocale))
     }
 
     func endConversation() {
@@ -250,7 +252,8 @@ class NovaService: ObservableObject {
         Task {
             try? await Task.sleep(nanoseconds: 600_000_000)
             guard conversationActive else { return }
-            startAnalyzer()
+            useLegacySR = true
+            startWithLegacySR(locale: Locale(identifier: speechLocale))
         }
     }
 
