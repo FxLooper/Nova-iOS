@@ -253,6 +253,14 @@ class NovaService: ObservableObject {
 
     // MARK: - DictationTranscriber (server-based, funguje na všech zařízeních)
     private func startDictation() {
+        // Zastav předchozí session
+        analyzerTask?.cancel()
+        analyzerTask = nil
+        analyzer = nil
+        dictationTranscriber = nil
+        if audioEngine.isRunning { audioEngine.stop() }
+        audioEngine.inputNode.removeTap(onBus: 0)
+
         // Audio session
         do {
             let session = AVAudioSession.sharedInstance()
@@ -263,7 +271,8 @@ class NovaService: ObservableObject {
             return
         }
 
-        let locale = Locale(identifier: speechLocale)
+        // Zjisti dostupné locales, fallback na en-US
+        let locale = Locale(identifier: "en-US")
         dictationTranscriber = DictationTranscriber(locale: locale, preset: .progressiveLongDictation)
         guard let transcriber = dictationTranscriber else {
             print("[speech] DictationTranscriber init failed")
