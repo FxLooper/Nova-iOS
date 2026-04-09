@@ -178,6 +178,8 @@ class NovaService: ObservableObject {
             if !isMuted {
                 voiceMode = .active
                 sessionPrefix = ""
+                // Pauza po TTS než se restartne mic
+                try? await Task.sleep(nanoseconds: 500_000_000)
                 startListening()
                 silenceTimer?.cancel()
                 silenceTimer = Task {
@@ -308,9 +310,12 @@ class NovaService: ObservableObject {
                             self?.state = .listening
                             self?.interimText = ""
                             self?.sessionPrefix = text
-                            // Restart recognition v active mode
+                            // Restart recognition v active mode s malou pauzou
                             self?.stopListening()
-                            self?.beginRecognition()
+                            Task {
+                                try? await Task.sleep(nanoseconds: 300_000_000)
+                                self?.beginRecognition()
+                            }
                         }
                         return
                     }
