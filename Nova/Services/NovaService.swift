@@ -304,16 +304,21 @@ class NovaService: ObservableObject {
 
                     if self?.voiceMode == .wakeWord {
                         // Wake word detection
+                        print("[wake] heard: \(text)")
                         if self?.wakeWords.contains(where: { text.contains($0) }) == true {
-                            print("[speech] wake word detected: \(text)")
+                            print("[wake] MATCH! activating...")
                             self?.voiceMode = .active
                             self?.state = .listening
                             self?.interimText = ""
                             self?.sessionPrefix = text
-                            // Restart recognition v active mode s malou pauzou
+                            // Greeting
+                            let greeting = Message(role: "ai", content: "Tady Nova, co potřebuješ?")
+                            self?.messages.append(greeting)
+                            self?.saveMessages()
+                            // Restart recognition v active mode
                             self?.stopListening()
                             Task {
-                                try? await Task.sleep(nanoseconds: 300_000_000)
+                                try? await Task.sleep(nanoseconds: 500_000_000)
                                 self?.beginRecognition()
                             }
                         }
@@ -348,14 +353,25 @@ class NovaService: ObservableObject {
                         if !finalText.isEmpty { await self?.sendMessage(finalText) }
                     }
                 } else if error != nil {
-                    // Pošli co máme pokud je interim text
-                    let partial = self?.interimText ?? ""
-                    if !partial.isEmpty {
-                        self?.interimText = ""
-                        self?.stopListening()
-                        await self?.sendMessage(partial)
-                    } else {
-                        self?.stopListening()
+                    print("[speech] error: \(error!.localizedDescription)")
+                    if self?.voiceMode == .active {
+                        // Pošli co máme pokud je interim text
+                        let partial = self?.interimText ?? ""
+                        if !partial.isEmpty {
+                            self?.interimText = ""
+                            self?.stopListening()
+                            await self?.sendMessage(partial)
+                            return
+                        }
+                    }
+                    // Auto-restart wake word listeneru po erroru/timeout
+                    self?.stopListening()
+                    if self?.voiceMode != .off && !(self?.isMuted ?? true) {
+                        self?.voiceMode = .wakeWord
+                        Task {
+                            try? await Task.sleep(nanoseconds: 500_000_000)
+                            self?.startListening()
+                        }
                     }
                 }
             }
