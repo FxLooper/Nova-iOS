@@ -28,9 +28,6 @@ class NovaService: ObservableObject {
 
     // MARK: - Audio
     private let audioEngine = AVAudioEngine()
-    private var speechRecognizer: SFSpeechRecognizer? = SFSpeechRecognizer(locale: Locale(identifier: "cs-CZ"))
-    private var recognitionTask: SFSpeechRecognitionTask?
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private let synthesizer = AVSpeechSynthesizer()
     private var audioPlayer: AVAudioPlayer?
 
@@ -82,11 +79,7 @@ class NovaService: ObservableObject {
             "lang": lang, "city": city, "name": name,
             "voice": voice, "voiceGender": voiceGender, "agentName": "Nova"
         ]
-        // Update speech recognizer language
-        let langMap = ["cs":"cs-CZ","en":"en-US","de":"de-DE","sk":"sk-SK","fr":"fr-FR","es":"es-ES","it":"it-IT","pl":"pl-PL","ja":"ja-JP","zh":"zh-CN","ko":"ko-KR","ar":"ar-SA","tr":"tr-TR","hi":"hi-IN","pt":"pt-BR","ru":"ru-RU"]
-        if let locale = langMap[lang] {
-            speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: locale))
-        }
+        // SpeechAnalyzer použije speechLocale property automaticky
     }
 
     func loadProfile() {
@@ -206,8 +199,13 @@ class NovaService: ObservableObject {
         }
     }
 
-    // MARK: - Conversation Mode
-    // Tap orb = zapni konverzaci. Nova poslouchá → odpoví → zase poslouchá. Tap = vypni.
+    // MARK: - Conversation Mode (SpeechAnalyzer — iOS 26)
+    // Tap orb = zapni konverzaci. Nova poslouchá continuous → odpoví → poslouchá dál.
+
+    private var analyzer: SpeechAnalyzer?
+    private var analyzerTask: Task<Void, Never>?
+    private var silenceTask: Task<Void, Never>?
+    private var currentUtterance = ""
 
     func toggleConversation() {
         if conversationActive {
@@ -220,57 +218,36 @@ class NovaService: ObservableObject {
     func startConversation() {
         guard !isMuted else { return }
         conversationActive = true
-        listenForCommand()
+        startAnalyzer()
     }
 
     func endConversation() {
         conversationActive = false
+        analyzerTask?.cancel()
+        analyzerTask = nil
+        analyzer?.stop()
+        analyzer = nil
+        silenceTask?.cancel()
         speechDebounceTask?.cancel()
-        stopSpeechEngine()
+        currentUtterance = ""
+        interimText = ""
         state = .idle
+        print("[speech] conversation ended")
     }
 
-    // Po odpovědi Novy — automaticky zase poslouchej
     func continueConversation() {
         guard conversationActive && !isMuted else {
             state = .idle
             return
         }
-        // Krátká pauza po TTS než zapneme mic
         Task {
             try? await Task.sleep(nanoseconds: 600_000_000)
             guard conversationActive else { return }
-            listenForCommand()
+            startAnalyzer()
         }
     }
 
-    // MARK: - Speech Recognition (čistý jednorázový recognition)
-    private var isListening = false
-
-    private func listenForCommand() {
-        guard !isListening else { return }
-        isListening = true
-
-        guard let recognizer = speechRecognizer, recognizer.isAvailable else {
-            isListening = false
-            print("[speech] recognizer not available")
-            return
-        }
-
-        // Auth check
-        let authStatus = SFSpeechRecognizer.authorizationStatus()
-        guard authStatus == .authorized else {
-            SFSpeechRecognizer.requestAuthorization { [weak self] status in
-                if status == .authorized {
-                    Task { @MainActor in self?.listenForCommand() }
-                }
-            }
-            return
-        }
-
-        // Stop previous if running
-        stopSpeechEngine()
-
+    private func startAnalyzer() {
         // Audio session
         do {
             let session = AVAudioSession.sharedInstance()
@@ -281,92 +258,94 @@ class NovaService: ObservableObject {
             return
         }
 
-        // Recognition request
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true
-        request.taskHint = .dictation
-        recognitionRequest = request
+        // Vytvoř analyzer
+        analyzer = SpeechAnalyzer()
+        let transcriber = SpeechTranscriber(locale: Locale(identifier: speechLocale))
+        analyzer?.addModule(transcriber)
 
-        // Audio tap — použij nativní HW formát
-        let inputNode = audioEngine.inputNode
-        let hwFormat = inputNode.inputFormat(forBus: 0)
-        inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { buffer, _ in
-            request.append(buffer)
-        }
+        state = .listening
+        currentUtterance = ""
+        print("[speech] SpeechAnalyzer started")
 
-        do {
-            audioEngine.prepare()
-            try audioEngine.start()
-            state = .listening
-            print("[speech] listening...")
-        } catch {
-            print("[speech] engine error: \(error)")
-            state = .idle
-            return
-        }
+        // Spusť analyzer z mikrofonu
+        analyzerTask = Task {
+            do {
+                try await analyzer?.start(inputSequence: audioInputSequence())
 
-        // Recognition task
-        recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
-            Task { @MainActor in
-                guard let self = self else { return }
-
-                if let result = result {
-                    let text = result.bestTranscription.formattedString
-                    self.interimText = text
-
-                    // Debounce: 2s ticha → pošli
-                    self.speechDebounceTask?.cancel()
-                    self.speechDebounceTask = Task {
-                        try? await Task.sleep(nanoseconds: 2_000_000_000)
-                        guard !Task.isCancelled, !self.interimText.isEmpty else { return }
-                        let final = self.interimText
-                        self.interimText = ""
-                        self.stopSpeechEngine()
-                        await self.sendMessage(final)
+                // Čti eventy
+                guard let analyzer = analyzer else { return }
+                for await event in transcriber.events {
+                    guard !Task.isCancelled else { break }
+                    switch event {
+                    case .captionUpdate(let caption):
+                        let text = caption.text
+                        await MainActor.run {
+                            self.currentUtterance = text
+                            self.interimText = text
+                            // Reset silence timer
+                            self.silenceTask?.cancel()
+                            self.silenceTask = Task {
+                                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                                guard !Task.isCancelled else { return }
+                                await self.handleUtteranceEnd()
+                            }
+                        }
+                    default:
+                        break
                     }
-
-                    // isFinal → pošli hned
-                    if result.isFinal {
-                        self.speechDebounceTask?.cancel()
-                        let final = self.interimText
-                        self.interimText = ""
-                        self.stopSpeechEngine()
-                        if !final.isEmpty { await self.sendMessage(final) }
-                    }
-                } else if let error = error {
-                    let desc = error.localizedDescription
-                    // Ignoruj běžné SR errory (209=no speech, 216=too many requests, Corrupt)
-                    if desc.contains("209") || desc.contains("Corrupt") {
-                        // Tiché timeout — normální, SR prostě neslyšel nic
-                        return
-                    }
-                    print("[speech] error: \(desc)")
-                    let partial = self.interimText
-                    self.interimText = ""
-                    self.stopSpeechEngine()
-                    if !partial.isEmpty {
-                        await self.sendMessage(partial)
-                    } else {
-                        self.state = .idle
-                    }
+                }
+            } catch {
+                print("[speech] analyzer error: \(error)")
+                await MainActor.run {
+                    if conversationActive { state = .idle }
                 }
             }
         }
     }
 
-    private func stopSpeechEngine() {
-        isListening = false
-        if audioEngine.isRunning { audioEngine.stop() }
-        audioEngine.inputNode.removeTap(onBus: 0)
-        recognitionRequest?.endAudio()
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        recognitionRequest = nil
-        if state == .listening { state = .idle }
+    private func handleUtteranceEnd() async {
+        let text = currentUtterance.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        currentUtterance = ""
+        interimText = ""
+
+        // Zastav analyzer během zpracování
+        analyzer?.stop()
+        analyzerTask?.cancel()
+
+        // Pošli Nově
+        await sendMessage(text)
     }
 
-    // Legacy compatibility
+    private var speechLocale: String {
+        let lang = UserDefaults.standard.string(forKey: "nova_lang") ?? "cs"
+        let map = ["cs":"cs-CZ","en":"en-US","de":"de-DE","sk":"sk-SK","fr":"fr-FR","es":"es-ES","it":"it-IT","pl":"pl-PL","ja":"ja-JP","zh":"zh-CN","ko":"ko-KR","ar":"ar-SA","tr":"tr-TR","hi":"hi-IN","pt":"pt-BR","ru":"ru-RU"]
+        return map[lang] ?? "cs-CZ"
+    }
+
+    private func audioInputSequence() -> AsyncStream<AVAudioPCMBuffer> {
+        AsyncStream { continuation in
+            let inputNode = audioEngine.inputNode
+            let hwFormat = inputNode.inputFormat(forBus: 0)
+            inputNode.removeTap(onBus: 0)
+            inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { buffer, _ in
+                continuation.yield(buffer)
+            }
+            do {
+                audioEngine.prepare()
+                try audioEngine.start()
+            } catch {
+                print("[speech] engine error: \(error)")
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in
+                if self.audioEngine.isRunning { self.audioEngine.stop() }
+                inputNode.removeTap(onBus: 0)
+            }
+        }
+    }
+
+    // Legacy
     func startListening() { startConversation() }
     func stopListening() { endConversation() }
 
