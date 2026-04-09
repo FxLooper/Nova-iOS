@@ -243,11 +243,8 @@ class NovaService: ObservableObject {
             state = .idle
             return
         }
-        Task {
-            try? await Task.sleep(nanoseconds: 600_000_000)
-            guard conversationActive else { return }
-            startDictation()
-        }
+        // Analyzer běží nepřetržitě — jen nastav state zpět na listening
+        state = .listening
     }
 
     private var dictationTranscriber: DictationTranscriber?
@@ -376,11 +373,9 @@ class NovaService: ObservableObject {
         guard !text.isEmpty else { return }
         currentUtterance = ""
         interimText = ""
+        print("[speech] utterance end: \(text)")
 
-        analyzerTask?.cancel()
-        if audioEngine.isRunning { audioEngine.stop() }
-        audioEngine.inputNode.removeTap(onBus: 0)
-
+        // NEZASTAVUJ analyzer — běží nepřetržitě, jen pošli text
         await sendMessage(text)
     }
 
