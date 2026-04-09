@@ -271,7 +271,7 @@ class NovaService: ObservableObject {
             return
         }
 
-        let locale = Locale(identifier: "en-US")
+        let locale = Locale(identifier: speechLocale)
 
         // Diagnostika
         Task {
@@ -335,6 +335,10 @@ class NovaService: ObservableObject {
                         inputNode.removeTap(onBus: 0)
                     }
                 }
+
+                // Alokuj locale modely
+                try await analyzer.prepareToAnalyze(in: targetFormat)
+                print("[speech] analyzer prepared")
 
                 self?.audioEngine.prepare()
                 try self?.audioEngine.start()
