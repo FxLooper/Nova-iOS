@@ -229,8 +229,13 @@ class NovaService: ObservableObject {
         transcriber = nil
         silenceTask?.cancel()
         speechDebounceTask?.cancel()
-        if audioEngine.isRunning { audioEngine.stop() }
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if useLegacySR {
+            stopLegacySR()
+        } else {
+            if audioEngine.isRunning { audioEngine.stop() }
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        useLegacySR = false
         currentUtterance = ""
         interimText = ""
         state = .idle
@@ -250,6 +255,10 @@ class NovaService: ObservableObject {
     }
 
     private var transcriber: SpeechTranscriber?
+    private var isListening = false
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var useLegacySR = false
 
     private func startAnalyzer() {
         // Audio session
@@ -262,8 +271,25 @@ class NovaService: ObservableObject {
             return
         }
 
-        // Vytvoř transcriber a analyzer
         let locale = Locale(identifier: speechLocale)
+
+        // Zkus SpeechAnalyzer, fallback na SFSpeechRecognizer
+        analyzerTask = Task { [weak self] in
+            let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale)
+            await MainActor.run {
+                if supported != nil {
+                    self?.startWithSpeechAnalyzer(locale: locale)
+                } else {
+                    print("[speech] locale \(locale) not supported by SpeechAnalyzer, using SFSpeechRecognizer")
+                    self?.useLegacySR = true
+                    self?.startWithLegacySR(locale: locale)
+                }
+            }
+        }
+    }
+
+    // MARK: - SpeechAnalyzer (iOS 26, podporované jazyky)
+    private func startWithSpeechAnalyzer(locale: Locale) {
         transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         guard let transcriber = transcriber else { print("[speech] transcriber init failed"); return }
         analyzer = SpeechAnalyzer(modules: [transcriber])
@@ -271,9 +297,8 @@ class NovaService: ObservableObject {
 
         state = .listening
         currentUtterance = ""
-        print("[speech] SpeechAnalyzer started")
+        print("[speech] SpeechAnalyzer started (\(locale))")
 
-        // Audio input stream
         let inputNode = audioEngine.inputNode
         inputNode.removeTap(onBus: 0)
 
@@ -281,7 +306,6 @@ class NovaService: ObservableObject {
             do {
                 let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber])
 
-                // AsyncStream pro audio input
                 let inputStream = AsyncStream<AnalyzerInput> { continuation in
                     inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
                         continuation.yield(AnalyzerInput(buffer: buffer))
@@ -294,7 +318,6 @@ class NovaService: ObservableObject {
                 self?.audioEngine.prepare()
                 try self?.audioEngine.start()
 
-                // Čti výsledky SOUBĚŽNĚ se startem analyzeru
                 let resultsTask = Task { [weak self] in
                     for try await result in transcriber.results {
                         guard !Task.isCancelled else { break }
@@ -313,7 +336,6 @@ class NovaService: ObservableObject {
                     }
                 }
 
-                // start() blokuje dokud neskončí input — proto results čteme v jiném tasku
                 try await analyzer.start(inputSequence: inputStream)
                 resultsTask.cancel()
             } catch {
@@ -323,15 +345,103 @@ class NovaService: ObservableObject {
         }
     }
 
+    // MARK: - Legacy SFSpeechRecognizer (čeština a nepodporované jazyky)
+    private func startWithLegacySR(locale: Locale) {
+        guard !isListening else { return }
+        isListening = true
+
+        let recognizer = SFSpeechRecognizer(locale: locale)
+        guard let recognizer = recognizer, recognizer.isAvailable else {
+            isListening = false
+            print("[speech] SFSpeechRecognizer not available for \(locale)")
+            return
+        }
+
+        stopLegacySR()
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        request.taskHint = .dictation
+        recognitionRequest = request
+
+        let inputNode = audioEngine.inputNode
+        let hwFormat = inputNode.inputFormat(forBus: 0)
+        inputNode.removeTap(onBus: 0)
+        inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { buffer, _ in
+            request.append(buffer)
+        }
+
+        do {
+            audioEngine.prepare()
+            try audioEngine.start()
+            state = .listening
+            print("[speech] SFSpeechRecognizer started (\(locale))")
+        } catch {
+            print("[speech] engine error: \(error)")
+            state = .idle
+            return
+        }
+
+        recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            Task { @MainActor in
+                guard let self = self else { return }
+
+                if let result = result {
+                    let text = result.bestTranscription.formattedString
+                    self.interimText = text
+                    self.currentUtterance = text
+
+                    self.speechDebounceTask?.cancel()
+                    self.speechDebounceTask = Task {
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        guard !Task.isCancelled, !self.interimText.isEmpty else { return }
+                        await self.handleUtteranceEnd()
+                    }
+
+                    if result.isFinal {
+                        self.speechDebounceTask?.cancel()
+                        await self.handleUtteranceEnd()
+                    }
+                } else if let error = error {
+                    let desc = error.localizedDescription
+                    if desc.contains("209") || desc.contains("Corrupt") { return }
+                    print("[speech] SR error: \(desc)")
+                    let partial = self.interimText
+                    self.stopLegacySR()
+                    if !partial.isEmpty {
+                        self.currentUtterance = partial
+                        await self.handleUtteranceEnd()
+                    } else {
+                        self.state = .idle
+                    }
+                }
+            }
+        }
+    }
+
+    private func stopLegacySR() {
+        isListening = false
+        if audioEngine.isRunning { audioEngine.stop() }
+        audioEngine.inputNode.removeTap(onBus: 0)
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
+    }
+
     private func handleUtteranceEnd() async {
         let text = currentUtterance.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         currentUtterance = ""
         interimText = ""
 
-        analyzerTask?.cancel()
-        if audioEngine.isRunning { audioEngine.stop() }
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if useLegacySR {
+            stopLegacySR()
+        } else {
+            analyzerTask?.cancel()
+            if audioEngine.isRunning { audioEngine.stop() }
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
 
         await sendMessage(text)
     }
