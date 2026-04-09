@@ -169,6 +169,11 @@ struct ChatView: View {
                         }
                         .padding(.vertical, 16)
                     }
+                    .onAppear {
+                        if let last = nova.messages.last {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
+                    }
                     .onChange(of: nova.messages.count) {
                         if let last = nova.messages.last {
                             withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
