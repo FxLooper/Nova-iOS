@@ -264,7 +264,7 @@ class NovaService: ObservableObject {
 
         // Vytvoř transcriber a analyzer
         let locale = Locale(identifier: speechLocale)
-        transcriber = SpeechTranscriber(locale: locale, preset: .progressiveLiveTranscription)
+        transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         guard let transcriber = transcriber else { print("[speech] transcriber init failed"); return }
         analyzer = SpeechAnalyzer(modules: [transcriber])
         guard let analyzer = analyzer else { print("[speech] analyzer init failed"); return }
@@ -306,9 +306,9 @@ class NovaService: ObservableObject {
                         self.currentUtterance = text
                         self.interimText = text
                         self.silenceTask?.cancel()
-                        self.silenceTask = Task {
+                        self.silenceTask = Task { @MainActor [weak self] in
                             try? await Task.sleep(nanoseconds: 2_000_000_000)
-                            guard !Task.isCancelled else { return }
+                            guard !Task.isCancelled, let self = self else { return }
                             await self.handleUtteranceEnd()
                         }
                     }
