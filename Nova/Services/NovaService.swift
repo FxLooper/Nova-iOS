@@ -208,6 +208,7 @@ class NovaService: ObservableObject {
     private var currentUtterance = ""
 
     func toggleConversation() {
+        print("[speech] toggleConversation called, active: \(conversationActive)")
         if conversationActive {
             endConversation()
         } else {
@@ -272,20 +273,6 @@ class NovaService: ObservableObject {
         }
 
         let locale = Locale(identifier: speechLocale)
-
-        // Diagnostika
-        Task {
-            let dtSupported = await DictationTranscriber.supportedLocales
-            let dtInstalled = await DictationTranscriber.installedLocales
-            let stAvailable = SpeechTranscriber.isAvailable
-            print("[speech] === DictationTranscriber DIAG ===")
-            print("[speech] DT supportedLocales: \(dtSupported.map(\.identifier))")
-            print("[speech] DT installedLocales: \(dtInstalled.map(\.identifier))")
-            print("[speech] ST isAvailable: \(stAvailable)")
-            print("[speech] SFSpeech auth: \(SFSpeechRecognizer.authorizationStatus().rawValue)")
-            print("[speech] ================================")
-        }
-
         dictationTranscriber = DictationTranscriber(locale: locale, preset: .progressiveLongDictation)
         guard let transcriber = dictationTranscriber else {
             print("[speech] DictationTranscriber init failed")
