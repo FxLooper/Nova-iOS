@@ -305,6 +305,7 @@ class NovaService: ObservableObject {
                     return
                 }
 
+                var bufferCount = 0
                 let inputStream = AsyncStream<AnalyzerInput> { continuation in
                     inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { buffer, _ in
                         let frameCount = AVAudioFrameCount(Double(buffer.frameLength) * targetFormat.sampleRate / hwFormat.sampleRate)
@@ -315,7 +316,13 @@ class NovaService: ObservableObject {
                             return buffer
                         }
                         if error == nil {
+                            bufferCount += 1
+                            if bufferCount <= 3 || bufferCount % 100 == 0 {
+                                print("[speech] buffer #\(bufferCount), frames: \(convertedBuffer.frameLength)")
+                            }
                             continuation.yield(AnalyzerInput(buffer: convertedBuffer))
+                        } else {
+                            print("[speech] convert error: \(error!)")
                         }
                     }
                     continuation.onTermination = { _ in
@@ -351,7 +358,9 @@ class NovaService: ObservableObject {
                     }
                 }
 
+                print("[speech] calling analyzer.start()...")
                 try await analyzer.start(inputSequence: inputStream)
+                print("[speech] analyzer.start() returned")
                 resultsTask.cancel()
             } catch {
                 print("[speech] DictationTranscriber error: \(error)")
