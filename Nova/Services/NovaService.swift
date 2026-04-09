@@ -225,10 +225,12 @@ class NovaService: ObservableObject {
         conversationActive = false
         analyzerTask?.cancel()
         analyzerTask = nil
-        analyzer?.stop()
         analyzer = nil
+        transcriber = nil
         silenceTask?.cancel()
         speechDebounceTask?.cancel()
+        if audioEngine.isRunning { audioEngine.stop() }
+        audioEngine.inputNode.removeTap(onBus: 0)
         currentUtterance = ""
         interimText = ""
         state = .idle
@@ -247,57 +249,66 @@ class NovaService: ObservableObject {
         }
     }
 
+    private var transcriber: SpeechTranscriber?
+
     private func startAnalyzer() {
         // Audio session
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             print("[speech] audio session error: \(error)")
             return
         }
 
-        // Vytvoř analyzer
-        analyzer = SpeechAnalyzer()
-        let transcriber = SpeechTranscriber(locale: Locale(identifier: speechLocale))
-        analyzer?.addModule(transcriber)
+        // Vytvoř transcriber a analyzer
+        let locale = Locale(identifier: speechLocale)
+        transcriber = SpeechTranscriber(locale: locale, preset: .progressiveLiveTranscription)
+        guard let transcriber = transcriber else { print("[speech] transcriber init failed"); return }
+        analyzer = SpeechAnalyzer(modules: [transcriber])
+        guard let analyzer = analyzer else { print("[speech] analyzer init failed"); return }
 
         state = .listening
         currentUtterance = ""
         print("[speech] SpeechAnalyzer started")
 
-        // Spusť analyzer z mikrofonu
-        analyzerTask = Task {
+        // Spusť analyzer a čti výsledky
+        analyzerTask = Task { [weak self] in
             do {
-                try await analyzer?.start(inputSequence: audioInputSequence())
+                // Získej audio formát a spusť
+                let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber])
 
-                // Čti eventy
-                guard let analyzer = analyzer else { return }
-                for await event in transcriber.events {
+                // Audio input
+                let inputNode = self?.audioEngine.inputNode
+                inputNode?.removeTap(onBus: 0)
+                inputNode?.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
+                    analyzer.appendAudio(buffer)
+                }
+                self?.audioEngine.prepare()
+                try self?.audioEngine.start()
+
+                // Čti transkripty
+                for await caption in transcriber.captions {
                     guard !Task.isCancelled else { break }
-                    switch event {
-                    case .captionUpdate(let caption):
-                        let text = caption.text
-                        await MainActor.run {
-                            self.currentUtterance = text
-                            self.interimText = text
-                            // Reset silence timer
-                            self.silenceTask?.cancel()
-                            self.silenceTask = Task {
-                                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                                guard !Task.isCancelled else { return }
-                                await self.handleUtteranceEnd()
-                            }
+                    let text = caption.text
+                    await MainActor.run {
+                        guard let self = self else { return }
+                        self.currentUtterance = text
+                        self.interimText = text
+                        // Reset silence timer
+                        self.silenceTask?.cancel()
+                        self.silenceTask = Task {
+                            try? await Task.sleep(nanoseconds: 2_000_000_000)
+                            guard !Task.isCancelled else { return }
+                            await self.handleUtteranceEnd()
                         }
-                    default:
-                        break
                     }
                 }
             } catch {
                 print("[speech] analyzer error: \(error)")
                 await MainActor.run {
-                    if conversationActive { state = .idle }
+                    self?.state = .idle
                 }
             }
         }
@@ -309,9 +320,10 @@ class NovaService: ObservableObject {
         currentUtterance = ""
         interimText = ""
 
-        // Zastav analyzer během zpracování
-        analyzer?.stop()
+        // Zastav analyzer
         analyzerTask?.cancel()
+        if audioEngine.isRunning { audioEngine.stop() }
+        audioEngine.inputNode.removeTap(onBus: 0)
 
         // Pošli Nově
         await sendMessage(text)
@@ -321,28 +333,6 @@ class NovaService: ObservableObject {
         let lang = UserDefaults.standard.string(forKey: "nova_lang") ?? "cs"
         let map = ["cs":"cs-CZ","en":"en-US","de":"de-DE","sk":"sk-SK","fr":"fr-FR","es":"es-ES","it":"it-IT","pl":"pl-PL","ja":"ja-JP","zh":"zh-CN","ko":"ko-KR","ar":"ar-SA","tr":"tr-TR","hi":"hi-IN","pt":"pt-BR","ru":"ru-RU"]
         return map[lang] ?? "cs-CZ"
-    }
-
-    private func audioInputSequence() -> AsyncStream<AVAudioPCMBuffer> {
-        AsyncStream { continuation in
-            let inputNode = audioEngine.inputNode
-            let hwFormat = inputNode.inputFormat(forBus: 0)
-            inputNode.removeTap(onBus: 0)
-            inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { buffer, _ in
-                continuation.yield(buffer)
-            }
-            do {
-                audioEngine.prepare()
-                try audioEngine.start()
-            } catch {
-                print("[speech] engine error: \(error)")
-                continuation.finish()
-            }
-            continuation.onTermination = { _ in
-                if self.audioEngine.isRunning { self.audioEngine.stop() }
-                inputNode.removeTap(onBus: 0)
-            }
-        }
     }
 
     // Legacy
