@@ -73,6 +73,7 @@ struct SetupView: View {
 struct ChatView: View {
     @EnvironmentObject var nova: NovaService
     @State private var inputText = ""
+    @State private var showSettings = false
     @FocusState private var isInputFocused: Bool
 
     var body: some View {
@@ -84,7 +85,7 @@ struct ChatView: View {
                 VStack(spacing: 0) {
                     // Top bar: settings + mute
                     HStack {
-                        Button(action: { nova.resetConfig() }) {
+                        Button(action: { showSettings = true }) {
                             Image(systemName: "gearshape")
                                 .font(.system(size: 14, weight: .light))
                                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.25))
@@ -217,6 +218,10 @@ struct ChatView: View {
         }
         .onAppear {
             nova.connectWebSocket()
+        }
+        .fullScreenCover(isPresented: $showSettings) {
+            SettingsView()
+                .environmentObject(nova)
         }
     }
 

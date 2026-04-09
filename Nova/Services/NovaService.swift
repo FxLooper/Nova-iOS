@@ -27,7 +27,7 @@ class NovaService: ObservableObject {
 
     // MARK: - Audio
     private let audioEngine = AVAudioEngine()
-    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "cs-CZ"))
+    private var speechRecognizer: SFSpeechRecognizer? = SFSpeechRecognizer(locale: Locale(identifier: "cs-CZ"))
     private var recognitionTask: SFSpeechRecognitionTask?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private let synthesizer = AVSpeechSynthesizer()
@@ -41,6 +41,7 @@ class NovaService: ObservableObject {
     init() {
         loadConfig()
         loadMessages()
+        loadProfile()
     }
 
     // MARK: - Config (Keychain)
@@ -70,6 +71,30 @@ class NovaService: ObservableObject {
 
     var isConfigured: Bool {
         !serverURL.isEmpty && !token.isEmpty
+    }
+
+    // MARK: - Profile
+    @Published var profile: [String: String] = [:]
+
+    func updateProfile(lang: String, city: String, name: String, voice: String, voiceGender: String) {
+        profile = [
+            "lang": lang, "city": city, "name": name,
+            "voice": voice, "voiceGender": voiceGender, "agentName": "Nova"
+        ]
+        // Update speech recognizer language
+        let langMap = ["cs":"cs-CZ","en":"en-US","de":"de-DE","sk":"sk-SK","fr":"fr-FR","es":"es-ES","it":"it-IT","pl":"pl-PL","ja":"ja-JP","zh":"zh-CN","ko":"ko-KR","ar":"ar-SA","tr":"tr-TR","hi":"hi-IN","pt":"pt-BR","ru":"ru-RU"]
+        if let locale = langMap[lang] {
+            speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: locale))
+        }
+    }
+
+    func loadProfile() {
+        let lang = UserDefaults.standard.string(forKey: "nova_lang") ?? "cs"
+        let city = UserDefaults.standard.string(forKey: "nova_city") ?? "Plzeň"
+        let name = UserDefaults.standard.string(forKey: "nova_user_name") ?? "Ondřej"
+        let voice = UserDefaults.standard.string(forKey: "nova_voice") ?? "cs-vlasta"
+        let gender = UserDefaults.standard.string(forKey: "nova_voice_gender") ?? "female"
+        updateProfile(lang: lang, city: city, name: name, voice: voice, voiceGender: gender)
     }
 
     // MARK: - Messages Persistence
