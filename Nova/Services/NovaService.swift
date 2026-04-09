@@ -274,27 +274,24 @@ class NovaService: ObservableObject {
 
         // Diagnostika SpeechAnalyzer
         Task {
-            let deviceOK = await SpeechTranscriber.supportsDevice()
             let supported = await SpeechTranscriber.supportedLocales
             let installed = await SpeechTranscriber.installedLocales
             print("[speech] === DIAGNOSTIKA ===")
-            print("[speech] supportsDevice: \(deviceOK)")
             print("[speech] supportedLocales: \(supported.map(\.identifier))")
             print("[speech] installedLocales: \(installed.map(\.identifier))")
             print("[speech] =================")
 
             await MainActor.run { [weak self] in
                 guard let self = self, self.conversationActive else { return }
-                if deviceOK && !installed.isEmpty {
+                if !installed.isEmpty {
                     let locale = installed.first { $0.identifier.hasPrefix("en") } ?? installed[0]
                     self.startWithSpeechAnalyzer(locale: locale)
-                } else if deviceOK && !supported.isEmpty {
-                    // Model není stažený — zkus první podporovaný
+                } else if !supported.isEmpty {
                     let locale = supported.first { $0.identifier.hasPrefix("en") } ?? supported[0]
-                    print("[speech] model not installed, trying \(locale.identifier) anyway (may trigger download)")
+                    print("[speech] model not installed, trying \(locale.identifier) (may trigger download)")
                     self.startWithSpeechAnalyzer(locale: locale)
                 } else {
-                    print("[speech] SpeechAnalyzer NOT supported on this device!")
+                    print("[speech] SpeechAnalyzer: NO supported locales on this device!")
                     self.state = .idle
                 }
             }
