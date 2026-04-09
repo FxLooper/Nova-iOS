@@ -284,12 +284,30 @@ class NovaService: ObservableObject {
 
         analyzerTask = Task { [weak self] in
             do {
-                let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber])
-                print("[speech] audio format: \(String(describing: format))")
+                guard let targetFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
+                    print("[speech] no compatible audio format")
+                    return
+                }
+                let hwFormat = inputNode.inputFormat(forBus: 0)
+                print("[speech] hw format: \(hwFormat), target format: \(targetFormat)")
+
+                guard let converter = AVAudioConverter(from: hwFormat, to: targetFormat) else {
+                    print("[speech] failed to create audio converter")
+                    return
+                }
 
                 let inputStream = AsyncStream<AnalyzerInput> { continuation in
-                    inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
-                        continuation.yield(AnalyzerInput(buffer: buffer))
+                    inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { buffer, _ in
+                        let frameCount = AVAudioFrameCount(Double(buffer.frameLength) * targetFormat.sampleRate / hwFormat.sampleRate)
+                        guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCount) else { return }
+                        var error: NSError?
+                        converter.convert(to: convertedBuffer, error: &error) { _, outStatus in
+                            outStatus.pointee = .haveData
+                            return buffer
+                        }
+                        if error == nil {
+                            continuation.yield(AnalyzerInput(buffer: convertedBuffer))
+                        }
                     }
                     continuation.onTermination = { _ in
                         inputNode.removeTap(onBus: 0)
