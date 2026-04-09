@@ -264,7 +264,7 @@ class NovaService: ObservableObject {
 
         // Vytvoř transcriber a analyzer
         let locale = Locale(identifier: speechLocale)
-        transcriber = SpeechTranscriber(locale: locale, preset: .progressiveLiveTranscription)
+        transcriber = SpeechTranscriber(locale: locale, preset: .liveTranscription)
         guard let transcriber = transcriber else { print("[speech] transcriber init failed"); return }
         analyzer = SpeechAnalyzer(modules: [transcriber])
         guard let analyzer = analyzer else { print("[speech] analyzer init failed"); return }
@@ -273,20 +273,29 @@ class NovaService: ObservableObject {
         currentUtterance = ""
         print("[speech] SpeechAnalyzer started")
 
-        // Spusť analyzer a čti výsledky
+        // Audio input stream
+        let inputNode = audioEngine.inputNode
+        inputNode.removeTap(onBus: 0)
+
         analyzerTask = Task { [weak self] in
             do {
-                // Získej audio formát a spusť
                 let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber])
 
-                // Audio input
-                let inputNode = self?.audioEngine.inputNode
-                inputNode?.removeTap(onBus: 0)
-                inputNode?.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
-                    analyzer.appendAudio(buffer)
+                // AsyncStream pro audio input
+                let inputStream = AsyncStream<AnalyzerInput> { continuation in
+                    inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
+                        continuation.yield(AnalyzerInput(audioBuffer: buffer))
+                    }
+                    continuation.onTermination = { _ in
+                        inputNode.removeTap(onBus: 0)
+                    }
                 }
+
                 self?.audioEngine.prepare()
                 try self?.audioEngine.start()
+
+                // Spusť analyzer s audio streamem
+                try await analyzer.start(inputSequence: inputStream)
 
                 // Čti transkripty
                 for await caption in transcriber.captions {
@@ -296,7 +305,6 @@ class NovaService: ObservableObject {
                         guard let self = self else { return }
                         self.currentUtterance = text
                         self.interimText = text
-                        // Reset silence timer
                         self.silenceTask?.cancel()
                         self.silenceTask = Task {
                             try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -307,9 +315,7 @@ class NovaService: ObservableObject {
                 }
             } catch {
                 print("[speech] analyzer error: \(error)")
-                await MainActor.run {
-                    self?.state = .idle
-                }
+                await MainActor.run { self?.state = .idle }
             }
         }
     }
@@ -320,12 +326,10 @@ class NovaService: ObservableObject {
         currentUtterance = ""
         interimText = ""
 
-        // Zastav analyzer
         analyzerTask?.cancel()
         if audioEngine.isRunning { audioEngine.stop() }
         audioEngine.inputNode.removeTap(onBus: 0)
 
-        // Pošli Nově
         await sendMessage(text)
     }
 
