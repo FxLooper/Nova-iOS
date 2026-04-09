@@ -208,7 +208,6 @@ class NovaService: ObservableObject {
     private var currentUtterance = ""
 
     func toggleConversation() {
-        print("[speech] toggleConversation called, active: \(conversationActive)")
         if conversationActive {
             endConversation()
         } else {
@@ -302,7 +301,6 @@ class NovaService: ObservableObject {
                     return
                 }
 
-                var bufferCount = 0
                 let inputStream = AsyncStream<AnalyzerInput> { continuation in
                     inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { buffer, _ in
                         let frameCount = AVAudioFrameCount(Double(buffer.frameLength) * targetFormat.sampleRate / hwFormat.sampleRate)
@@ -313,13 +311,7 @@ class NovaService: ObservableObject {
                             return buffer
                         }
                         if error == nil {
-                            bufferCount += 1
-                            if bufferCount <= 3 || bufferCount % 100 == 0 {
-                                print("[speech] buffer #\(bufferCount), frames: \(convertedBuffer.frameLength)")
-                            }
                             continuation.yield(AnalyzerInput(buffer: convertedBuffer))
-                        } else {
-                            print("[speech] convert error: \(error!)")
                         }
                     }
                     continuation.onTermination = { _ in
@@ -340,24 +332,24 @@ class NovaService: ObservableObject {
                     for try await result in transcriber.results {
                         guard !Task.isCancelled else { break }
                         let text = String(result.text.characters)
-                        print("[speech] transcript: \(text)")
                         await MainActor.run {
                             guard let self = self else { return }
+                            // Ignoruj transkripty během TTS (echo prevention)
+                            guard self.state == .listening else { return }
                             self.currentUtterance = text
                             self.interimText = text
                             self.silenceTask?.cancel()
                             self.silenceTask = Task { @MainActor [weak self] in
                                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                                 guard !Task.isCancelled, let self = self else { return }
+                                guard self.state == .listening else { return }
                                 await self.handleUtteranceEnd()
                             }
                         }
                     }
                 }
 
-                print("[speech] calling analyzer.start()...")
                 try await analyzer.start(inputSequence: inputStream)
-                print("[speech] analyzer.start() returned — waiting for results...")
 
                 // Čekej na resultsTask (nekanceluj — start() neblokuje)
                 try? await resultsTask.value
