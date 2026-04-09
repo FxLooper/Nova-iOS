@@ -26,10 +26,20 @@
     <dict/>
     <key>NSAppTransportSecurity</key>
     <dict>
-        <key>NSAllowsLocalNetworking</key>
-        <true/>
         <key>NSAllowsArbitraryLoads</key>
         <true/>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>100.105.26.7</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+            </dict>
+        </dict>
     </dict>
     <key>CFBundleIdentifier</key>
     <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>

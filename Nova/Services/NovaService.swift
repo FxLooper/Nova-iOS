@@ -430,6 +430,95 @@ class NovaService: ObservableObject {
         }
     }
 
+    // MARK: - Dev Mode
+    private func executeDevAction(_ action: ActionResponse) async {
+        do {
+            let task = action.params?["task"]?.value as? String ?? ""
+            let devMessages = messages.suffix(10).map { ["role": $0.role == "user" ? "user" : "assistant", "content": $0.content] } + [["role": "user", "content": task]]
+
+            // Step 1: Plan
+            var planRequest = URLRequest(url: URL(string: "\(serverURL)/api/dev/plan")!)
+            planRequest.httpMethod = "POST"
+            planRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            planRequest.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+            planRequest.httpBody = try JSONSerialization.data(withJSONObject: ["messages": devMessages])
+            planRequest.timeoutInterval = 120
+
+            let (planData, _) = try await URLSession.shared.data(for: planRequest)
+            let planJson = try JSONSerialization.jsonObject(with: planData) as? [String: Any]
+            let planContent = planJson?["content"] as? String ?? "Nemůžu navrhnout plán."
+            let needsConfirm = planJson?["needsConfirm"] as? Bool ?? true
+
+            let planMsg = Message(role: "ai", content: planContent)
+            messages.append(planMsg)
+            saveMessages()
+
+            if !needsConfirm {
+                // Read-only — hotovo
+                state = .speaking
+                await playTTS(planContent)
+                state = .idle
+                return
+            }
+
+            // Needs confirmation — show buttons
+            state = .idle
+            pendingDevPlan = DevPlan(task: task, planContent: planContent, devMessages: devMessages)
+            pendingConfirmation = PendingConfirmation(action: action, speech: planContent)
+
+        } catch {
+            let msg = Message(role: "ai", content: "Dev mode chyba: \(error.localizedDescription)")
+            messages.append(msg)
+            saveMessages()
+            state = .idle
+        }
+    }
+
+    struct DevPlan {
+        let task: String
+        let planContent: String
+        let devMessages: [[String: String]]
+    }
+    var pendingDevPlan: DevPlan?
+
+    func confirmDevAction() async {
+        guard let plan = pendingDevPlan else { return }
+        pendingDevPlan = nil
+        state = .thinking
+
+        let confirmMsg = Message(role: "user", content: "Ano, udělej to.")
+        messages.append(confirmMsg)
+
+        do {
+            var devMsgs = plan.devMessages
+            devMsgs.append(["role": "assistant", "content": plan.planContent])
+            devMsgs.append(["role": "user", "content": "Ano, proveď to."])
+
+            var execRequest = URLRequest(url: URL(string: "\(serverURL)/api/dev/execute")!)
+            execRequest.httpMethod = "POST"
+            execRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            execRequest.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+            execRequest.httpBody = try JSONSerialization.data(withJSONObject: ["messages": devMsgs])
+            execRequest.timeoutInterval = 120
+
+            let (execData, _) = try await URLSession.shared.data(for: execRequest)
+            let execJson = try JSONSerialization.jsonObject(with: execData) as? [String: Any]
+            let execContent = execJson?["content"] as? String ?? "Hotovo."
+
+            let resultMsg = Message(role: "ai", content: execContent)
+            messages.append(resultMsg)
+            saveMessages()
+
+            state = .speaking
+            await playTTS(execContent)
+        } catch {
+            let msg = Message(role: "ai", content: "Chyba při provádění: \(error.localizedDescription)")
+            messages.append(msg)
+            saveMessages()
+        }
+        state = .idle
+    }
+
     // MARK: - Action Handling
     func handleAction(_ action: ActionResponse) async {
         let needsConfirm = ["send_message", "add_calendar", "facetime_call", "dev"].contains(action.action)
@@ -444,9 +533,13 @@ class NovaService: ObservableObject {
         guard let pending = pendingConfirmation else { return }
         pendingConfirmation = nil
         if confirmed {
-            let msg = Message(role: "user", content: "Ano.")
-            messages.append(msg)
-            await executeAction(pending.action)
+            if pending.action.action == "dev" && pendingDevPlan != nil {
+                await confirmDevAction()
+            } else {
+                let msg = Message(role: "user", content: "Ano.")
+                messages.append(msg)
+                await executeAction(pending.action)
+            }
         } else {
             let msg = Message(role: "ai", content: "Dobře, nic nedělám.")
             messages.append(msg)
@@ -456,6 +549,13 @@ class NovaService: ObservableObject {
 
     private func executeAction(_ action: ActionResponse) async {
         state = .thinking
+
+        // Dev mode — dvoustupňový flow (plan → execute)
+        if action.action == "dev" {
+            await executeDevAction(action)
+            return
+        }
+
         let endpointMap: [String: String] = [
             "open_url": "/api/action/open-url",
             "open_app": "/api/action/open-app",
