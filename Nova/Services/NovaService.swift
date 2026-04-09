@@ -352,6 +352,23 @@ class NovaService: ObservableObject {
     // MARK: - Legacy SFSpeechRecognizer (čeština a nepodporované jazyky)
     private func startWithLegacySR(locale: Locale) {
         guard !isListening else { return }
+
+        // Auth check
+        let authStatus = SFSpeechRecognizer.authorizationStatus()
+        guard authStatus == .authorized else {
+            print("[speech] SR auth status: \(authStatus.rawValue), requesting...")
+            SFSpeechRecognizer.requestAuthorization { [weak self] status in
+                Task { @MainActor in
+                    if status == .authorized {
+                        self?.startWithLegacySR(locale: locale)
+                    } else {
+                        print("[speech] SR auth denied: \(status.rawValue)")
+                    }
+                }
+            }
+            return
+        }
+
         isListening = true
 
         speechRecognizer = SFSpeechRecognizer(locale: locale)
@@ -367,6 +384,7 @@ class NovaService: ObservableObject {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.taskHint = .dictation
+        request.requiresOnDeviceRecognition = false
         recognitionRequest = request
 
         let inputNode = audioEngine.inputNode
@@ -407,9 +425,10 @@ class NovaService: ObservableObject {
                         await self.handleUtteranceEnd()
                     }
                 } else if let error = error {
+                    let nsError = error as NSError
                     let desc = error.localizedDescription
+                    print("[speech] SR error: \(desc) (domain: \(nsError.domain), code: \(nsError.code))")
                     if desc.contains("209") || desc.contains("Corrupt") { return }
-                    print("[speech] SR error: \(desc)")
                     let partial = self.interimText
                     self.stopLegacySR()
                     if !partial.isEmpty {
