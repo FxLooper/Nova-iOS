@@ -294,25 +294,28 @@ class NovaService: ObservableObject {
                 self?.audioEngine.prepare()
                 try self?.audioEngine.start()
 
-                // Spusť analyzer s audio streamem
-                try await analyzer.start(inputSequence: inputStream)
-
-                // Čti transkripty
-                for try await result in transcriber.results {
-                    guard !Task.isCancelled else { break }
-                    let text = String(result.text.characters)
-                    await MainActor.run {
-                        guard let self = self else { return }
-                        self.currentUtterance = text
-                        self.interimText = text
-                        self.silenceTask?.cancel()
-                        self.silenceTask = Task { @MainActor [weak self] in
-                            try? await Task.sleep(nanoseconds: 2_000_000_000)
-                            guard !Task.isCancelled, let self = self else { return }
-                            await self.handleUtteranceEnd()
+                // Čti výsledky SOUBĚŽNĚ se startem analyzeru
+                let resultsTask = Task { [weak self] in
+                    for try await result in transcriber.results {
+                        guard !Task.isCancelled else { break }
+                        let text = String(result.text.characters)
+                        await MainActor.run {
+                            guard let self = self else { return }
+                            self.currentUtterance = text
+                            self.interimText = text
+                            self.silenceTask?.cancel()
+                            self.silenceTask = Task { @MainActor [weak self] in
+                                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                                guard !Task.isCancelled, let self = self else { return }
+                                await self.handleUtteranceEnd()
+                            }
                         }
                     }
                 }
+
+                // start() blokuje dokud neskončí input — proto results čteme v jiném tasku
+                try await analyzer.start(inputSequence: inputStream)
+                resultsTask.cancel()
             } catch {
                 print("[speech] analyzer error: \(error)")
                 await MainActor.run { self?.state = .idle }
