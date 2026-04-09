@@ -275,12 +275,14 @@ class NovaService: ObservableObject {
 
         // Zkus SpeechAnalyzer, fallback na SFSpeechRecognizer
         analyzerTask = Task { [weak self] in
-            let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale)
+            let installed = await SpeechTranscriber.installedLocales
+            let supported = installed.contains(where: { $0.identifier.hasPrefix(locale.identifier.prefix(2)) })
+            print("[speech] installed locales: \(installed.map(\.identifier)), target: \(locale.identifier), supported: \(supported)")
             await MainActor.run {
-                if supported != nil {
+                if supported {
                     self?.startWithSpeechAnalyzer(locale: locale)
                 } else {
-                    print("[speech] locale \(locale) not supported by SpeechAnalyzer, using SFSpeechRecognizer")
+                    print("[speech] using SFSpeechRecognizer fallback for \(locale.identifier)")
                     self?.useLegacySR = true
                     self?.startWithLegacySR(locale: locale)
                 }
