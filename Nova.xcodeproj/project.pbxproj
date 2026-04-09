@@ -1,16 +1,17 @@
 // !$*UTF8*$!
 {
 	archiveVersion = 1;
-	classes = {};
+	classes = {
+	};
 	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1000001 /* NovaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001; };
-		A1000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002; };
-		A1000003 /* NovaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003; };
-		A1000004 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004; };
-		A1000005 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000005; };
+		A1000001 /* NovaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001 /* NovaApp.swift */; };
+		A1000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002 /* ContentView.swift */; };
+		A1000003 /* NovaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003 /* NovaService.swift */; };
+		A1000004 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004 /* KeychainHelper.swift */; };
+		A1000005 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000005 /* Message.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,39 +24,67 @@
 		C1000001 /* Nova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nova.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		E1000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
 		D1000001 = {
 			isa = PBXGroup;
-			children = (D1000002, D1000003);
+			children = (
+				D1000002 /* Nova */,
+				D1000003 /* Products */,
+			);
 			sourceTree = "<group>";
 		};
 		D1000002 /* Nova */ = {
 			isa = PBXGroup;
-			children = (B1000001, B1000006, D1000004, D1000005, D1000006);
+			children = (
+				B1000001 /* NovaApp.swift */,
+				B1000006 /* Info.plist */,
+				D1000004 /* Views */,
+				D1000005 /* Services */,
+				D1000006 /* Models */,
+			);
 			path = Nova;
 			sourceTree = "<group>";
 		};
 		D1000003 /* Products */ = {
 			isa = PBXGroup;
-			children = (C1000001);
+			children = (
+				C1000001 /* Nova.app */,
+			);
 			name = Products;
 			sourceTree = "<group>";
 		};
 		D1000004 /* Views */ = {
 			isa = PBXGroup;
-			children = (B1000002);
+			children = (
+				B1000002 /* ContentView.swift */,
+			);
 			path = Views;
 			sourceTree = "<group>";
 		};
 		D1000005 /* Services */ = {
 			isa = PBXGroup;
-			children = (B1000003, B1000004);
+			children = (
+				B1000003 /* NovaService.swift */,
+				B1000004 /* KeychainHelper.swift */,
+			);
 			path = Services;
 			sourceTree = "<group>";
 		};
 		D1000006 /* Models */ = {
 			isa = PBXGroup;
-			children = (B1000005);
+			children = (
+				B1000005 /* Message.swift */,
+			);
 			path = Models;
 			sourceTree = "<group>";
 		};
@@ -64,13 +93,18 @@
 /* Begin PBXNativeTarget section */
 		E1000001 /* Nova */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F1000002;
-			buildPhases = (E1000002, E1000003);
-			buildRules = ();
-			dependencies = ();
+			buildConfigurationList = F1000002 /* Build configuration list for PBXNativeTarget "Nova" */;
+			buildPhases = (
+				E1000002 /* Sources */,
+				E1000003 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
 			name = Nova;
 			productName = Nova;
-			productReference = C1000001;
+			productReference = C1000001 /* Nova.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -84,16 +118,22 @@
 				LastUpgradeCheck = 1540;
 				ORGANIZATIONNAME = FxLooper;
 			};
-			buildConfigurationList = F1000001;
+			buildConfigurationList = F1000001 /* Build configuration list for PBXProject "Nova" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = cs;
 			hasScannedForEncodings = 0;
-			knownRegions = (cs, en, Base);
+			knownRegions = (
+				cs,
+				en,
+				Base,
+			);
 			mainGroup = D1000001;
-			productRefGroup = D1000003;
+			productRefGroup = D1000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (E1000001);
+			targets = (
+				E1000001 /* Nova */,
+			);
 		};
 /* End PBXProject section */
 
@@ -101,19 +141,16 @@
 		E1000002 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (A1000001, A1000002, A1000003, A1000004, A1000005);
+			files = (
+				A1000001 /* NovaApp.swift in Sources */,
+				A1000002 /* ContentView.swift in Sources */,
+				A1000003 /* NovaService.swift in Sources */,
+				A1000004 /* KeychainHelper.swift in Sources */,
+				A1000005 /* Message.swift in Sources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		E1000003 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = ();
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
 		F1000003 /* Debug */ = {
@@ -122,16 +159,19 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WDSRL83RUZ;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Nova/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.fxlooper.nova;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				DEVELOPMENT_TEAM = "";
-				CODE_SIGN_STYLE = Automatic;
-				GENERATE_INFOPLIST_FILE = NO;
 			};
 			name = Debug;
 		};
@@ -141,16 +181,19 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WDSRL83RUZ;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Nova/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.fxlooper.nova;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				DEVELOPMENT_TEAM = "";
-				CODE_SIGN_STYLE = Automatic;
-				GENERATE_INFOPLIST_FILE = NO;
 			};
 			name = Release;
 		};
@@ -201,19 +244,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F1000001 /* Build configuration list for PBXProject */ = {
+		F1000001 /* Build configuration list for PBXProject "Nova" */ = {
 			isa = XCConfigurationList;
-			buildConfigurations = (F1000005, F1000006);
+			buildConfigurations = (
+				F1000005 /* Debug */,
+				F1000006 /* Release */,
+			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F1000002 /* Build configuration list for PBXNativeTarget */ = {
+		F1000002 /* Build configuration list for PBXNativeTarget "Nova" */ = {
 			isa = XCConfigurationList;
-			buildConfigurations = (F1000003, F1000004);
+			buildConfigurations = (
+				F1000003 /* Debug */,
+				F1000004 /* Release */,
+			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = G1000001;
+	rootObject = G1000001 /* Project object */;
 }

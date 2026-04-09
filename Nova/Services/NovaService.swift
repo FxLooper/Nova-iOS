@@ -252,11 +252,10 @@ class NovaService: ObservableObject {
                         self?.handleWSMessage(json)
                     }
                 }
-                self?.receiveWebSocket() // Continue listening
+                self?.receiveWebSocket()
             case .failure:
                 Task { @MainActor in
                     self?.isConnected = false
-                    // Reconnect after 3s
                     try? await Task.sleep(nanoseconds: 3_000_000_000)
                     self?.connectWebSocket()
                 }
