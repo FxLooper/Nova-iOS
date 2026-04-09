@@ -273,18 +273,19 @@ class NovaService: ObservableObject {
 
         let locale = Locale(identifier: speechLocale)
 
-        // Zkus SpeechAnalyzer, fallback na SFSpeechRecognizer
-        analyzerTask = Task { [weak self] in
+        // Locale check a start — pro legacy SR nepotřebujeme analyzerTask
+        Task { [weak self] in
             let installed = await SpeechTranscriber.installedLocales
             let supported = installed.contains(where: { $0.identifier.hasPrefix(locale.identifier.prefix(2)) })
             print("[speech] installed locales: \(installed.map(\.identifier)), target: \(locale.identifier), supported: \(supported)")
             await MainActor.run {
+                guard let self = self, self.conversationActive else { return }
                 if supported {
-                    self?.startWithSpeechAnalyzer(locale: locale)
+                    self.startWithSpeechAnalyzer(locale: locale)
                 } else {
                     print("[speech] using SFSpeechRecognizer fallback for \(locale.identifier)")
-                    self?.useLegacySR = true
-                    self?.startWithLegacySR(locale: locale)
+                    self.useLegacySR = true
+                    self.startWithLegacySR(locale: locale)
                 }
             }
         }
@@ -359,7 +360,8 @@ class NovaService: ObservableObject {
             return
         }
 
-        stopLegacySR()
+        // Čistý start — zahoď předchozí tap
+        audioEngine.inputNode.removeTap(onBus: 0)
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
@@ -368,7 +370,6 @@ class NovaService: ObservableObject {
 
         let inputNode = audioEngine.inputNode
         let hwFormat = inputNode.inputFormat(forBus: 0)
-        inputNode.removeTap(onBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { buffer, _ in
             request.append(buffer)
         }
