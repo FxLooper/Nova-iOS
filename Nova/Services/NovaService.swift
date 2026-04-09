@@ -264,7 +264,7 @@ class NovaService: ObservableObject {
 
         // Vytvoř transcriber a analyzer
         let locale = Locale(identifier: speechLocale)
-        transcriber = SpeechTranscriber(locale: locale, preset: .liveTranscription)
+        transcriber = SpeechTranscriber(locale: locale, preset: .offlineTranscription)
         guard let transcriber = transcriber else { print("[speech] transcriber init failed"); return }
         analyzer = SpeechAnalyzer(modules: [transcriber])
         guard let analyzer = analyzer else { print("[speech] analyzer init failed"); return }
@@ -284,7 +284,7 @@ class NovaService: ObservableObject {
                 // AsyncStream pro audio input
                 let inputStream = AsyncStream<AnalyzerInput> { continuation in
                     inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
-                        continuation.yield(AnalyzerInput(audioBuffer: buffer))
+                        continuation.yield(AnalyzerInput(buffer: buffer))
                     }
                     continuation.onTermination = { _ in
                         inputNode.removeTap(onBus: 0)
