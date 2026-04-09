@@ -360,8 +360,10 @@ class NovaService: ObservableObject {
 
                 print("[speech] calling analyzer.start()...")
                 try await analyzer.start(inputSequence: inputStream)
-                print("[speech] analyzer.start() returned")
-                resultsTask.cancel()
+                print("[speech] analyzer.start() returned — waiting for results...")
+
+                // Čekej na resultsTask (nekanceluj — start() neblokuje)
+                try? await resultsTask.value
             } catch {
                 print("[speech] DictationTranscriber error: \(error)")
                 await MainActor.run { self?.state = .idle }
