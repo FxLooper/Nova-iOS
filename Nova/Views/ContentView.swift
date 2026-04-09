@@ -4,7 +4,7 @@ struct ContentView: View {
     @EnvironmentObject var nova: NovaService
 
     var body: some View {
-        if nova.isConfigured {
+        if nova.isConfigured && !nova.needsSetup {
             ChatView()
         } else {
             SetupView()
@@ -15,7 +15,7 @@ struct ContentView: View {
 // MARK: - Setup View (first launch)
 struct SetupView: View {
     @EnvironmentObject var nova: NovaService
-    @State private var server = "http://192.168.0.183:3000"
+    @State private var server = "http://127.0.0.1:3000"
     @State private var token = ""
 
     var body: some View {
@@ -80,17 +80,16 @@ struct ChatView: View {
             Color(hex: "f5f0e8").ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header: nova title + orb + state label
+                // Header: nova title above orb + state label
                 VStack(spacing: 0) {
-                    // Title + mute
+                    // Top bar: settings + mute
                     HStack {
-                        Text("nova")
-                            .font(.system(size: 20, weight: .ultraLight))
-                            .tracking(8)
-                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
-
+                        Button(action: { nova.resetConfig() }) {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 14, weight: .light))
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.25))
+                        }
                         Spacer()
-
                         Button(action: { nova.toggleMute() }) {
                             Image(systemName: nova.isMuted ? "mic.slash" : "mic")
                                 .font(.system(size: 16, weight: .light))
@@ -99,6 +98,12 @@ struct ChatView: View {
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 8)
+
+                    // Nova title centered above orb
+                    Text("nova")
+                        .font(.system(size: 22, weight: .ultraLight))
+                        .tracking(10)
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.55))
 
                     // Orb (Three.js — identický jako desktop)
                     OrbWebView(state: nova.state.rawValue, audioLevel: 0)
@@ -184,9 +189,11 @@ struct ChatView: View {
                     }) {
                         Image(systemName: nova.state == .listening ? "waveform.circle.fill" : "waveform.circle")
                             .font(.system(size: 28))
-                            .foregroundColor(nova.state == .listening
-                                ? Color(hex: "1a1a2e").opacity(0.8)
-                                : Color(hex: "1a1a2e").opacity(0.3))
+                            .foregroundColor(
+                                nova.state == .listening ? Color.red.opacity(0.7) :
+                                nova.state == .thinking || nova.state == .speaking ? Color(hex: "1a1a2e").opacity(0.15) :
+                                Color(hex: "1a1a2e").opacity(0.7)
+                            )
                     }
 
                     TextField("Napiš Nově...", text: $inputText)

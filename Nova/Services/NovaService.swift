@@ -12,6 +12,7 @@ class NovaService: ObservableObject {
     @Published var isMuted = false
     @Published var interimText = ""
     @Published var pendingConfirmation: PendingConfirmation?
+    private var speechDebounceTask: Task<Void, Never>?
 
     struct PendingConfirmation: Identifiable {
         let id = UUID()
@@ -48,9 +49,20 @@ class NovaService: ObservableObject {
         token = KeychainHelper.load(key: "nova_token") ?? ""
     }
 
+    @Published var needsSetup = false
+
+    func resetConfig() {
+        serverURL = ""
+        token = ""
+        KeychainHelper.delete(key: "nova_server")
+        KeychainHelper.delete(key: "nova_token")
+        needsSetup = true
+    }
+
     func configure(server: String, token: String) {
         self.serverURL = server
         self.token = token
+        self.needsSetup = false
         KeychainHelper.save(key: "nova_server", value: server)
         KeychainHelper.save(key: "nova_token", value: token)
         connectWebSocket()
@@ -168,13 +180,20 @@ class NovaService: ObservableObject {
 
     // MARK: - Speech Recognition
     func startListening() {
-        guard !isMuted else { return }
-        guard let recognizer = speechRecognizer, recognizer.isAvailable else { return }
+        guard !isMuted else { print("[speech] muted"); return }
+        guard let recognizer = speechRecognizer else { print("[speech] no recognizer"); return }
+        guard recognizer.isAvailable else { print("[speech] recognizer not available"); return }
 
-        SFSpeechRecognizer.requestAuthorization { [weak self] status in
-            guard status == .authorized else { return }
-            Task { @MainActor in
-                self?.beginRecognition()
+        let authStatus = SFSpeechRecognizer.authorizationStatus()
+        if authStatus == .authorized {
+            beginRecognition()
+        } else {
+            SFSpeechRecognizer.requestAuthorization { [weak self] status in
+                print("[speech] auth status: \(status.rawValue)")
+                guard status == .authorized else { return }
+                Task { @MainActor in
+                    self?.beginRecognition()
+                }
             }
         }
     }
@@ -210,8 +229,10 @@ class NovaService: ObservableObject {
             audioEngine.prepare()
             try audioEngine.start()
             state = .listening
+            print("[speech] listening started")
         } catch {
             print("[speech] engine start failed: \(error)")
+            state = .idle
             return
         }
 
@@ -220,13 +241,36 @@ class NovaService: ObservableObject {
                 if let result = result {
                     let text = result.bestTranscription.formattedString
                     self?.interimText = text
+
+                    // Debounce: po 2s ticha pošli zprávu
+                    self?.speechDebounceTask?.cancel()
+                    self?.speechDebounceTask = Task {
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        guard !Task.isCancelled else { return }
+                        let finalText = self?.interimText ?? ""
+                        if !finalText.isEmpty {
+                            self?.interimText = ""
+                            self?.stopListening()
+                            await self?.sendMessage(finalText)
+                        }
+                    }
+
                     if result.isFinal {
+                        self?.speechDebounceTask?.cancel()
                         self?.interimText = ""
                         self?.stopListening()
                         await self?.sendMessage(text)
                     }
                 } else if error != nil {
-                    self?.stopListening()
+                    // Pošli co máme pokud je interim text
+                    let partial = self?.interimText ?? ""
+                    if !partial.isEmpty {
+                        self?.interimText = ""
+                        self?.stopListening()
+                        await self?.sendMessage(partial)
+                    } else {
+                        self?.stopListening()
+                    }
                 }
             }
         }
