@@ -218,9 +218,7 @@ class NovaService: ObservableObject {
     func startConversation() {
         guard !isMuted else { return }
         conversationActive = true
-        // TEST: zkusíme en-US aby se zjistilo jestli SFSpeechRecognizer vůbec funguje na iOS 26
-        useLegacySR = true
-        startWithLegacySR(locale: Locale(identifier: "en-US"))
+        startAnalyzer()
     }
 
     func endConversation() {
@@ -252,8 +250,7 @@ class NovaService: ObservableObject {
         Task {
             try? await Task.sleep(nanoseconds: 600_000_000)
             guard conversationActive else { return }
-            useLegacySR = true
-            startWithLegacySR(locale: Locale(identifier: speechLocale))
+            startAnalyzer()
         }
     }
 
@@ -275,24 +272,11 @@ class NovaService: ObservableObject {
             return
         }
 
-        let locale = Locale(identifier: speechLocale)
-
-        // Locale check a start — pro legacy SR nepotřebujeme analyzerTask
-        Task { [weak self] in
-            let installed = await SpeechTranscriber.installedLocales
-            let supported = installed.contains(where: { $0.identifier.hasPrefix(locale.identifier.prefix(2)) })
-            print("[speech] installed locales: \(installed.map(\.identifier)), target: \(locale.identifier), supported: \(supported)")
-            await MainActor.run {
-                guard let self = self, self.conversationActive else { return }
-                if supported {
-                    self.startWithSpeechAnalyzer(locale: locale)
-                } else {
-                    print("[speech] using SFSpeechRecognizer fallback for \(locale.identifier)")
-                    self.useLegacySR = true
-                    self.startWithLegacySR(locale: locale)
-                }
-            }
-        }
+        // SFSpeechRecognizer je na iOS 26 nefunkční (code 301).
+        // SpeechAnalyzer: použij en-US (má model, rozumí i jiným jazykům).
+        let analyzerLocale = Locale(identifier: "en-US")
+        print("[speech] using SpeechAnalyzer with \(analyzerLocale.identifier)")
+        startWithSpeechAnalyzer(locale: analyzerLocale)
     }
 
     // MARK: - SpeechAnalyzer (iOS 26, podporované jazyky)
