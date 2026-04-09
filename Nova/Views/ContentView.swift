@@ -103,9 +103,9 @@ struct ChatView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
 
-                    // Orb
-                    OrbView(state: nova.state, audioLevel: 0)
-                        .frame(height: 160)
+                    // Orb (Three.js — identický jako desktop)
+                    OrbWebView(state: nova.state.rawValue, audioLevel: 0)
+                        .frame(height: 200)
                         .onTapGesture {
                             if nova.state == .listening {
                                 nova.stopListening()
