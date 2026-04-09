@@ -12,7 +12,18 @@ class NovaService: ObservableObject {
     @Published var isMuted = false
     @Published var interimText = ""
     @Published var pendingConfirmation: PendingConfirmation?
+    @Published var voiceMode: VoiceMode = .wakeWord
     private var speechDebounceTask: Task<Void, Never>?
+    private var silenceTimer: Task<Void, Never>?
+    private var sessionPrefix = ""
+
+    enum VoiceMode {
+        case wakeWord   // Čeká na "Nova"/"Novo"/"Hey Nova"
+        case active     // Aktivně poslouchá příkaz
+        case off        // Vypnuto (muted)
+    }
+
+    private let wakeWords = ["nova", "novo", "nová", "hey nova", "hej nova"]
 
     struct PendingConfirmation: Identifiable {
         let id = UUID()
@@ -162,7 +173,25 @@ class NovaService: ObservableObject {
             // TTS
             state = .speaking
             await playTTS(reply)
-            state = .idle
+
+            // Po odpovědi → conversation mode (10s na follow-up, pak zpět na wake word)
+            if !isMuted {
+                voiceMode = .active
+                sessionPrefix = ""
+                startListening()
+                silenceTimer?.cancel()
+                silenceTimer = Task {
+                    try? await Task.sleep(nanoseconds: 10_000_000_000)
+                    guard !Task.isCancelled else { return }
+                    if self.state == .listening {
+                        self.voiceMode = .wakeWord
+                        self.stopListening()
+                        self.startListening() // Restart v wake word mode
+                    }
+                }
+            } else {
+                state = .idle
+            }
 
         } catch {
             let errorMsg = Message(role: "ai", content: "Chyba: \(error.localizedDescription)")
@@ -253,8 +282,13 @@ class NovaService: ObservableObject {
         do {
             audioEngine.prepare()
             try audioEngine.start()
-            state = .listening
-            print("[speech] listening started")
+            if voiceMode == .wakeWord {
+                state = .idle // Wake word mode — orb ukazuje idle
+                print("[speech] wake word mode started")
+            } else {
+                state = .listening
+                print("[speech] active listening started")
+            }
         } catch {
             print("[speech] engine start failed: \(error)")
             state = .idle
@@ -264,13 +298,34 @@ class NovaService: ObservableObject {
         recognitionTask = speechRecognizer?.recognitionTask(with: request) { [weak self] result, error in
             Task { @MainActor in
                 if let result = result {
-                    let text = result.bestTranscription.formattedString
-                    self?.interimText = text
+                    let text = result.bestTranscription.formattedString.lowercased()
 
-                    // Debounce: po 2s ticha pošli zprávu
+                    if self?.voiceMode == .wakeWord {
+                        // Wake word detection
+                        if self?.wakeWords.contains(where: { text.contains($0) }) == true {
+                            print("[speech] wake word detected: \(text)")
+                            self?.voiceMode = .active
+                            self?.state = .listening
+                            self?.interimText = ""
+                            self?.sessionPrefix = text
+                            // Restart recognition v active mode
+                            self?.stopListening()
+                            self?.beginRecognition()
+                        }
+                        return
+                    }
+
+                    // Active mode — zobraz interim a pošli po pauze
+                    // Odstraň session prefix (Apple SR kumuluje text)
+                    var clean = text
+                    if !self!.sessionPrefix.isEmpty && text.hasPrefix(self!.sessionPrefix) {
+                        clean = String(text.dropFirst(self!.sessionPrefix.count)).trimmingCharacters(in: .whitespaces)
+                    }
+                    self?.interimText = clean.isEmpty ? text : clean
+
                     self?.speechDebounceTask?.cancel()
                     self?.speechDebounceTask = Task {
-                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        try? await Task.sleep(nanoseconds: 2_500_000_000)
                         guard !Task.isCancelled else { return }
                         let finalText = self?.interimText ?? ""
                         if !finalText.isEmpty {
@@ -282,9 +337,10 @@ class NovaService: ObservableObject {
 
                     if result.isFinal {
                         self?.speechDebounceTask?.cancel()
+                        let finalText = self?.interimText ?? ""
                         self?.interimText = ""
                         self?.stopListening()
-                        await self?.sendMessage(text)
+                        if !finalText.isEmpty { await self?.sendMessage(finalText) }
                     }
                 } else if error != nil {
                     // Pošli co máme pokud je interim text

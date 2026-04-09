@@ -187,16 +187,26 @@ struct ChatView: View {
                 HStack(spacing: 12) {
                     // Voice button
                     Button(action: {
-                        if nova.state == .listening {
+                        if nova.isMuted {
+                            nova.isMuted = false
+                            nova.voiceMode = .wakeWord
+                            nova.startListening()
+                        } else if nova.state == .listening && nova.voiceMode == .active {
+                            // Manuální stop → zpět na wake word
                             nova.stopListening()
+                            nova.voiceMode = .wakeWord
+                            nova.startListening()
                         } else {
+                            // Manuální aktivace
+                            nova.voiceMode = .active
+                            nova.stopListening()
                             nova.startListening()
                         }
                     }) {
-                        Image(systemName: nova.state == .listening ? "waveform.circle.fill" : "waveform.circle")
+                        Image(systemName: nova.state == .listening && nova.voiceMode == .active ? "waveform.circle.fill" : "waveform.circle")
                             .font(.system(size: 28))
                             .foregroundColor(
-                                nova.state == .listening ? Color.red.opacity(0.7) :
+                                nova.state == .listening && nova.voiceMode == .active ? Color.red.opacity(0.7) :
                                 nova.state == .thinking || nova.state == .speaking ? Color(hex: "1a1a2e").opacity(0.15) :
                                 Color(hex: "1a1a2e").opacity(0.7)
                             )
@@ -223,6 +233,11 @@ struct ChatView: View {
         }
         .onAppear {
             nova.connectWebSocket()
+            // Auto-start wake word listening
+            if !nova.isMuted {
+                nova.voiceMode = .wakeWord
+                nova.startListening()
+            }
         }
         .fullScreenCover(isPresented: $showSettings) {
             SettingsView()
