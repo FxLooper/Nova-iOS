@@ -256,6 +256,7 @@ class NovaService: ObservableObject {
 
     private var transcriber: SpeechTranscriber?
     private var isListening = false
+    private var speechRecognizer: SFSpeechRecognizer?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var useLegacySR = false
@@ -353,8 +354,8 @@ class NovaService: ObservableObject {
         guard !isListening else { return }
         isListening = true
 
-        let recognizer = SFSpeechRecognizer(locale: locale)
-        guard let recognizer = recognizer, recognizer.isAvailable else {
+        speechRecognizer = SFSpeechRecognizer(locale: locale)
+        guard let recognizer = speechRecognizer, recognizer.isAvailable else {
             isListening = false
             print("[speech] SFSpeechRecognizer not available for \(locale)")
             return
@@ -430,6 +431,7 @@ class NovaService: ObservableObject {
         recognitionTask?.cancel()
         recognitionTask = nil
         recognitionRequest = nil
+        speechRecognizer = nil
     }
 
     private func handleUtteranceEnd() async {
