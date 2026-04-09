@@ -389,6 +389,9 @@ class NovaService: ObservableObject {
 
         let inputNode = audioEngine.inputNode
         let hwFormat = inputNode.inputFormat(forBus: 0)
+        print("[speech] audio format: \(hwFormat), channels: \(hwFormat.channelCount), rate: \(hwFormat.sampleRate)")
+        print("[speech] recognizer locale: \(recognizer.locale), available: \(recognizer.isAvailable), supportsOnDevice: \(recognizer.supportsOnDeviceRecognition)")
+
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { buffer, _ in
             request.append(buffer)
         }
@@ -397,7 +400,7 @@ class NovaService: ObservableObject {
             audioEngine.prepare()
             try audioEngine.start()
             state = .listening
-            print("[speech] SFSpeechRecognizer started (\(locale))")
+            print("[speech] SFSpeechRecognizer started (\(locale)), engine running: \(audioEngine.isRunning)")
         } catch {
             print("[speech] engine error: \(error)")
             state = .idle
