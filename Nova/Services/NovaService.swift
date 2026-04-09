@@ -245,8 +245,14 @@ class NovaService: ObservableObject {
     }
 
     // MARK: - Speech Recognition (čistý jednorázový recognition)
+    private var isListening = false
+
     private func listenForCommand() {
+        guard !isListening else { return }
+        isListening = true
+
         guard let recognizer = speechRecognizer, recognizer.isAvailable else {
+            isListening = false
             print("[speech] recognizer not available")
             return
         }
@@ -330,19 +336,21 @@ class NovaService: ObservableObject {
                     }
                 } else if let error = error {
                     print("[speech] \(error.localizedDescription)")
-                    // Pošli partial pokud máme
                     let partial = self.interimText
                     self.interimText = ""
                     self.stopSpeechEngine()
                     if !partial.isEmpty {
                         await self.sendMessage(partial)
                     } else if self.conversationActive {
-                        // SR timeout — restartuj po pauze
+                        // SR timeout/error — restartuj po 3s pauze
+                        self.state = .idle
                         Task {
-                            try? await Task.sleep(nanoseconds: 1_000_000_000)
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
                             guard self.conversationActive else { return }
                             self.listenForCommand()
                         }
+                    } else {
+                        self.state = .idle
                     }
                 }
             }
@@ -350,6 +358,7 @@ class NovaService: ObservableObject {
     }
 
     private func stopSpeechEngine() {
+        isListening = false
         if audioEngine.isRunning { audioEngine.stop() }
         audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest?.endAudio()
