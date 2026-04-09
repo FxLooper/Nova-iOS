@@ -281,11 +281,11 @@ class NovaService: ObservableObject {
         request.taskHint = .dictation
         recognitionRequest = request
 
-        // Audio tap
+        // Audio tap — použij nativní HW formát
         let inputNode = audioEngine.inputNode
-        let format = inputNode.outputFormat(forBus: 0)
+        let hwFormat = inputNode.inputFormat(forBus: 0)
         inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { buffer, _ in
             request.append(buffer)
         }
 
