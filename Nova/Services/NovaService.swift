@@ -11,6 +11,13 @@ class NovaService: ObservableObject {
     @Published var isConnected = false
     @Published var isMuted = false
     @Published var interimText = ""
+    @Published var pendingConfirmation: PendingConfirmation?
+
+    struct PendingConfirmation: Identifiable {
+        let id = UUID()
+        let action: ActionResponse
+        let speech: String
+    }
 
     // MARK: - Server Config
     private var serverURL = ""
@@ -283,7 +290,69 @@ class NovaService: ObservableObject {
 
     // MARK: - Action Handling
     func handleAction(_ action: ActionResponse) async {
-        // TODO: Implement action handling (calendar, weather, etc.)
-        print("[nova] action: \(action.action)")
+        let needsConfirm = ["send_message", "add_calendar", "facetime_call", "dev"].contains(action.action)
+        if needsConfirm {
+            pendingConfirmation = PendingConfirmation(action: action, speech: action.speech ?? "Mám to udělat?")
+        } else {
+            await executeAction(action)
+        }
+    }
+
+    func confirmAction(_ confirmed: Bool) async {
+        guard let pending = pendingConfirmation else { return }
+        pendingConfirmation = nil
+        if confirmed {
+            let msg = Message(role: "user", content: "Ano.")
+            messages.append(msg)
+            await executeAction(pending.action)
+        } else {
+            let msg = Message(role: "ai", content: "Dobře, nic nedělám.")
+            messages.append(msg)
+            saveMessages()
+        }
+    }
+
+    private func executeAction(_ action: ActionResponse) async {
+        state = .thinking
+        let endpointMap: [String: String] = [
+            "open_url": "/api/action/open-url",
+            "open_app": "/api/action/open-app",
+            "send_message": "/api/action/send-message",
+            "add_calendar": "/api/action/calendar",
+            "facetime_call": "/api/action/facetime",
+            "read_calendar": "/api/action/read-calendar",
+            "read_email": "/api/action/read-email",
+            "weather": "/api/action/weather",
+            "read_news": "/api/action/read-news",
+        ]
+        guard let endpoint = endpointMap[action.action],
+              let url = URL(string: "\(serverURL)\(endpoint)") else {
+            state = .idle
+            return
+        }
+        do {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+            if let params = action.params {
+                let dict = params.mapValues { $0.value }
+                request.httpBody = try JSONSerialization.data(withJSONObject: dict)
+            }
+            let (data, _) = try await URLSession.shared.data(for: request)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let content = json["content"] as? String {
+                let msg = Message(role: "ai", content: content)
+                messages.append(msg)
+                saveMessages()
+                state = .speaking
+                await playTTS(content)
+            }
+        } catch {
+            let msg = Message(role: "ai", content: "Akce selhala: \(error.localizedDescription)")
+            messages.append(msg)
+            saveMessages()
+        }
+        state = .idle
     }
 }

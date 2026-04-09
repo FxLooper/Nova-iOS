@@ -80,33 +80,40 @@ struct ChatView: View {
             Color(hex: "f5f0e8").ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Circle()
-                        .fill(nova.isConnected ? Color.green.opacity(0.6) : Color.red.opacity(0.4))
-                        .frame(width: 8, height: 8)
+                // Header with orb
+                VStack(spacing: 4) {
+                    HStack {
+                        Circle()
+                            .fill(nova.isConnected ? Color.green.opacity(0.6) : Color.red.opacity(0.4))
+                            .frame(width: 8, height: 8)
 
-                    Text("nova")
-                        .font(.system(size: 18, weight: .light))
-                        .tracking(6)
-                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                        Text("nova")
+                            .font(.system(size: 18, weight: .light))
+                            .tracking(6)
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
 
-                    Spacer()
+                        Spacer()
 
-                    // State indicator
-                    Text(stateLabel)
-                        .font(.system(size: 12, weight: .light))
-                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.35))
-
-                    // Mute button
-                    Button(action: { nova.toggleMute() }) {
-                        Image(systemName: nova.isMuted ? "mic.slash" : "mic")
-                            .font(.system(size: 16))
-                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                        Button(action: { nova.toggleMute() }) {
+                            Image(systemName: nova.isMuted ? "mic.slash" : "mic")
+                                .font(.system(size: 16))
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                        }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+
+                    // Orb
+                    OrbView(state: nova.state, audioLevel: 0)
+                        .frame(height: 160)
+                        .onTapGesture {
+                            if nova.state == .listening {
+                                nova.stopListening()
+                            } else {
+                                nova.startListening()
+                            }
+                        }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
                 .background(Color(hex: "f5f0e8").opacity(0.95))
 
                 Divider().opacity(0.15)
@@ -128,6 +135,14 @@ struct ChatView: View {
                                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
                                         .italic()
                                     Spacer()
+                                }
+                                .padding(.horizontal, 20)
+                            }
+
+                            // Confirm buttons
+                            if let pending = nova.pendingConfirmation {
+                                ConfirmButtons(yesLabel: "Ano", noLabel: "Ne") { confirmed in
+                                    Task { await nova.confirmAction(confirmed) }
                                 }
                                 .padding(.horizontal, 20)
                             }
