@@ -8,12 +8,14 @@ struct SettingsView: View {
     @State private var selectedCity: String
     @State private var selectedVoiceGender: String
     @State private var userName: String
+    @State private var useWhisper: Bool
 
     init() {
         _selectedLang = State(initialValue: UserDefaults.standard.string(forKey: "nova_lang") ?? "cs")
         _selectedCity = State(initialValue: UserDefaults.standard.string(forKey: "nova_city") ?? "Plzeň")
         _selectedVoiceGender = State(initialValue: UserDefaults.standard.string(forKey: "nova_voice_gender") ?? "female")
         _userName = State(initialValue: UserDefaults.standard.string(forKey: "nova_user_name") ?? "Ondřej")
+        _useWhisper = State(initialValue: UserDefaults.standard.bool(forKey: "nova_use_whisper"))
     }
 
     static let languages: [(code: String, name: String, flag: String)] = [
@@ -151,6 +153,41 @@ struct SettingsView: View {
                         }
 
                         // Server info
+                        // Speech Recognition Engine
+                        SettingsSection(title: "Rozpoznávání řeči") {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Toggle(isOn: $useWhisper) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Whisper (experimentální)")
+                                            .font(.system(size: 15, weight: .regular))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                                        Text(useWhisper ? "On-device, auto-detect jazyka" : "Apple DictationTranscriber")
+                                            .font(.system(size: 12, weight: .light))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                    }
+                                }
+                                .tint(Color(hex: "1a1a2e").opacity(0.7))
+
+                                if nova.whisperState == .loading {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                        Text("Stahuji model... \(Int(nova.whisperLoadProgress * 100))%")
+                                            .font(.system(size: 12, weight: .light))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                    }
+                                } else if case .error(let msg) = nova.whisperState {
+                                    Text("⚠️ \(msg)")
+                                        .font(.system(size: 12, weight: .light))
+                                        .foregroundColor(.red.opacity(0.7))
+                                } else if nova.whisperState == .ready && useWhisper {
+                                    Text("✅ Model načten, připraven")
+                                        .font(.system(size: 12, weight: .light))
+                                        .foregroundColor(.green.opacity(0.7))
+                                }
+                            }
+                        }
+
                         SettingsSection(title: L10n.t("connection")) {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
@@ -188,6 +225,8 @@ struct SettingsView: View {
         UserDefaults.standard.set(selectedCity, forKey: "nova_city")
         UserDefaults.standard.set(selectedVoiceGender, forKey: "nova_voice_gender")
         UserDefaults.standard.set(userName, forKey: "nova_user_name")
+        UserDefaults.standard.set(useWhisper, forKey: "nova_use_whisper")
+        nova.setUseWhisper(useWhisper)
 
         // Vyber hlas podle jazyka a pohlaví
         let voices = Self.voiceMap[selectedLang] ?? ("cs-vlasta", "cs-antonin")

@@ -12,12 +12,16 @@
 		A1000003 /* NovaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003 /* NovaService.swift */; };
 		A1000004 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004 /* KeychainHelper.swift */; };
 		A1000005 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000005 /* Message.swift */; };
-		A1000011 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000011 /* Localization.swift */; };
+		A1000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB5926452F87BECD00A68034 /* Assets.xcassets */; };
 		A1000007 /* OrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000007 /* OrbView.swift */; };
 		A1000008 /* ConfirmButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000008 /* ConfirmButtons.swift */; };
 		A1000009 /* OrbWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000009 /* OrbWebView.swift */; };
 		A1000010 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000010 /* SettingsView.swift */; };
-		A1000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB5926452F87BECD00A68034 /* Assets.xcassets */; };
+		A1000011 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000011 /* Localization.swift */; };
+		BB59264A2F8972B000A68034 /* WhisperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926492F8972B000A68034 /* WhisperService.swift */; };
+		BB59264D2F89753F00A68034 /* SpeakerKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB59264C2F89753F00A68034 /* SpeakerKit */; };
+		BB59264F2F89753F00A68034 /* TTSKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB59264E2F89753F00A68034 /* TTSKit */; };
+		BB5926512F89753F00A68034 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB5926502F89753F00A68034 /* WhisperKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,13 +30,14 @@
 		B1000003 /* NovaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaService.swift; sourceTree = "<group>"; };
 		B1000004 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		B1000005 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
-		B1000011 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		B1000006 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1000007 /* OrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbView.swift; sourceTree = "<group>"; };
 		B1000008 /* ConfirmButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmButtons.swift; sourceTree = "<group>"; };
 		B1000009 /* OrbWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbWebView.swift; sourceTree = "<group>"; };
 		B1000010 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B1000011 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		BB5926452F87BECD00A68034 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BB5926492F8972B000A68034 /* WhisperService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperService.swift; sourceTree = "<group>"; };
 		C1000001 /* Nova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nova.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -41,21 +46,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB5926512F89753F00A68034 /* WhisperKit in Frameworks */,
+				BB59264D2F89753F00A68034 /* SpeakerKit in Frameworks */,
+				BB59264F2F89753F00A68034 /* TTSKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXResourcesBuildPhase section */
-		E1000004 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A1000006 /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXGroup section */
 		D1000001 = {
@@ -102,6 +99,7 @@
 		D1000005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				BB5926492F8972B000A68034 /* WhisperService.swift */,
 				B1000003 /* NovaService.swift */,
 				B1000004 /* KeychainHelper.swift */,
 			);
@@ -158,6 +156,9 @@
 				Base,
 			);
 			mainGroup = D1000001;
+			packageReferences = (
+				BB59264B2F89753F00A68034 /* XCRemoteSwiftPackageReference "WhisperKit" */,
+			);
 			productRefGroup = D1000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -167,6 +168,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		E1000004 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000006 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		E1000002 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -174,6 +186,7 @@
 			files = (
 				A1000001 /* NovaApp.swift in Sources */,
 				A1000002 /* ContentView.swift in Sources */,
+				BB59264A2F8972B000A68034 /* WhisperService.swift in Sources */,
 				A1000003 /* NovaService.swift in Sources */,
 				A1000004 /* KeychainHelper.swift in Sources */,
 				A1000005 /* Message.swift in Sources */,
@@ -298,6 +311,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BB59264B2F89753F00A68034 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/argmaxinc/WhisperKit";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BB59264C2F89753F00A68034 /* SpeakerKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB59264B2F89753F00A68034 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = SpeakerKit;
+		};
+		BB59264E2F89753F00A68034 /* TTSKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB59264B2F89753F00A68034 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = TTSKit;
+		};
+		BB5926502F89753F00A68034 /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB59264B2F89753F00A68034 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = WhisperKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = G1000001 /* Project object */;
 }

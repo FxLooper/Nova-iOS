@@ -31,6 +31,14 @@ class NovaService: ObservableObject {
     private let synthesizer = AVSpeechSynthesizer()
     private var audioPlayer: AVAudioPlayer?
 
+    // MARK: - Whisper STT (experimentální)
+    private let whisper = WhisperService()
+    @Published var useWhisper: Bool = UserDefaults.standard.bool(forKey: "nova_use_whisper")
+    @Published var whisperState: WhisperService.WhisperState = .unloaded
+    @Published var whisperLoadProgress: Double = 0.0
+    private var whisperStateObserver: AnyCancellable?
+    private var whisperProgressObserver: AnyCancellable?
+
     enum NovaState: String {
         case idle, listening, thinking, speaking
     }
@@ -40,6 +48,10 @@ class NovaService: ObservableObject {
         loadConfig()
         loadMessages()
         loadProfile()
+        setupWhisperObservers()
+        if useWhisper {
+            Task { await loadWhisperModel() }
+        }
     }
 
     // MARK: - Config (Keychain)
@@ -218,7 +230,67 @@ class NovaService: ObservableObject {
     func startConversation() {
         guard !isMuted else { return }
         conversationActive = true
-        startDictation()
+        if useWhisper && whisperState == .ready {
+            startWhisperListening()
+        } else {
+            startDictation()
+        }
+    }
+
+    // MARK: - Whisper Management
+
+    func setUseWhisper(_ enabled: Bool) {
+        useWhisper = enabled
+        if enabled && whisperState == .unloaded {
+            Task { await loadWhisperModel() }
+        }
+    }
+
+    func loadWhisperModel() async {
+        await whisper.loadModel(.small)
+    }
+
+    private func setupWhisperObservers() {
+        // Mirror whisper state to NovaService published properties
+        whisperStateObserver = whisper.$state.sink { [weak self] state in
+            Task { @MainActor in
+                self?.whisperState = state
+            }
+        }
+        whisperProgressObserver = whisper.$loadProgress.sink { [weak self] progress in
+            Task { @MainActor in
+                self?.whisperLoadProgress = progress
+            }
+        }
+
+        // Whisper transcript callback
+        whisper.onTranscript = { [weak self] text, isFinal, language in
+            guard let self = self else { return }
+            Task { @MainActor in
+                guard self.state == .listening else { return }
+                self.currentUtterance = text
+                self.interimText = text
+                if isFinal {
+                    print("[whisper] final (\(language ?? "?")): \(text)")
+                    await self.handleUtteranceEnd()
+                }
+            }
+        }
+    }
+
+    private func startWhisperListening() {
+        do {
+            try whisper.startListening()
+            state = .listening
+            print("[whisper] listening started")
+        } catch {
+            print("[whisper] start error: \(error) — fallback na DictationTranscriber")
+            startDictation()
+        }
+    }
+
+    private func stopWhisperListening() {
+        whisper.stopListening()
     }
 
     func endConversation() {
@@ -229,6 +301,7 @@ class NovaService: ObservableObject {
         dictationTranscriber = nil
         silenceTask?.cancel()
         speechDebounceTask?.cancel()
+        whisper.stopListening()
         if audioEngine.isRunning { audioEngine.stop() }
         audioEngine.inputNode.removeTap(onBus: 0)
         currentUtterance = ""
