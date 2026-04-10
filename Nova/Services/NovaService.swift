@@ -42,6 +42,7 @@ class NovaService: ObservableObject {
 
     // MARK: - Voice ID (biometric speaker verification)
     let voiceProfile = VoiceProfileService()
+    let serverHealth = ServerHealthMonitor()
     @Published var voiceVerificationEnforced: Bool = UserDefaults.standard.bool(forKey: "nova_voice_verify_enforce")
     @Published var lastVerificationFailed: Bool = false  // UI indicator
 
@@ -65,6 +66,8 @@ class NovaService: ObservableObject {
         }
         // Configure voice profile service with current server/token
         voiceProfile.configure(serverURL: serverURL, token: token)
+        // Start monitoring Mac server health
+        serverHealth.startMonitoring(serverURL: serverURL, token: token)
     }
 
     // MARK: - Config (Keychain)

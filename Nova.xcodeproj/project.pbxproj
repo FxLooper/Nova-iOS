@@ -26,6 +26,7 @@
 		BB5926552F89A98C00A68034 /* VoiceEnrollmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926542F89A98C00A68034 /* VoiceEnrollmentView.swift */; };
 		BB5926572F89B00100A68034 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926562F89B00100A68034 /* HapticManager.swift */; };
 		BB5926592F89B05000A68034 /* AudioLivenessDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926582F89B05000A68034 /* AudioLivenessDetector.swift */; };
+		BB59265B2F89B0A000A68034 /* ServerHealthMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB59265A2F89B0A000A68034 /* ServerHealthMonitor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +47,7 @@
 		BB5926542F89A98C00A68034 /* VoiceEnrollmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceEnrollmentView.swift; sourceTree = "<group>"; };
 		BB5926562F89B00100A68034 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		BB5926582F89B05000A68034 /* AudioLivenessDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioLivenessDetector.swift; sourceTree = "<group>"; };
+		BB59265A2F89B0A000A68034 /* ServerHealthMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerHealthMonitor.swift; sourceTree = "<group>"; };
 		C1000001 /* Nova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nova.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -111,6 +113,7 @@
 				BB5926522F89A94F00A68034 /* VoiceProfileService.swift */,
 				BB5926582F89B05000A68034 /* AudioLivenessDetector.swift */,
 				BB5926562F89B00100A68034 /* HapticManager.swift */,
+				BB59265A2F89B0A000A68034 /* ServerHealthMonitor.swift */,
 				BB5926492F8972B000A68034 /* WhisperService.swift */,
 				B1000003 /* NovaService.swift */,
 				B1000004 /* KeychainHelper.swift */,
@@ -196,6 +199,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB59265B2F89B0A000A68034 /* ServerHealthMonitor.swift in Sources */,
 				BB5926592F89B05000A68034 /* AudioLivenessDetector.swift in Sources */,
 				BB5926572F89B00100A68034 /* HapticManager.swift in Sources */,
 				BB5926532F89A94F00A68034 /* VoiceProfileService.swift in Sources */,

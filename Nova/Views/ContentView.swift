@@ -100,11 +100,19 @@ struct ChatView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 8)
 
-                    // Nova title centered above orb
-                    Text("nova")
-                        .font(.system(size: 22, weight: .ultraLight))
-                        .tracking(10)
-                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.55))
+                    // Nova title centered above orb + server health dot
+                    HStack(spacing: 8) {
+                        Text("nova")
+                            .font(.system(size: 22, weight: .ultraLight))
+                            .tracking(10)
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.55))
+
+                        Circle()
+                            .fill(serverHealthColor)
+                            .frame(width: 6, height: 6)
+                            .opacity(0.8)
+                            .animation(.easeInOut(duration: 0.5), value: nova.serverHealth.status)
+                    }
 
                     // Orb (Three.js — identický jako desktop)
                     OrbWebView(state: nova.state.rawValue, audioLevel: 0)
@@ -273,6 +281,19 @@ struct ChatView: View {
         case .listening: return L10n.t("listening")
         case .thinking: return L10n.t("thinking")
         case .speaking: return L10n.t("speaking")
+        }
+    }
+
+    private var serverHealthColor: Color {
+        switch nova.serverHealth.status {
+        case .online:
+            return .green
+        case .degraded:
+            return .yellow
+        case .offline:
+            return .red
+        case .unknown:
+            return Color(hex: "1a1a2e").opacity(0.2)
         }
     }
 
