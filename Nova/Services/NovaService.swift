@@ -13,6 +13,7 @@ class NovaService: ObservableObject {
     @Published var interimText = ""
     @Published var pendingConfirmation: PendingConfirmation?
     @Published var conversationActive = false // Tap orb = zapni/vypni konverzaci
+    @Published var pushToTalkActive = false    // Hold mic button = push-to-talk
     private var speechDebounceTask: Task<Void, Never>?
 
     struct PendingConfirmation: Identifiable {
@@ -248,6 +249,51 @@ class NovaService: ObservableObject {
         }
     }
 
+    // MARK: - Push-to-Talk
+    // Drž mic tlačítko → spustí SR, uvolnění → pošle finální text
+    func startPushToTalk() {
+        guard !isMuted else { return }
+        guard !conversationActive else { return } // Pokud je Live mode, PTT se nespustí
+        pushToTalkActive = true
+        currentUtterance = ""
+        interimText = ""
+        if useWhisper && whisperState == .ready {
+            startWhisperListening()
+        } else {
+            startDictation()
+        }
+    }
+
+    func endPushToTalk() {
+        guard pushToTalkActive else { return }
+        pushToTalkActive = false
+
+        // Zastav SR a pošli to co už máme
+        let text = currentUtterance.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Stop everything
+        analyzerTask?.cancel()
+        analyzerTask = nil
+        analyzer = nil
+        dictationTranscriber = nil
+        silenceTask?.cancel()
+        whisper.stopListening()
+        if audioEngine.isRunning { audioEngine.stop() }
+        audioEngine.inputNode.removeTap(onBus: 0)
+
+        currentUtterance = ""
+        interimText = ""
+
+        if !text.isEmpty {
+            print("[ptt] sending: \(text)")
+            state = .thinking
+            Task { await sendMessage(text) }
+        } else {
+            print("[ptt] no text captured")
+            state = .idle
+        }
+    }
+
     // MARK: - Whisper Management
 
     func setUseWhisper(_ enabled: Bool) {
@@ -429,12 +475,15 @@ class NovaService: ObservableObject {
                             guard self.state == .listening else { return }
                             self.currentUtterance = text
                             self.interimText = text
-                            self.silenceTask?.cancel()
-                            self.silenceTask = Task { @MainActor [weak self] in
-                                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                                guard !Task.isCancelled, let self = self else { return }
-                                guard self.state == .listening else { return }
-                                await self.handleUtteranceEnd()
+                            // V PTT módu auto-send nepoužíváme — text se pošle až po release
+                            if !self.pushToTalkActive {
+                                self.silenceTask?.cancel()
+                                self.silenceTask = Task { @MainActor [weak self] in
+                                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                                    guard !Task.isCancelled, let self = self else { return }
+                                    guard self.state == .listening else { return }
+                                    await self.handleUtteranceEnd()
+                                }
                             }
                         }
                     }

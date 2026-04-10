@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Nova potřebuje mikrofon pro hlasové ovládání</string>
+    <string>Nova needs microphone access for voice conversation with your AI assistant.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Nova potřebuje rozpoznávání řeči pro hlasové příkazy</string>
+    <string>Nova uses speech recognition to understand your voice commands and enable natural conversation.</string>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>Nova se připojuje k vašemu Mac serveru přes lokální síť</string>
+    <string>Nova connects to your Nova backend server on your local network or VPN.</string>
     <key>NSBonjourServices</key>
     <array>
         <string>_http._tcp</string>
@@ -52,7 +52,7 @@
     <key>CFBundleShortVersionString</key>
     <string>10.4.3</string>
     <key>CFBundleVersion</key>
-    <string>5</string>
+    <string>6</string>
     <key>CFBundleDisplayName</key>
     <string>Nova</string>
 </dict>

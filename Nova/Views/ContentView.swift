@@ -181,7 +181,7 @@ struct ChatView: View {
 
                 // Input bar
                 HStack(spacing: 12) {
-                    // Voice button
+                    // Voice button (Live Conversation — tap = toggle continuous)
                     Button(action: {
                         nova.toggleConversation()
                     }) {
@@ -193,6 +193,27 @@ struct ChatView: View {
                                 Color(hex: "1a1a2e").opacity(0.7)
                             )
                     }
+
+                    // Push-to-Talk button (hold to speak, release to send)
+                    Image(systemName: nova.pushToTalkActive ? "mic.fill" : "mic")
+                        .font(.system(size: 24))
+                        .foregroundColor(
+                            nova.pushToTalkActive ? Color.red.opacity(0.8) :
+                            Color(hex: "1a1a2e").opacity(0.5)
+                        )
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { _ in
+                                    if !nova.pushToTalkActive {
+                                        nova.startPushToTalk()
+                                    }
+                                }
+                                .onEnded { _ in
+                                    nova.endPushToTalk()
+                                }
+                        )
 
                     TextField(L10n.t("write_nova"), text: $inputText)
                         .font(.system(size: 15, weight: .light))
