@@ -120,9 +120,33 @@ struct ChatView: View {
                         .onTapGesture {
                             nova.toggleConversation()
                         }
+                        .contextMenu {
+                            Button {
+                                nova.toggleMute()
+                                HapticManager.shared.selectionChanged()
+                            } label: {
+                                Label(nova.isMuted ? "Zrušit ztlumení" : "Ztlumit Novu",
+                                      systemImage: nova.isMuted ? "speaker.wave.2" : "speaker.slash")
+                            }
+
+                            if nova.conversationActive {
+                                Button(role: .destructive) {
+                                    nova.endConversation()
+                                    HapticManager.shared.conversationToggle()
+                                } label: {
+                                    Label("Ukončit konverzaci", systemImage: "phone.down")
+                                }
+                            }
+
+                            Button {
+                                showSettings = true
+                            } label: {
+                                Label("Nastavení", systemImage: "gearshape")
+                            }
+                        }
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(nova.conversationActive ? "Zastavit konverzaci s Novou" : "Začít hlasovou konverzaci s Novou")
-                        .accessibilityHint("Klepnutím spustíš nebo zastavíš hlasový režim")
+                        .accessibilityHint("Klepnutím spustíš nebo zastavíš hlasový režim. Dlouhým podržením otevři menu.")
                         .accessibilityValue(nova.state.rawValue)
                         .accessibilityAddTraits(.isButton)
 
