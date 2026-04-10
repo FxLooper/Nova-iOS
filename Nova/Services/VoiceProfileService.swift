@@ -29,11 +29,24 @@ class VoiceProfileService: ObservableObject {
     @Published var verificationConfidence: Float = 0.0
     @Published var lastVerificationResult: Bool = false
 
+    // Stats (UserDefaults backed)
+    @Published private(set) var enrollmentDate: Date?
+    @Published private(set) var totalVerifications: Int = 0
+    @Published private(set) var successfulVerifications: Int = 0
+
+    var successRate: Double {
+        guard totalVerifications > 0 else { return 0 }
+        return Double(successfulVerifications) / Double(totalVerifications)
+    }
+
     // Verification thresholds (L2-normalized cosine similarity)
     let softThreshold: Float = 0.75   // casual chat
     let strictThreshold: Float = 0.85  // dev mode, payments
 
     private let keychainKey = "nova_voice_profile_embedding"
+    private let enrollmentDateKey = "nova_voice_enrollment_date"
+    private let totalVerifyKey = "nova_voice_total_verifications"
+    private let successVerifyKey = "nova_voice_success_verifications"
     private var serverURL: String = ""
     private var token: String = ""
 
@@ -42,6 +55,32 @@ class VoiceProfileService: ObservableObject {
 
     init() {
         updateStateFromStorage()
+        loadStats()
+    }
+
+    private func loadStats() {
+        if let date = UserDefaults.standard.object(forKey: enrollmentDateKey) as? Date {
+            enrollmentDate = date
+        }
+        totalVerifications = UserDefaults.standard.integer(forKey: totalVerifyKey)
+        successfulVerifications = UserDefaults.standard.integer(forKey: successVerifyKey)
+    }
+
+    private func saveStats() {
+        if let date = enrollmentDate {
+            UserDefaults.standard.set(date, forKey: enrollmentDateKey)
+        }
+        UserDefaults.standard.set(totalVerifications, forKey: totalVerifyKey)
+        UserDefaults.standard.set(successfulVerifications, forKey: successVerifyKey)
+    }
+
+    private func resetStats() {
+        enrollmentDate = nil
+        totalVerifications = 0
+        successfulVerifications = 0
+        UserDefaults.standard.removeObject(forKey: enrollmentDateKey)
+        UserDefaults.standard.removeObject(forKey: totalVerifyKey)
+        UserDefaults.standard.removeObject(forKey: successVerifyKey)
     }
 
     func configure(serverURL: String, token: String) {
@@ -80,6 +119,7 @@ class VoiceProfileService: ObservableObject {
     func deleteProfile() {
         KeychainHelper.delete(key: keychainKey)
         enrollmentSampleURLs.removeAll()
+        resetStats()
         state = .notEnrolled
     }
 
@@ -146,6 +186,12 @@ class VoiceProfileService: ObservableObject {
             saveEnrolledEmbedding(averaged)
             print("[voice-id] ✅ enrolled with \(embeddings.count) samples, \(dim)-dim averaged embedding")
 
+            // Track enrollment stats
+            enrollmentDate = Date()
+            totalVerifications = 0
+            successfulVerifications = 0
+            saveStats()
+
             // Cleanup temp files
             for url in enrollmentSampleURLs {
                 try? FileManager.default.removeItem(at: url)
@@ -179,6 +225,13 @@ class VoiceProfileService: ObservableObject {
             await MainActor.run {
                 self.verificationConfidence = similarity
                 self.lastVerificationResult = verified
+
+                // Update stats
+                self.totalVerifications += 1
+                if verified {
+                    self.successfulVerifications += 1
+                }
+                self.saveStats()
             }
 
             print("[voice-id] verify: similarity=\(String(format: "%.3f", similarity)) threshold=\(threshold) → \(verified ? "✅ match" : "❌ no match")")

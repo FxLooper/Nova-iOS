@@ -256,6 +256,33 @@ struct SettingsView: View {
                                                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                                         }
                                     }
+
+                                    // Stats: enrollment date + total verifications + success rate
+                                    if voiceProfile.totalVerifications > 0 || voiceProfile.enrollmentDate != nil {
+                                        Divider().opacity(0.15)
+
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            if let date = voiceProfile.enrollmentDate {
+                                                HStack(spacing: 6) {
+                                                    Image(systemName: "calendar")
+                                                        .font(.system(size: 11))
+                                                    Text("Vytvořeno: \(date.formatted(date: .abbreviated, time: .shortened))")
+                                                }
+                                                .font(.system(size: 11, weight: .light))
+                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
+                                            }
+
+                                            if voiceProfile.totalVerifications > 0 {
+                                                HStack(spacing: 6) {
+                                                    Image(systemName: "checkmark.shield")
+                                                        .font(.system(size: 11))
+                                                    Text("Ověření: \(voiceProfile.successfulVerifications)/\(voiceProfile.totalVerifications) (\(Int(voiceProfile.successRate * 100))%)")
+                                                }
+                                                .font(.system(size: 11, weight: .light))
+                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
