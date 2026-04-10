@@ -169,7 +169,10 @@ class NovaService: ObservableObject {
             state = .speaking
             await playTTS(reply)
 
-            // Po odpovědi → pokračuj v konverzaci
+            // Debounce po TTS — nech mikrofon "odechnout" od echa
+            try? await Task.sleep(nanoseconds: 500_000_000)
+
+            // Po odpovědi → pokračuj v konverzaci (state guard drží .speaking → .listening)
             continueConversation()
 
         } catch {
@@ -193,8 +196,15 @@ class NovaService: ObservableObject {
 
             let (data, _) = try await URLSession.shared.data(for: request)
 
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-            try AVAudioSession.sharedInstance().setActive(true)
+            // POZOR: Zachováme .playAndRecord + .voiceChat pro hardware AEC.
+            // Přepnutí na .playback by vypnulo echo cancellation a mic by chytil
+            // zpět Novin hlas z reproduktoru.
+            let session = AVAudioSession.sharedInstance()
+            if session.category != .playAndRecord {
+                try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
+                try session.setActive(true)
+            }
+
             audioPlayer = try AVAudioPlayer(data: data)
             audioPlayer?.play()
 
@@ -202,6 +212,7 @@ class NovaService: ObservableObject {
             while audioPlayer?.isPlaying == true {
                 try await Task.sleep(nanoseconds: 100_000_000)
             }
+            audioPlayer = nil
         } catch {
             // Fallback: iOS native TTS
             let utterance = AVSpeechUtterance(string: text)
@@ -316,6 +327,12 @@ class NovaService: ObservableObject {
             state = .idle
             return
         }
+        // Vyčisti reziduální state z TTS období (echo prevention)
+        currentUtterance = ""
+        interimText = ""
+        silenceTask?.cancel()
+        silenceTask = nil
+
         // Analyzer běží nepřetržitě — jen nastav state zpět na listening
         state = .listening
     }
@@ -435,6 +452,11 @@ class NovaService: ObservableObject {
     }
 
     private func handleUtteranceEnd() async {
+        // Echo prevention — nezasílej pokud už probíhá zpracování nebo TTS
+        guard state == .listening else {
+            print("[speech] utterance ignored (state: \(state))")
+            return
+        }
         let text = currentUtterance.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         currentUtterance = ""
