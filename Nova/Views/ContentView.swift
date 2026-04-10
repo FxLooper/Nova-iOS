@@ -161,6 +161,13 @@ struct ChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 12) {
+                            // Empty state — welcome screen když nejsou žádné zprávy
+                            if nova.messages.isEmpty && nova.interimText.isEmpty {
+                                emptyWelcomeView
+                                    .padding(.top, 40)
+                                    .padding(.horizontal, 32)
+                            }
+
                             ForEach(nova.messages) { msg in
                                 MessageBubble(message: msg)
                                     .id(msg.id)
@@ -294,6 +301,49 @@ struct ChatView: View {
             return .red
         case .unknown:
             return Color(hex: "1a1a2e").opacity(0.2)
+        }
+    }
+
+    // MARK: - Empty State
+
+    private var emptyWelcomeView: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 36, weight: .ultraLight))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
+
+            VStack(spacing: 8) {
+                Text("Vítej v Nově")
+                    .font(.system(size: 22, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.75))
+
+                Text("Tvoje osobní AI asistentka")
+                    .font(.system(size: 14, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                emptyStateHint(icon: "circle.fill", text: "Tap orb pro hlasovou konverzaci")
+                emptyStateHint(icon: "mic.fill", text: "Drž mic pro Push-to-Talk")
+                emptyStateHint(icon: "keyboard", text: "Nebo napiš zprávu dole")
+                emptyStateHint(icon: "lock.shield.fill", text: "Voice ID v Nastavení pro bezpečnost")
+            }
+            .padding(.top, 8)
+
+            Spacer().frame(height: 20)
+        }
+    }
+
+    private func emptyStateHint(icon: String, text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                .frame(width: 16)
+            Text(text)
+                .font(.system(size: 13, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.55))
+            Spacer()
         }
     }
 
