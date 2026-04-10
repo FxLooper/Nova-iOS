@@ -40,6 +40,16 @@ class NovaService: ObservableObject {
     private var whisperStateObserver: AnyCancellable?
     private var whisperProgressObserver: AnyCancellable?
 
+    // MARK: - Voice ID (biometric speaker verification)
+    let voiceProfile = VoiceProfileService()
+    @Published var voiceVerificationEnforced: Bool = UserDefaults.standard.bool(forKey: "nova_voice_verify_enforce")
+    @Published var lastVerificationFailed: Bool = false  // UI indicator
+
+    // Rolling audio buffer (last 5s) for voice verification
+    private var audioRingBuffer: [Float] = []
+    private let audioRingBufferMaxSize = 16000 * 5  // 5 seconds @ 16kHz
+    private let audioRingBufferQueue = DispatchQueue(label: "com.fxlooper.nova.audioring")
+
     enum NovaState: String {
         case idle, listening, thinking, speaking
     }
@@ -53,6 +63,8 @@ class NovaService: ObservableObject {
         if useWhisper {
             Task { await loadWhisperModel() }
         }
+        // Configure voice profile service with current server/token
+        voiceProfile.configure(serverURL: serverURL, token: token)
     }
 
     // MARK: - Config (Keychain)
@@ -442,8 +454,13 @@ class NovaService: ObservableObject {
                     return
                 }
 
-                let inputStream = AsyncStream<AnalyzerInput> { continuation in
+                let inputStream = AsyncStream<AnalyzerInput> { [weak self] continuation in
+                    // Pro voice verification: dodatečný 16kHz Float32 format
+                    let verifyFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16000, channels: 1, interleaved: false)!
+                    let verifyConverter = AVAudioConverter(from: hwFormat, to: verifyFormat)
+
                     inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { buffer, _ in
+                        // 1) Konverze pro DictationTranscriber (jeho formát)
                         let frameCount = AVAudioFrameCount(Double(buffer.frameLength) * targetFormat.sampleRate / hwFormat.sampleRate)
                         guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCount) else { return }
                         var error: NSError?
@@ -453,6 +470,22 @@ class NovaService: ObservableObject {
                         }
                         if error == nil {
                             continuation.yield(AnalyzerInput(buffer: convertedBuffer))
+                        }
+
+                        // 2) Duplicitní konverze do 16kHz Float32 pro voice ring buffer
+                        if let verifyConverter = verifyConverter {
+                            let verifyFrameCount = AVAudioFrameCount(Double(buffer.frameLength) * 16000.0 / hwFormat.sampleRate)
+                            if let verifyBuffer = AVAudioPCMBuffer(pcmFormat: verifyFormat, frameCapacity: verifyFrameCount) {
+                                var verifyError: NSError?
+                                verifyConverter.convert(to: verifyBuffer, error: &verifyError) { _, outStatus in
+                                    outStatus.pointee = .haveData
+                                    return buffer
+                                }
+                                if verifyError == nil, let floatData = verifyBuffer.floatChannelData?[0] {
+                                    let samples = Array(UnsafeBufferPointer(start: floatData, count: Int(verifyBuffer.frameLength)))
+                                    self?.appendToAudioRing(samples)
+                                }
+                            }
                         }
                     }
                     continuation.onTermination = { _ in
@@ -516,8 +549,116 @@ class NovaService: ObservableObject {
         interimText = ""
         print("[speech] utterance end: \(text)")
 
+        // Voice ID verifikace — pokud profil existuje a enforcement je ON
+        if voiceVerificationEnforced && voiceProfile.state == .enrolled {
+            let verified = await verifyRecentAudio()
+            if !verified {
+                print("[voice-id] ❌ verification failed — ignoring utterance")
+                lastVerificationFailed = true
+                // Zobraz červenou indikaci na ~2s
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    self.lastVerificationFailed = false
+                }
+                return
+            }
+            print("[voice-id] ✅ verified — proceeding with utterance")
+        }
+
         // NEZASTAVUJ analyzer — běží nepřetržitě, jen pošli text
         await sendMessage(text)
+    }
+
+    // MARK: - Audio Ring Buffer (for voice verification)
+
+    /// Appends incoming audio samples to rolling buffer (thread-safe).
+    /// Called from audio tap callback.
+    nonisolated func appendToAudioRing(_ samples: [Float]) {
+        audioRingBufferQueue.sync {
+            // Access is serialized via dispatch queue
+        }
+        Task { @MainActor in
+            self.audioRingBuffer.append(contentsOf: samples)
+            if self.audioRingBuffer.count > self.audioRingBufferMaxSize {
+                let excess = self.audioRingBuffer.count - self.audioRingBufferMaxSize
+                self.audioRingBuffer.removeFirst(excess)
+            }
+        }
+    }
+
+    /// Save last N seconds of audio ring buffer to a temporary WAV file.
+    /// Returns file URL or nil if buffer is empty.
+    private func saveRingBufferToWAV(seconds: Double = 3.0) -> URL? {
+        let sampleRate: Double = 16000
+        let targetSamples = Int(sampleRate * seconds)
+        let samples: [Float]
+        if audioRingBuffer.count >= targetSamples {
+            samples = Array(audioRingBuffer.suffix(targetSamples))
+        } else if audioRingBuffer.count >= Int(sampleRate * 1.0) {
+            samples = audioRingBuffer  // alespoň 1s
+        } else {
+            return nil
+        }
+
+        // Write as 16-bit PCM WAV
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("nova_verify_\(Date().timeIntervalSince1970).wav")
+
+        var data = Data()
+        // WAV header
+        let pcmSampleCount = samples.count
+        let byteRate = Int(sampleRate) * 2  // mono, 16-bit
+        let dataSize = pcmSampleCount * 2
+
+        func appendLE<T: FixedWidthInteger>(_ v: T, bytes: Int) {
+            var value = v.littleEndian
+            withUnsafeBytes(of: &value) { buf in
+                data.append(buf.bindMemory(to: UInt8.self).baseAddress!, count: bytes)
+            }
+        }
+
+        data.append("RIFF".data(using: .ascii)!)
+        appendLE(UInt32(36 + dataSize), bytes: 4)
+        data.append("WAVE".data(using: .ascii)!)
+        data.append("fmt ".data(using: .ascii)!)
+        appendLE(UInt32(16), bytes: 4)           // fmt chunk size
+        appendLE(UInt16(1), bytes: 2)            // PCM format
+        appendLE(UInt16(1), bytes: 2)            // mono
+        appendLE(UInt32(sampleRate), bytes: 4)   // sample rate
+        appendLE(UInt32(byteRate), bytes: 4)     // byte rate
+        appendLE(UInt16(2), bytes: 2)            // block align
+        appendLE(UInt16(16), bytes: 2)           // bits per sample
+        data.append("data".data(using: .ascii)!)
+        appendLE(UInt32(dataSize), bytes: 4)
+
+        // Float32 → Int16
+        for sample in samples {
+            let clamped = max(-1.0, min(1.0, sample))
+            let int16Sample = Int16(clamped * 32767.0)
+            appendLE(int16Sample, bytes: 2)
+        }
+
+        do {
+            try data.write(to: url)
+            return url
+        } catch {
+            print("[voice-id] failed to write WAV: \(error)")
+            return nil
+        }
+    }
+
+    /// Verify the most recent audio buffer against enrolled voice profile.
+    /// Returns true if verification succeeds or if not enrolled (fail-open).
+    private func verifyRecentAudio() async -> Bool {
+        guard let wavURL = saveRingBufferToWAV(seconds: 3.0) else {
+            print("[voice-id] no audio in ring buffer for verification")
+            return true  // fail-open: if no audio, allow through
+        }
+        defer {
+            try? FileManager.default.removeItem(at: wavURL)
+        }
+        let result = await voiceProfile.verify(audioFileURL: wavURL, strict: false)
+        return result.verified
     }
 
     private var speechLocale: String {
