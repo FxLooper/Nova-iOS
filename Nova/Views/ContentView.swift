@@ -120,6 +120,11 @@ struct ChatView: View {
                         .onTapGesture {
                             nova.toggleConversation()
                         }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(nova.conversationActive ? "Zastavit konverzaci s Novou" : "Začít hlasovou konverzaci s Novou")
+                        .accessibilityHint("Klepnutím spustíš nebo zastavíš hlasový režim")
+                        .accessibilityValue(nova.state.rawValue)
+                        .accessibilityAddTraits(.isButton)
 
                     // State label pod orbem
                     Text(stateLabel)
@@ -232,6 +237,8 @@ struct ChatView: View {
                                 Color(hex: "1a1a2e").opacity(0.7)
                             )
                     }
+                    .accessibilityLabel(nova.conversationActive ? "Vypnout živou konverzaci" : "Zapnout živou konverzaci")
+                    .accessibilityHint("Continuous voice mode — Nova poslouchá nepřetržitě")
 
                     // Push-to-Talk button (hold to speak, release to send)
                     Image(systemName: nova.pushToTalkActive ? "mic.fill" : "mic")
@@ -253,6 +260,9 @@ struct ChatView: View {
                                     nova.endPushToTalk()
                                 }
                         )
+                        .accessibilityLabel("Push to Talk mikrofon")
+                        .accessibilityHint("Drž a mluv. Po uvolnění se zpráva odešle.")
+                        .accessibilityAddTraits(.isButton)
 
                     TextField(L10n.t("write_nova"), text: $inputText)
                         .font(.system(size: 15, weight: .light))
