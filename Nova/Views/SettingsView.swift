@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var nova: NovaService
+    @EnvironmentObject var voiceProfile: VoiceProfileService
     @Environment(\.dismiss) var dismiss
 
     @State private var selectedLang: String
@@ -9,6 +10,7 @@ struct SettingsView: View {
     @State private var selectedVoiceGender: String
     @State private var userName: String
     @State private var useWhisper: Bool
+    @State private var showVoiceEnrollment = false
 
     init() {
         _selectedLang = State(initialValue: UserDefaults.standard.string(forKey: "nova_lang") ?? "cs")
@@ -188,6 +190,39 @@ struct SettingsView: View {
                             }
                         }
 
+                        // Voice ID (Voice Biometrics)
+                        SettingsSection(title: "Voice ID") {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: voiceProfile.state == .enrolled ? "checkmark.seal.fill" : "waveform.circle")
+                                        .font(.system(size: 32, weight: .ultraLight))
+                                        .foregroundColor(voiceProfile.state == .enrolled ? .green.opacity(0.7) : Color(hex: "1a1a2e").opacity(0.5))
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(voiceProfile.state == .enrolled ? "Hlasový profil aktivní" : "Hlasový profil nevytvořen")
+                                            .font(.system(size: 15, weight: .regular))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                                        Text(voiceProfile.state == .enrolled ? "Nova reaguje jen na tebe" : "Face ID pro tvůj hlas")
+                                            .font(.system(size: 12, weight: .light))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                    }
+                                    Spacer()
+                                }
+
+                                Button(action: { showVoiceEnrollment = true }) {
+                                    Text(voiceProfile.state == .enrolled ? "Spravovat profil" : "Vytvořit profil")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                                        .padding(.vertical, 10)
+                                        .frame(maxWidth: .infinity)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color(hex: "1a1a2e").opacity(0.2), lineWidth: 1)
+                                        )
+                                }
+                            }
+                        }
+
                         SettingsSection(title: L10n.t("connection")) {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
@@ -217,6 +252,11 @@ struct SettingsView: View {
                     .padding(.bottom, 40)
                 }
             }
+        }
+        .fullScreenCover(isPresented: $showVoiceEnrollment) {
+            VoiceEnrollmentView()
+                .environmentObject(nova)
+                .environmentObject(voiceProfile)
         }
     }
 

@@ -1,0 +1,5 @@
+
+# Python venv and models (too large for git)
+tools/speaker-verification/venv/
+tools/speaker-verification/pretrained_models/
+tools/speaker-verification/__pycache__/

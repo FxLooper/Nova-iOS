@@ -61,6 +61,10 @@ class NovaService: ObservableObject {
         token = KeychainHelper.load(key: "nova_token") ?? ""
     }
 
+    // Public accessors for voice profile service
+    func getServerURL() -> String { serverURL }
+    func getToken() -> String { token }
+
     @Published var needsSetup = false
 
     func resetConfig() {
