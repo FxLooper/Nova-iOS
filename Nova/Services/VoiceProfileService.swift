@@ -39,9 +39,23 @@ class VoiceProfileService: ObservableObject {
         return Double(successfulVerifications) / Double(totalVerifications)
     }
 
-    // Verification thresholds (L2-normalized cosine similarity)
-    let softThreshold: Float = 0.75   // casual chat
-    let strictThreshold: Float = 0.85  // dev mode, payments
+    // Verification threshold (L2-normalized cosine similarity)
+    // User-adjustable via Settings slider [0.50 - 0.95]
+    @Published var verificationThreshold: Float {
+        didSet {
+            UserDefaults.standard.set(verificationThreshold, forKey: "nova_voice_threshold")
+        }
+    }
+
+    // Default thresholds for reference
+    let defaultSoftThreshold: Float = 0.75   // casual chat
+    let defaultStrictThreshold: Float = 0.85  // dev mode, payments
+    let minThreshold: Float = 0.50
+    let maxThreshold: Float = 0.95
+
+    // Backwards compat (used by NovaService verifyRecentAudio)
+    var softThreshold: Float { verificationThreshold }
+    var strictThreshold: Float { min(verificationThreshold + 0.10, maxThreshold) }
 
     private let keychainKey = "nova_voice_profile_embedding"
     private let enrollmentDateKey = "nova_voice_enrollment_date"
@@ -54,6 +68,9 @@ class VoiceProfileService: ObservableObject {
     private var enrollmentSampleURLs: [URL] = []
 
     init() {
+        // Load saved threshold or use default soft (0.75)
+        let saved = UserDefaults.standard.float(forKey: "nova_voice_threshold")
+        self.verificationThreshold = saved > 0 ? saved : 0.75
         updateStateFromStorage()
         loadStats()
     }

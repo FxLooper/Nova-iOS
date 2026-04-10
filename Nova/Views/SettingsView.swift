@@ -257,6 +257,43 @@ struct SettingsView: View {
                                         }
                                     }
 
+                                    // Threshold slider — strictness control
+                                    Divider().opacity(0.15)
+
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        HStack {
+                                            Text("Přísnost ověření")
+                                                .font(.system(size: 13, weight: .regular))
+                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                                            Spacer()
+                                            Text("\(Int(voiceProfile.verificationThreshold * 100))%")
+                                                .font(.system(size: 13, weight: .medium))
+                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                                                .monospacedDigit()
+                                        }
+                                        Slider(
+                                            value: Binding(
+                                                get: { voiceProfile.verificationThreshold },
+                                                set: { voiceProfile.verificationThreshold = $0 }
+                                            ),
+                                            in: voiceProfile.minThreshold...voiceProfile.maxThreshold,
+                                            step: 0.05
+                                        )
+                                        .tint(Color(hex: "1a1a2e").opacity(0.6))
+
+                                        HStack {
+                                            Text("Permisivní")
+                                                .font(.system(size: 10, weight: .light))
+                                            Spacer()
+                                            Text("Vyvážené")
+                                                .font(.system(size: 10, weight: .light))
+                                            Spacer()
+                                            Text("Přísné")
+                                                .font(.system(size: 10, weight: .light))
+                                        }
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                                    }
+
                                     // Stats: enrollment date + total verifications + success rate
                                     if voiceProfile.totalVerifications > 0 || voiceProfile.enrollmentDate != nil {
                                         Divider().opacity(0.15)
