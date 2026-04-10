@@ -118,9 +118,33 @@ struct ChatView: View {
                         .font(.system(size: 11, weight: .light))
                         .tracking(3)
                         .foregroundColor(Color(hex: "1a1a2e").opacity(nova.state == .idle ? 0.2 : 0.45))
-                        .padding(.bottom, 8)
+                        .padding(.bottom, 4)
                         .animation(.easeInOut(duration: 0.3), value: nova.state)
+
+                    // Voice ID verification feedback
+                    if nova.lastVerificationFailed {
+                        HStack(spacing: 6) {
+                            Image(systemName: "person.crop.circle.badge.xmark")
+                                .font(.system(size: 11))
+                            Text("Hlas nepoznán")
+                                .font(.system(size: 11, weight: .medium))
+                                .tracking(2)
+                        }
+                        .foregroundColor(.red.opacity(0.8))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.red.opacity(0.1))
+                        .clipShape(Capsule())
+                        .padding(.bottom, 8)
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .scale(scale: 0.8)),
+                            removal: .opacity
+                        ))
+                    } else {
+                        Spacer().frame(height: 8)
+                    }
                 }
+                .animation(.easeInOut(duration: 0.3), value: nova.lastVerificationFailed)
                 .background(Color(hex: "f5f0e8").opacity(0.95))
 
                 Divider().opacity(0.15)
