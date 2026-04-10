@@ -82,19 +82,38 @@ class WhisperService: ObservableObject {
         print("[whisper] loading model: \(size.rawValue)")
 
         do {
-            // Minimální config — jen model, zbytek defaulty
+            // Fáze 1: Stažení modelu s progress callback
+            print("[whisper] downloading model from HuggingFace...")
+            let modelFolder = try await WhisperKit.download(
+                variant: size.rawValue,
+                progressCallback: { [weak self] progress in
+                    Task { @MainActor in
+                        self?.loadProgress = progress.fractionCompleted
+                        if Int(progress.fractionCompleted * 100) % 10 == 0 {
+                            print("[whisper] download progress: \(Int(progress.fractionCompleted * 100))%")
+                        }
+                    }
+                }
+            )
+            print("[whisper] model downloaded to: \(modelFolder.path)")
+
+            await MainActor.run { self.loadProgress = 1.0 }
+
+            // Fáze 2: Načtení modelu (prewarm Neural Engine)
+            print("[whisper] loading model into memory...")
             let config = WhisperKitConfig(
                 model: size.rawValue,
+                modelFolder: modelFolder.path,
                 verbose: false,
                 logLevel: .error,
                 prewarm: true,
                 load: true,
-                download: true
+                download: false  // Už máme stažené
             )
 
             whisperKit = try await WhisperKit(config)
             state = .ready
-            print("[whisper] model loaded: \(size.rawValue)")
+            print("[whisper] ✅ model ready: \(size.rawValue)")
         } catch {
             print("[whisper] model load error: \(error)")
             state = .error("Načtení modelu selhalo: \(error.localizedDescription)")
