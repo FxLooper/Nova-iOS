@@ -700,7 +700,9 @@ class NovaService: ObservableObject {
                         self?.handleWSMessage(json)
                     }
                 }
-                self?.receiveWebSocket()
+                Task { @MainActor in
+                    self?.receiveWebSocket()
+                }
             case .failure:
                 Task { @MainActor in
                     self?.isConnected = false

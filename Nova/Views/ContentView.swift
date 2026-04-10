@@ -171,7 +171,7 @@ struct ChatView: View {
                             }
 
                             // Confirm buttons
-                            if let pending = nova.pendingConfirmation {
+                            if nova.pendingConfirmation != nil {
                                 ConfirmButtons(yesLabel: "Ano", noLabel: "Ne") { confirmed in
                                     Task { await nova.confirmAction(confirmed) }
                                 }
