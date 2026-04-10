@@ -248,6 +248,7 @@ class NovaService: ObservableObject {
     private var currentUtterance = ""
 
     func toggleConversation() {
+        HapticManager.shared.conversationToggle()
         if conversationActive {
             endConversation()
         } else {
@@ -270,6 +271,7 @@ class NovaService: ObservableObject {
     func startPushToTalk() {
         guard !isMuted else { return }
         guard !conversationActive else { return } // Pokud je Live mode, PTT se nespustí
+        HapticManager.shared.pushToTalkStart()
         pushToTalkActive = true
         currentUtterance = ""
         interimText = ""
@@ -282,6 +284,7 @@ class NovaService: ObservableObject {
 
     func endPushToTalk() {
         guard pushToTalkActive else { return }
+        HapticManager.shared.pushToTalkEnd()
         pushToTalkActive = false
 
         // Zastav SR a pošli to co už máme
@@ -555,6 +558,7 @@ class NovaService: ObservableObject {
             if !verified {
                 print("[voice-id] ❌ verification failed — ignoring utterance")
                 lastVerificationFailed = true
+                HapticManager.shared.voiceVerificationFailed()
                 // Zobraz červenou indikaci na ~2s
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -563,6 +567,7 @@ class NovaService: ObservableObject {
                 return
             }
             print("[voice-id] ✅ verified — proceeding with utterance")
+            HapticManager.shared.voiceVerificationSuccess()
         }
 
         // NEZASTAVUJ analyzer — běží nepřetržitě, jen pošli text

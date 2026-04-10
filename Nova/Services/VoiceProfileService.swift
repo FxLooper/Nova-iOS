@@ -153,9 +153,11 @@ class VoiceProfileService: ObservableObject {
             enrollmentSampleURLs.removeAll()
 
             state = .enrolled
+            HapticManager.shared.voiceEnrollmentSuccess()
         } catch {
             state = .error("Enrollment failed: \(error.localizedDescription)")
             print("[voice-id] enrollment error: \(error)")
+            HapticManager.shared.voiceEnrollmentFailed()
         }
     }
 

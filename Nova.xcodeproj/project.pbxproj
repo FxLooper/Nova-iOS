@@ -24,6 +24,7 @@
 		BB5926512F89753F00A68034 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB5926502F89753F00A68034 /* WhisperKit */; };
 		BB5926532F89A94F00A68034 /* VoiceProfileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926522F89A94F00A68034 /* VoiceProfileService.swift */; };
 		BB5926552F89A98C00A68034 /* VoiceEnrollmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926542F89A98C00A68034 /* VoiceEnrollmentView.swift */; };
+		BB5926572F89B00100A68034 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926562F89B00100A68034 /* HapticManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +43,7 @@
 		BB5926492F8972B000A68034 /* WhisperService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperService.swift; sourceTree = "<group>"; };
 		BB5926522F89A94F00A68034 /* VoiceProfileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceProfileService.swift; sourceTree = "<group>"; };
 		BB5926542F89A98C00A68034 /* VoiceEnrollmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceEnrollmentView.swift; sourceTree = "<group>"; };
+		BB5926562F89B00100A68034 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		C1000001 /* Nova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nova.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -105,6 +107,7 @@
 			isa = PBXGroup;
 			children = (
 				BB5926522F89A94F00A68034 /* VoiceProfileService.swift */,
+				BB5926562F89B00100A68034 /* HapticManager.swift */,
 				BB5926492F8972B000A68034 /* WhisperService.swift */,
 				B1000003 /* NovaService.swift */,
 				B1000004 /* KeychainHelper.swift */,
@@ -190,6 +193,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB5926572F89B00100A68034 /* HapticManager.swift in Sources */,
 				BB5926532F89A94F00A68034 /* VoiceProfileService.swift in Sources */,
 				A1000001 /* NovaApp.swift in Sources */,
 				A1000002 /* ContentView.swift in Sources */,
