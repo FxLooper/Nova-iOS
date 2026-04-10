@@ -247,7 +247,8 @@ class NovaService: ObservableObject {
     }
 
     func loadWhisperModel() async {
-        await whisper.loadModel(.small)
+        // nil = device-aware auto selection (tiny/base pro SE, small+ pro novější)
+        await whisper.loadModel(nil)
     }
 
     private func setupWhisperObservers() {

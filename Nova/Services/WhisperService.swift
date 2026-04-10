@@ -76,16 +76,27 @@ class WhisperService: ObservableObject {
 
     /// Načte (a stáhne pokud chybí) Whisper model.
     /// Modely se cachují v Documents/whisperkit-models/
-    func loadModel(_ size: ModelSize = .small) async {
+    func loadModel(_ size: ModelSize? = nil) async {
         state = .loading
         loadProgress = 0.0
-        print("[whisper] loading model: \(size.rawValue)")
+
+        // Device-aware model selection: použij recommended, nebo force size
+        let modelName: String
+        if let size = size {
+            modelName = size.rawValue
+        } else {
+            let recommended = WhisperKit.recommendedModels()
+            modelName = recommended.default
+            print("[whisper] device recommends: \(modelName)")
+        }
+
+        print("[whisper] loading model: \(modelName)")
 
         do {
             // Fáze 1: Stažení modelu s progress callback
             print("[whisper] downloading model from HuggingFace...")
             let modelFolder = try await WhisperKit.download(
-                variant: size.rawValue,
+                variant: modelName,
                 progressCallback: { [weak self] progress in
                     Task { @MainActor in
                         self?.loadProgress = progress.fractionCompleted
@@ -100,9 +111,9 @@ class WhisperService: ObservableObject {
             await MainActor.run { self.loadProgress = 1.0 }
 
             // Fáze 2: Načtení modelu (prewarm Neural Engine)
-            print("[whisper] loading model into memory...")
+            print("[whisper] loading model into memory (this may take 30-60s on first run)...")
             let config = WhisperKitConfig(
-                model: size.rawValue,
+                model: modelName,
                 modelFolder: modelFolder.path,
                 verbose: false,
                 logLevel: .error,
@@ -113,7 +124,7 @@ class WhisperService: ObservableObject {
 
             whisperKit = try await WhisperKit(config)
             state = .ready
-            print("[whisper] ✅ model ready: \(size.rawValue)")
+            print("[whisper] ✅ model ready: \(modelName)")
         } catch {
             print("[whisper] model load error: \(error)")
             state = .error("Načtení modelu selhalo: \(error.localizedDescription)")
