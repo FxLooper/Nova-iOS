@@ -654,7 +654,22 @@ class NovaService: ObservableObject {
 
     /// Verify the most recent audio buffer against enrolled voice profile.
     /// Returns true if verification succeeds or if not enrolled (fail-open).
+    private let livenessDetector = AudioLivenessDetector()
+
     private func verifyRecentAudio() async -> Bool {
+        // 1. Anti-spoofing — liveness check (FAST, on-device)
+        let recentSamples = Array(audioRingBuffer.suffix(Int(16000 * 3.0)))
+        if recentSamples.count >= 16000 {
+            let liveness = livenessDetector.analyze(samples: recentSamples)
+            print("[liveness] flatness=\(String(format: "%.3f", liveness.spectralFlatness)) variance=\(String(format: "%.4f", liveness.energyVariance)) rmsCV=\(String(format: "%.3f", liveness.rmsCV)) → live=\(liveness.isLive)")
+
+            if !liveness.isLive {
+                print("[voice-id] ❌ liveness check failed: \(liveness.reason ?? "unknown")")
+                return false
+            }
+        }
+
+        // 2. Speaker verification (Mac server ECAPA-TDNN)
         guard let wavURL = saveRingBufferToWAV(seconds: 3.0) else {
             print("[voice-id] no audio in ring buffer for verification")
             return true  // fail-open: if no audio, allow through
