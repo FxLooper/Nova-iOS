@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var useWhisper: Bool
     @State private var showVoiceEnrollment = false
     @State private var voiceVerifyEnforced: Bool
+    @State private var showClearHistoryAlert = false
 
     init() {
         _selectedLang = State(initialValue: UserDefaults.standard.string(forKey: "nova_lang") ?? "cs")
@@ -335,6 +336,9 @@ struct SettingsView: View {
                                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                                 }
 
+                                // Server health detail
+                                serverHealthDetailRow
+
                                 Button(action: { nova.resetConfig() }) {
                                     Text(L10n.t("change_server"))
                                         .font(.system(size: 14, weight: .light))
@@ -348,16 +352,125 @@ struct SettingsView: View {
                                 }
                             }
                         }
+
+                        // Memory & History
+                        SettingsSection(title: "Paměť") {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Image(systemName: "bubble.left.and.bubble.right")
+                                        .font(.system(size: 14, weight: .light))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                    Text("\(nova.messages.count) zpráv v historii")
+                                        .font(.system(size: 14, weight: .light))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                                }
+
+                                Button(action: { showClearHistoryAlert = true }) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "trash")
+                                            .font(.system(size: 12))
+                                        Text("Smazat historii konverzace")
+                                            .font(.system(size: 14, weight: .light))
+                                    }
+                                    .foregroundColor(.red.opacity(0.7))
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 16)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                                    )
+                                }
+                                .disabled(nova.messages.isEmpty)
+                                .opacity(nova.messages.isEmpty ? 0.4 : 1.0)
+                            }
+                        }
+
+                        // About section
+                        SettingsSection(title: "O aplikaci") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                aboutRow(label: "Verze", value: "10.4.5 (build 9)")
+                                aboutRow(label: "Vývojář", value: "FxLooper")
+                                aboutRow(label: "AI", value: "Claude Sonnet 4.6")
+                                aboutRow(label: "Voice ID", value: "ECAPA-TDNN")
+                                aboutRow(label: "STT", value: "Apple Dictation + WhisperKit")
+                                aboutRow(label: "TTS", value: "Microsoft Edge TTS")
+
+                                Divider().opacity(0.15).padding(.vertical, 4)
+
+                                Text("🔒 100% lokální komunikace s tvým Mac serverem přes Tailscale VPN. Žádný cloud, žádný tracking, žádná telemetry.")
+                                    .font(.system(size: 11, weight: .light))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
                     }
                     .padding(.horizontal, 24)
                     .padding(.bottom, 40)
                 }
             }
         }
+        .alert("Smazat historii?", isPresented: $showClearHistoryAlert) {
+            Button("Zrušit", role: .cancel) {}
+            Button("Smazat", role: .destructive) {
+                HapticManager.shared.errorOccurred()
+                nova.clearMessages()
+            }
+        } message: {
+            Text("Tato akce je nevratná. Všechny zprávy v konverzaci budou smazány.")
+        }
         .fullScreenCover(isPresented: $showVoiceEnrollment) {
             VoiceEnrollmentView()
                 .environmentObject(nova)
                 .environmentObject(voiceProfile)
+        }
+    }
+
+    // MARK: - Helper subviews
+
+    private var serverHealthDetailRow: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(serverHealthStatusColor)
+                .frame(width: 6, height: 6)
+            Text(serverHealthStatusText)
+                .font(.system(size: 11, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+            if nova.serverHealth.lastPingLatency > 0 {
+                Text("(\(Int(nova.serverHealth.lastPingLatency * 1000))ms)")
+                    .font(.system(size: 11, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
+            }
+        }
+    }
+
+    private var serverHealthStatusColor: Color {
+        switch nova.serverHealth.status {
+        case .online: return .green
+        case .degraded: return .yellow
+        case .offline: return .red
+        case .unknown: return Color(hex: "1a1a2e").opacity(0.2)
+        }
+    }
+
+    private var serverHealthStatusText: String {
+        switch nova.serverHealth.status {
+        case .online: return "Mac server online"
+        case .degraded: return "Mac server pomalý"
+        case .offline: return "Mac server nedostupný"
+        case .unknown: return "Mac server stav neznámý"
+        }
+    }
+
+    private func aboutRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 12, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+            Spacer()
+            Text(value)
+                .font(.system(size: 12, weight: .regular))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                .monospacedDigit()
         }
     }
 

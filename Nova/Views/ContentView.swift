@@ -332,15 +332,54 @@ struct ChatView: View {
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
             }
 
+            // Quick action chips — predesignované prompty
+            VStack(spacing: 8) {
+                Text("Zkus říct nebo napsat")
+                    .font(.system(size: 11, weight: .light))
+                    .tracking(2)
+                    .textCase(.uppercase)
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+
+                quickActionChip(text: "Jaké je počasí v Plzni?", icon: "cloud.sun")
+                quickActionChip(text: "Přečti mi nejnovější zprávy", icon: "newspaper")
+                quickActionChip(text: "Co dávají dnes v kině?", icon: "film")
+                quickActionChip(text: "Kolik je hodin?", icon: "clock")
+            }
+            .padding(.top, 4)
+
+            // Quick hints
             VStack(alignment: .leading, spacing: 12) {
                 emptyStateHint(icon: "circle.fill", text: "Tap orb pro hlasovou konverzaci")
                 emptyStateHint(icon: "mic.fill", text: "Drž mic pro Push-to-Talk")
-                emptyStateHint(icon: "keyboard", text: "Nebo napiš zprávu dole")
                 emptyStateHint(icon: "lock.shield.fill", text: "Voice ID v Nastavení pro bezpečnost")
             }
-            .padding(.top, 8)
+            .padding(.top, 16)
 
             Spacer().frame(height: 20)
+        }
+    }
+
+    private func quickActionChip(text: String, icon: String) -> some View {
+        Button(action: {
+            HapticManager.shared.selectionChanged()
+            inputText = text
+            sendText()
+        }) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .light))
+                Text(text)
+                    .font(.system(size: 14, weight: .light))
+                Spacer()
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.system(size: 13, weight: .light))
+                    .opacity(0.4)
+            }
+            .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.white.opacity(0.6))
+            .cornerRadius(12)
         }
     }
 
