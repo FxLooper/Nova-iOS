@@ -43,6 +43,7 @@ class NovaService: ObservableObject {
     // MARK: - Voice ID (biometric speaker verification)
     let voiceProfile = VoiceProfileService()
     let serverHealth = ServerHealthMonitor()
+    let networkMonitor = NetworkMonitor()
     @Published var voiceVerificationEnforced: Bool = UserDefaults.standard.bool(forKey: "nova_voice_verify_enforce")
     @Published var lastVerificationFailed: Bool = false  // UI indicator
 
@@ -68,6 +69,18 @@ class NovaService: ObservableObject {
         voiceProfile.configure(serverURL: serverURL, token: token)
         // Start monitoring Mac server health
         serverHealth.startMonitoring(serverURL: serverURL, token: token)
+        // Network reachability — auto-reconnect WebSocket on network changes
+        networkMonitor.onConnectionChange = { [weak self] isConnected in
+            guard let self = self else { return }
+            print("[network] connection changed: \(isConnected ? "ONLINE" : "OFFLINE")")
+            if isConnected {
+                // Network is back — force ping + reconnect WebSocket
+                Task {
+                    await self.serverHealth.pingNow()
+                    self.connectWebSocket()
+                }
+            }
+        }
     }
 
     // MARK: - Config (Keychain)
