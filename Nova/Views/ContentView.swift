@@ -454,6 +454,16 @@ struct MessageBubble: View {
                     )
                     .cornerRadius(16)
                     .textSelection(.enabled)
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = message.content
+                        } label: {
+                            Label("Kopírovat", systemImage: "doc.on.doc")
+                        }
+                        ShareLink(item: message.content) {
+                            Label("Sdílet", systemImage: "square.and.arrow.up")
+                        }
+                    }
 
                 Text(timeString)
                     .font(.system(size: 10, weight: .light))

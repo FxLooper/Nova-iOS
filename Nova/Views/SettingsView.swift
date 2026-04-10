@@ -365,6 +365,25 @@ struct SettingsView: View {
                                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
                                 }
 
+                                // Export
+                                if !nova.messages.isEmpty {
+                                    ShareLink(item: exportConversationText()) {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "square.and.arrow.up")
+                                                .font(.system(size: 12))
+                                            Text("Exportovat konverzaci")
+                                                .font(.system(size: 14, weight: .light))
+                                        }
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                                        .padding(.vertical, 8)
+                                        .padding(.horizontal, 16)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color(hex: "1a1a2e").opacity(0.2), lineWidth: 1)
+                                        )
+                                    }
+                                }
+
                                 Button(action: { showClearHistoryAlert = true }) {
                                     HStack(spacing: 8) {
                                         Image(systemName: "trash")
@@ -459,6 +478,31 @@ struct SettingsView: View {
         case .offline: return "Mac server nedostupný"
         case .unknown: return "Mac server stav neznámý"
         }
+    }
+
+    private func exportConversationText() -> String {
+        var lines = [String]()
+        lines.append("# Nova konverzace — export")
+        lines.append("Datum: \(Date().formatted(date: .long, time: .shortened))")
+        lines.append("Počet zpráv: \(nova.messages.count)")
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm dd.MM.yyyy"
+
+        for msg in nova.messages {
+            let role = msg.role == "user" ? "Ondřej" : "Nova"
+            let time = formatter.string(from: msg.timestamp)
+            lines.append("**\(role)** _\(time)_")
+            lines.append(msg.content)
+            lines.append("")
+        }
+
+        lines.append("---")
+        lines.append("Vygenerováno Novou by FxLooper • 100% privátní data")
+        return lines.joined(separator: "\n")
     }
 
     private func aboutRow(label: String, value: String) -> some View {
