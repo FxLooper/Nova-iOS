@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var userName: String
     @State private var useWhisper: Bool
     @State private var showVoiceEnrollment = false
+    @State private var voiceVerifyEnforced: Bool
 
     init() {
         _selectedLang = State(initialValue: UserDefaults.standard.string(forKey: "nova_lang") ?? "cs")
@@ -18,6 +19,7 @@ struct SettingsView: View {
         _selectedVoiceGender = State(initialValue: UserDefaults.standard.string(forKey: "nova_voice_gender") ?? "female")
         _userName = State(initialValue: UserDefaults.standard.string(forKey: "nova_user_name") ?? "Ondřej")
         _useWhisper = State(initialValue: UserDefaults.standard.bool(forKey: "nova_use_whisper"))
+        _voiceVerifyEnforced = State(initialValue: UserDefaults.standard.bool(forKey: "nova_voice_verify_enforce"))
     }
 
     static let languages: [(code: String, name: String, flag: String)] = [
@@ -220,6 +222,41 @@ struct SettingsView: View {
                                                 .stroke(Color(hex: "1a1a2e").opacity(0.2), lineWidth: 1)
                                         )
                                 }
+
+                                // Enforcement toggle — visible only when enrolled
+                                if voiceProfile.state == .enrolled {
+                                    Divider().opacity(0.2)
+
+                                    Toggle(isOn: $voiceVerifyEnforced) {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("Vyžadovat ověření hlasu")
+                                                .font(.system(size: 15, weight: .regular))
+                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                                            Text(voiceVerifyEnforced
+                                                 ? "Nova reaguje jen pokud poznám tvůj hlas"
+                                                 : "Nova reaguje na všechny mluvčí")
+                                                .font(.system(size: 12, weight: .light))
+                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                        }
+                                    }
+                                    .tint(Color(hex: "1a1a2e").opacity(0.7))
+                                    .onChange(of: voiceVerifyEnforced) { _, newValue in
+                                        UserDefaults.standard.set(newValue, forKey: "nova_voice_verify_enforce")
+                                        nova.voiceVerificationEnforced = newValue
+                                    }
+
+                                    // Last verification confidence
+                                    if voiceProfile.verificationConfidence > 0 {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: voiceProfile.lastVerificationResult ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(voiceProfile.lastVerificationResult ? .green.opacity(0.7) : .red.opacity(0.7))
+                                            Text("Poslední shoda: \(Int(voiceProfile.verificationConfidence * 100))%")
+                                                .font(.system(size: 12, weight: .light))
+                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -266,7 +303,9 @@ struct SettingsView: View {
         UserDefaults.standard.set(selectedVoiceGender, forKey: "nova_voice_gender")
         UserDefaults.standard.set(userName, forKey: "nova_user_name")
         UserDefaults.standard.set(useWhisper, forKey: "nova_use_whisper")
+        UserDefaults.standard.set(voiceVerifyEnforced, forKey: "nova_voice_verify_enforce")
         nova.setUseWhisper(useWhisper)
+        nova.voiceVerificationEnforced = voiceVerifyEnforced
 
         // Vyber hlas podle jazyka a pohlaví
         let voices = Self.voiceMap[selectedLang] ?? ("cs-vlasta", "cs-antonin")
