@@ -459,6 +459,16 @@ struct SettingsView: View {
                     .font(.system(size: 11, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
             }
+            Spacer()
+            Button(action: {
+                HapticManager.shared.selectionChanged()
+                Task { await nova.serverHealth.pingNow() }
+            }) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+            }
+            .accessibilityLabel("Obnovit status serveru")
         }
     }
 

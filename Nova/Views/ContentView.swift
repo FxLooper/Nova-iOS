@@ -475,6 +475,30 @@ struct ChatView: View {
 
     // MARK: - Empty State
 
+    private var personalizedGreeting: String {
+        let userName = UserDefaults.standard.string(forKey: "nova_user_name") ?? ""
+        let nameSuffix = userName.isEmpty ? "" : ", \(userName)"
+
+        let hour = Calendar.current.component(.hour, from: Date())
+        let timeGreeting: String
+        switch hour {
+        case 5..<10:
+            timeGreeting = "Dobré ráno"
+        case 10..<12:
+            timeGreeting = "Krásné dopoledne"
+        case 12..<14:
+            timeGreeting = "Krásné poledne"
+        case 14..<18:
+            timeGreeting = "Hezké odpoledne"
+        case 18..<22:
+            timeGreeting = "Dobrý večer"
+        default:
+            timeGreeting = "Dobrou noc"
+        }
+
+        return "\(timeGreeting)\(nameSuffix)"
+    }
+
     private var emptyWelcomeView: some View {
         VStack(spacing: 24) {
             Image(systemName: "sparkles")
@@ -482,11 +506,12 @@ struct ChatView: View {
                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
 
             VStack(spacing: 8) {
-                Text("Vítej v Nově")
+                Text(personalizedGreeting)
                     .font(.system(size: 22, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.75))
+                    .multilineTextAlignment(.center)
 
-                Text("Tvoje osobní AI asistentka")
+                Text("Co dnes potřebuješ?")
                     .font(.system(size: 14, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
             }
