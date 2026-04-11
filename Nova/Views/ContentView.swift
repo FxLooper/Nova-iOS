@@ -12,59 +12,194 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Setup View (first launch)
+// MARK: - Setup View (first launch — premium welcome)
 struct SetupView: View {
     @EnvironmentObject var nova: NovaService
     @State private var server = "http://192.168.0.183:3000"
     @State private var token = ""
+    @State private var step: Int = 0  // 0=welcome, 1=connection
+    @State private var orbScale: CGFloat = 0.8
+    @State private var orbOpacity: Double = 0
 
     var body: some View {
         ZStack {
             Color(hex: "f5f0e8").ignoresSafeArea()
 
-            VStack(spacing: 32) {
-                Spacer()
+            if step == 0 {
+                welcomeStep
+            } else {
+                connectionStep
+            }
+        }
+        .animation(.easeInOut(duration: 0.5), value: step)
+    }
 
-                // Logo
+    // Krok 1: Welcome screen — premium first impression
+    private var welcomeStep: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            // Animated orb logo
+            ZStack {
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color(hex: "1a1a2e").opacity(0.15),
+                                Color(hex: "1a1a2e").opacity(0.02)
+                            ],
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 100
+                        )
+                    )
+                    .frame(width: 200, height: 200)
+                    .scaleEffect(orbScale)
+                    .opacity(orbOpacity)
+
+                Image(systemName: "sparkles")
+                    .font(.system(size: 50, weight: .ultraLight))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
+                    .opacity(orbOpacity)
+            }
+            .onAppear {
+                withAnimation(.easeOut(duration: 1.5)) {
+                    orbScale = 1.0
+                    orbOpacity = 1.0
+                }
+            }
+
+            Spacer().frame(height: 40)
+
+            VStack(spacing: 12) {
                 Text("nova")
                     .font(.system(size: 48, weight: .light))
-                    .tracking(12)
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                    .tracking(14)
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
 
-                Text("Připojení k serveru")
-                    .font(.system(size: 16, weight: .light))
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                Text("Tvoje osobní AI asistentka")
+                    .font(.system(size: 15, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+            }
 
-                VStack(spacing: 16) {
-                    TextField("Server URL", text: $server)
+            Spacer()
+
+            // Feature highlights
+            VStack(alignment: .leading, spacing: 16) {
+                welcomeFeature(icon: "waveform.circle", text: "Hlasová konverzace v 16 jazycích")
+                welcomeFeature(icon: "lock.shield.fill", text: "Voice ID — Nova pozná tvůj hlas")
+                welcomeFeature(icon: "lock.icloud", text: "100% privátní, žádný cloud")
+                welcomeFeature(icon: "bolt.heart", text: "Premium UX s haptic feedback")
+            }
+            .padding(.horizontal, 40)
+
+            Spacer()
+
+            Button(action: {
+                HapticManager.shared.selectionChanged()
+                withAnimation { step = 1 }
+            }) {
+                Text("Začít")
+                    .font(.system(size: 16, weight: .medium))
+                    .tracking(2)
+                    .foregroundColor(Color(hex: "f5f0e8"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color(hex: "1a1a2e").opacity(0.85))
+                    .cornerRadius(999)
+            }
+            .padding(.horizontal, 40)
+            .padding(.bottom, 60)
+        }
+    }
+
+    private func welcomeFeature(icon: String, text: String) -> some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
+                .frame(width: 28)
+            Text(text)
+                .font(.system(size: 14, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+            Spacer()
+        }
+    }
+
+    // Krok 2: Connection setup
+    private var connectionStep: some View {
+        VStack(spacing: 32) {
+            Spacer()
+
+            Text("nova")
+                .font(.system(size: 36, weight: .light))
+                .tracking(10)
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
+
+            VStack(spacing: 8) {
+                Text("Připojení k Mac serveru")
+                    .font(.system(size: 18, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+
+                Text("Tvůj Mac server běží Claude Code")
+                    .font(.system(size: 13, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
+            }
+
+            VStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Server URL")
+                        .font(.system(size: 11, weight: .medium))
+                        .tracking(1)
+                        .textCase(.uppercase)
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                    TextField("http://100.105.26.7:3000", text: $server)
                         .textFieldStyle(NovaTextFieldStyle())
                         .autocapitalization(.none)
                         .keyboardType(.URL)
+                }
 
-                    SecureField("API Token", text: $token)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("API Token")
+                        .font(.system(size: 11, weight: .medium))
+                        .tracking(1)
+                        .textCase(.uppercase)
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                    SecureField("z keychain: NOVA_API_TOKEN", text: $token)
                         .textFieldStyle(NovaTextFieldStyle())
                 }
-                .padding(.horizontal, 40)
+            }
+            .padding(.horizontal, 40)
 
+            Spacer()
+
+            VStack(spacing: 12) {
                 Button(action: {
+                    HapticManager.shared.selectionChanged()
                     nova.configure(server: server, token: token)
                 }) {
                     Text("Připojit")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 16, weight: .medium))
                         .tracking(2)
                         .foregroundColor(Color(hex: "f5f0e8"))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 16)
                         .background(Color(hex: "1a1a2e").opacity(0.85))
                         .cornerRadius(999)
                 }
-                .padding(.horizontal, 40)
                 .disabled(server.isEmpty || token.isEmpty)
                 .opacity(server.isEmpty || token.isEmpty ? 0.4 : 1)
 
-                Spacer()
-                Spacer()
+                Button(action: {
+                    withAnimation { step = 0 }
+                }) {
+                    Text("Zpět")
+                        .font(.system(size: 13, weight: .light))
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                }
             }
+            .padding(.horizontal, 40)
+            .padding(.bottom, 40)
         }
     }
 }
