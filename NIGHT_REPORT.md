@@ -2,8 +2,8 @@
 
 **Pro:** Ondřej 🇨🇿
 **Branch:** `nova-v11-evolution`
-**Verze:** **10.4.6 build 10** ⭐
-**Status:** ✅ **READY TO INSTALL** + 🔥 **PREMIUM POLISH OVERLOAD**
+**Verze:** **10.4.7 build 11** ⭐
+**Status:** ✅ **READY TO INSTALL** + 🔥 **PREMIUM POLISH OVERLOAD + WELCOME SCREEN**
 
 ---
 
@@ -45,7 +45,14 @@ Voice ID pipeline plně integrovaná. Anti-spoofing, haptic, server health, netw
 ### Build quality
 - 🧹 **Zero warnings** clean Release build
 - 📦 **Archive + IPA** ready to upload
-- 🏷️ **Version 10.4.6 build 10** — bumped pro nový upload
+- 🏷️ **Version 10.4.7 build 11** — bumped pro nový upload
+
+### First-run welcome ✨ (NOVÉ)
+- 🌟 Premium 2-step welcome wizard — místo holého formuláře
+- ✨ Animated radial gradient orb (scale + opacity entrance)
+- 💎 4 feature highlights (voice 16 langs, voice ID, privacy, premium UX)
+- 🎯 Step navigation s plynulou animací
+- 📝 Labeled form fields s example placeholders
 
 ---
 
@@ -53,7 +60,7 @@ Voice ID pipeline plně integrovaná. Anti-spoofing, haptic, server health, netw
 
 ```
 /Users/fxlooper/Nova-iOS/build/
-├── Nova-10.4.6.xcarchive    # 30 MB — pro Xcode Organizer
+├── Nova-10.4.7.xcarchive    # 30 MB — pro Xcode Organizer
 ├── Nova.ipa                  # 4 MB  — pro Transporter
 ├── ExportOptions.plist
 ├── DistributionSummary.plist
@@ -68,15 +75,15 @@ Voice ID pipeline plně integrovaná. Anti-spoofing, haptic, server health, netw
 1. Otevři **Xcode**
 2. **Window → Organizer**
 3. **Archives** záložku vlevo
-4. Najdi **Nova 10.4.6 (10)** — vyrobený v noci
+4. Najdi **Nova 10.4.7 (11)** — vyrobený v noci
 5. Klikni **Distribute App** vpravo
 6. **App Store Connect → Upload**
 7. Xcode automaticky podepíše + upload (~5-10 min)
 8. **App Store Connect → Nova by FxLooper → TestFlight**
 9. **Export Compliance** — vyber "None of the algorithms"
-10. Build se objeví v External Personal group jako **build 10**
-11. **Pokud build 4 ještě čeká na review** — build 10 čeká taky
-12. **Pokud build 4 už schválený** — build 10 jde instant
+10. Build se objeví v External Personal group jako **build 11**
+11. **Pokud build 4 ještě čeká na review** — build 11 čeká taky
+12. **Pokud build 4 už schválený** — build 11 jde instant
 13. Email pozvánka → TestFlight app na iPhone → **Install** ✅
 
 ### Varianta B: Transporter app
@@ -87,7 +94,7 @@ Voice ID pipeline plně integrovaná. Anti-spoofing, haptic, server health, netw
 
 ### Varianta C: Otevři archive přímo
 ```bash
-open /Users/fxlooper/Nova-iOS/build/Nova-10.4.6.xcarchive
+open /Users/fxlooper/Nova-iOS/build/Nova-10.4.7.xcarchive
 ```
 
 ---
@@ -225,7 +232,7 @@ open /Users/fxlooper/Nova-iOS/build/Nova-10.4.6.xcarchive
 ```
 1. Settings → O aplikaci
 2. Kompletní disclosure:
-   - Verze: 10.4.6 (build 10)
+   - Verze: 10.4.6 (build 11)
    - Vývojář: FxLooper
    - AI: Claude Sonnet 4.6
    - Voice ID: ECAPA-TDNN
@@ -315,7 +322,7 @@ open /Users/fxlooper/Nova-iOS/build/Nova-10.4.6.xcarchive
 
 ---
 
-## 📊 Git log — 18 commitů noční sessionu
+## 📊 Git log — 20+ commitů noční sessionu
 
 ```
 cf546ad1  Nova iOS 11.4.17 message-actions + export — premium content management
@@ -339,7 +346,7 @@ aef6a025  Nova iOS 11.4.3 voice-id-feedback — visual indicator under orb
 b3741adc  Nova iOS 11.4.1 voice-id-pipeline — integrate audio ring buffer + verify
 ```
 
-**18 commitů, vše na branchi `nova-v11-evolution`. Main branch netknutý.**
+**20+ commitů, vše na branchi `nova-v11-evolution`. Main branch netknutý.**
 
 ---
 
@@ -462,7 +469,7 @@ Vygenerováno Novou by FxLooper • 100% privátní data
 
 ### 1. Upload build do TestFlight (~10 min)
 - Otevři Xcode → Window → Organizer
-- Najdi **Nova 10.4.6 (10)** v Archives
+- Najdi **Nova 10.4.7 (11)** v Archives
 - Distribute App → App Store Connect → Upload
 - Wait for processing (15-30 min)
 - Add to External Personal group
@@ -470,8 +477,8 @@ Vygenerováno Novou by FxLooper • 100% privátní data
 
 ### 2. Install na Pro Max
 - Otevři TestFlight app na iPhone 15 Pro Max
-- Pokud build 4 ještě čeká: počkej až ho schválí, pak rovnou nainstaluješ build 10
-- Pokud build 4 už máš: aktualizuj na build 10
+- Pokud build 4 ještě čeká: počkej až ho schválí, pak rovnou nainstaluješ build 11
+- Pokud build 4 už máš: aktualizuj na build 11
 
 ### 3. Test (postup viz "Co otestovat" výše)
 - 15 testovacích scénářů, projdi všechny
