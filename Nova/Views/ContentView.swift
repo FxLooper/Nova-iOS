@@ -927,7 +927,7 @@ struct StreamingTextView: View {
         // Rychlost: 15ms na znak (rychlé, plynulé)
         let start = displayedCount
         for i in start..<target {
-            let delay = Double(i - start) * 0.015
+            let delay = Double(i - start) * 0.035
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 if displayedCount <= i {
                     displayedCount = i + 1
