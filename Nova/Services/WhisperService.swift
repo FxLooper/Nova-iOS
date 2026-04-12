@@ -53,6 +53,9 @@ class WhisperService: ObservableObject {
     /// Práh amplitudy pro VAD (0.0 - 1.0). Pod tímto = ticho.
     var vadThreshold: Float = 0.015
 
+    /// Jazykový hint — nil = auto-detect, "cs" = preferuj češtinu
+    var languageHint: String? = nil
+
     // MARK: - Private
 
     private var whisperKit: WhisperKit?
@@ -293,12 +296,12 @@ class WhisperService: ObservableObject {
 
         transcribeTask = Task {
             do {
-                // Minimální options — auto-detect jazyka, bez timestampů
+                // Pokud je nastaven languageHint, použij ho — jinak auto-detect
                 let options = DecodingOptions(
                     verbose: false,
                     task: .transcribe,
-                    language: nil,              // auto-detect
-                    detectLanguage: true,
+                    language: self.languageHint,
+                    detectLanguage: self.languageHint == nil,
                     skipSpecialTokens: true,
                     withoutTimestamps: true
                 )

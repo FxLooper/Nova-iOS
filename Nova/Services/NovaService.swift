@@ -21,6 +21,7 @@ class NovaService: ObservableObject {
     @Published var pendingConfirmation: PendingConfirmation?
     @Published var conversationActive = false // Tap orb = zapni/vypni konverzaci
     @Published var pushToTalkActive = false    // Hold mic button = push-to-talk
+    private var pttAccumulated = ""            // Akumulovaný text z PTT vět
     private var speechDebounceTask: Task<Void, Never>?
 
     struct PendingConfirmation: Identifiable {
@@ -82,9 +83,9 @@ class NovaService: ObservableObject {
         loadMessages()
         loadProfile()
         setupWhisperObservers()
-        if useWhisper {
-            Task { await loadWhisperModel() }
-        }
+        // Whisper se loaduje vždy — auto-detect jazyka, lepší kvalita STT
+        if !useWhisper { setUseWhisper(true) }
+        Task { await loadWhisperModel() }
         // Configure voice profile service with current server/token
         voiceProfile.configure(serverURL: serverURL, token: token)
         // Start monitoring Mac server health
@@ -326,7 +327,9 @@ class NovaService: ObservableObject {
     func startConversation() {
         guard !isMuted else { return }
         conversationActive = true
+        updateLiveActivityForState()  // Start Dynamic Island
         if useWhisper && whisperState == .ready {
+            whisper.languageHint = nil  // Live konverzace: auto-detect jazyka
             startWhisperListening()
         } else {
             // Live konverzace: auto-load Whisper pro auto-detect jazyka
@@ -346,7 +349,11 @@ class NovaService: ObservableObject {
         pushToTalkActive = true
         currentUtterance = ""
         interimText = ""
+        pttAccumulated = ""
         if useWhisper && whisperState == .ready {
+            // PTT: nastav jazyk podle uživatelského nastavení (auto-detect na krátkých větách selhává)
+            let lang = UserDefaults.standard.string(forKey: "nova_lang") ?? "cs"
+            whisper.languageHint = lang
             startWhisperListening()
         } else {
             startDictation()
@@ -418,12 +425,30 @@ class NovaService: ObservableObject {
             guard let self = self else { return }
             Task { @MainActor in
                 guard self.state == .listening else { return }
-                self.currentUtterance = text
-                self.interimText = text
-                if isFinal {
-                    print("[whisper] final (\(language ?? "?")): \(text)")
-                    // V PTT módu NEPOSÍLEJ automaticky — text zůstane pro review
-                    if !self.pushToTalkActive {
+                if self.pushToTalkActive {
+                    // PTT: akumuluj věty za sebe
+                    if isFinal {
+                        let accumulated = self.pttAccumulated.isEmpty
+                            ? text
+                            : self.pttAccumulated + " " + text
+                        self.pttAccumulated = accumulated
+                        self.currentUtterance = accumulated
+                        self.interimText = accumulated
+                        print("[whisper-ptt] accumulated: \(accumulated)")
+                    } else {
+                        // Interim: ukaž dosavadní + aktuální rozpracovanou
+                        let preview = self.pttAccumulated.isEmpty
+                            ? text
+                            : self.pttAccumulated + " " + text
+                        self.currentUtterance = preview
+                        self.interimText = preview
+                    }
+                } else {
+                    // Live konverzace: původní chování
+                    self.currentUtterance = text
+                    self.interimText = text
+                    if isFinal {
+                        print("[whisper] final (\(language ?? "?")): \(text)")
                         await self.handleUtteranceEnd()
                     }
                 }
@@ -830,7 +855,7 @@ class NovaService: ObservableObject {
                 if thinkingStage != newStage {
                     thinkingStage = newStage
                     HapticManager.shared.selectionChanged()
-                    pushLiveActivityStage(key: key, detail: detail)
+                    updateLiveActivityForState()
                 }
             } else {
                 thinkingStage = nil
@@ -1053,35 +1078,27 @@ class NovaService: ObservableObject {
     // MARK: - Live Activity (Dynamic Island)
     private func updateLiveActivityForState() {
         if #available(iOS 16.2, *) {
-            switch state {
-            case .thinking:
-                let key = thinkingStage?.key ?? "thinking"
-                let detail = thinkingStage?.detail
-                LiveActivityManager.shared.start(
-                    stageKey: key,
-                    stageDetail: detail,
-                    label: L10n.stage(key, detail: detail)
-                )
-            case .idle:
-                LiveActivityManager.shared.end()
-            case .listening, .speaking:
-                let key = state.rawValue
-                LiveActivityManager.shared.update(
-                    stageKey: key,
-                    stageDetail: nil,
-                    label: L10n.stage(key, detail: nil)
-                )
-            }
-        }
-    }
+            if conversationActive {
+                // Voice konverzace — Dynamic Island aktivní
+                let label: String
+                switch state {
+                case .listening: label = L10n.t("listening")
+                case .thinking: label = L10n.t("thinking")
+                case .speaking: label = L10n.t("speaking")
+                case .idle: label = L10n.t("ready")
+                }
 
-    private func pushLiveActivityStage(key: String, detail: String?) {
-        if #available(iOS 16.2, *) {
-            LiveActivityManager.shared.update(
-                stageKey: key,
-                stageDetail: detail,
-                label: L10n.stage(key, detail: detail)
-            )
+                if LiveActivityManager.shared.isActive {
+                    LiveActivityManager.shared.update(state: state.rawValue, label: label)
+                } else {
+                    LiveActivityManager.shared.startVoiceConversation(state: state.rawValue, label: label)
+                }
+            } else {
+                // Konverzace skončila — ukliď Dynamic Island
+                if LiveActivityManager.shared.isActive {
+                    LiveActivityManager.shared.end()
+                }
+            }
         }
     }
 }

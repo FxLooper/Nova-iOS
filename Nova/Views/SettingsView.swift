@@ -439,11 +439,11 @@ struct SettingsView: View {
                         // About section
                         SettingsSection(title: "O aplikaci") {
                             VStack(alignment: .leading, spacing: 8) {
-                                aboutRow(label: "Verze", value: "10.4.5 (build 9)")
+                                aboutRow(label: "Verze", value: appVersionString)
                                 aboutRow(label: "Vývojář", value: "FxLooper")
                                 aboutRow(label: "AI", value: "Claude Sonnet 4.6")
                                 aboutRow(label: "Voice ID", value: "ECAPA-TDNN")
-                                aboutRow(label: "STT", value: "Apple Dictation + WhisperKit")
+                                aboutRow(label: "STT", value: sttStatusString)
                                 aboutRow(label: "TTS", value: "Microsoft Edge TTS")
 
                                 Divider().opacity(0.15).padding(.vertical, 4)
@@ -545,6 +545,29 @@ struct SettingsView: View {
         lines.append("---")
         lines.append("Vygenerováno Novou by FxLooper • 100% privátní data")
         return lines.joined(separator: "\n")
+    }
+
+    private var appVersionString: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (build \(build))"
+    }
+
+    private var sttStatusString: String {
+        if nova.useWhisper {
+            switch nova.whisperState {
+            case .ready, .listening, .transcribing:
+                return "WhisperKit (on-device)"
+            case .loading:
+                let pct = Int(nova.whisperLoadProgress * 100)
+                return "WhisperKit (\(pct)%...)"
+            case .unloaded:
+                return "WhisperKit (loading...)"
+            case .error:
+                return "WhisperKit (chyba) + Apple Dictation"
+            }
+        }
+        return "Apple Dictation"
     }
 
     private func aboutRow(label: String, value: String) -> some View {

@@ -276,13 +276,18 @@ struct ChatView: View {
                         .accessibilityHint("Klepnutím otevři hlasový režim. Dlouhým podržením otevři menu.")
                         .accessibilityAddTraits(.isButton)
 
-                    // State label pod orbem
-                    Text(stateLabel)
-                        .font(.system(size: 11, weight: .light))
-                        .tracking(3)
-                        .foregroundColor(Color(hex: "1a1a2e").opacity(nova.state == .idle ? 0.2 : 0.45))
-                        .padding(.bottom, 4)
-                        .animation(.easeInOut(duration: 0.3), value: nova.state)
+                    // "Mluvit s Novou" button pod orbem
+                    Button(action: { showVoiceConversation = true }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "waveform")
+                                .font(.system(size: 11, weight: .medium))
+                            Text("Mluvit s Novou")
+                                .font(.system(size: 12, weight: .light))
+                                .tracking(1)
+                        }
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                    }
+                    .padding(.bottom, 4)
 
                     // Voice ID verification feedback
                     if nova.lastVerificationFailed {
@@ -380,7 +385,7 @@ struct ChatView: View {
                                 .id("streaming-bubble")
                             }
 
-                            // Thinking bubble — Zen spinner PŘED streamingem (čekáme na první token)
+                            // Nova status bubble — listening / thinking / speaking
                             if nova.state == .thinking && !nova.isStreaming {
                                 ThinkingBubbleView()
                                     .id("thinking-bubble")
@@ -388,6 +393,32 @@ struct ChatView: View {
                                         insertion: .scale(scale: 0.92).combined(with: .opacity),
                                         removal: .scale(scale: 0.85).combined(with: .opacity)
                                     ))
+                            }
+
+                            if nova.state == .listening && dictationState == .idle {
+                                NovaStateBubble(
+                                    icon: "waveform",
+                                    label: L10n.t("listening"),
+                                    color: Color.orange
+                                )
+                                .id("listening-bubble")
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.92).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
+                            }
+
+                            if nova.state == .speaking {
+                                NovaStateBubble(
+                                    icon: "speaker.wave.2",
+                                    label: L10n.t("speaking"),
+                                    color: Color(hex: "3a5a6a")
+                                )
+                                .id("speaking-bubble")
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.92).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
                             }
                         }
                         .padding(.vertical, 16)
@@ -574,15 +605,6 @@ struct ChatView: View {
                     await nova.sendMessage("[Fotka pořízena — popis: \(image.size.width)x\(image.size.height)]")
                 }
             }
-        }
-    }
-
-    private var stateLabel: String {
-        switch nova.state {
-        case .idle: return L10n.t("ready")
-        case .listening: return L10n.t("listening")
-        case .thinking: return L10n.t("thinking")
-        case .speaking: return L10n.t("speaking")
         }
     }
 
@@ -886,6 +908,55 @@ struct CompactStageBar: View {
 }
 
 // MARK: - Styles
+// MARK: - Nova State Bubble (listening / speaking indicator v chatu)
+struct NovaStateBubble: View {
+    let icon: String
+    let label: String
+    let color: Color
+
+    @State private var pulse = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            // Animated icon
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.12))
+                    .frame(width: 22, height: 22)
+                    .scaleEffect(pulse ? 1.15 : 1.0)
+
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(color.opacity(0.8))
+            }
+
+            Text(label)
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.65))
+                .lineLimit(1)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(color.opacity(0.12), lineWidth: 0.5)
+                )
+                .shadow(color: Color(hex: "1a1a2e").opacity(0.04), radius: 8, x: 0, y: 2)
+        )
+        .padding(.horizontal, 20)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+        }
+    }
+}
+
 struct NovaTextFieldStyle: TextFieldStyle {
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration
