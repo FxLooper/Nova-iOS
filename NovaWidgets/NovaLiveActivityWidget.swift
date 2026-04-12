@@ -14,69 +14,57 @@ struct NovaLiveActivityWidget: Widget {
             DynamicIsland {
                 // ── EXPANDED ──
                 DynamicIslandExpandedRegion(.leading) {
-                    OrbMiniView(novaState: context.state.novaState)
-                        .frame(width: 32, height: 32)
+                    Image(systemName: stateIcon(context.state.novaState))
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundColor(stateColor(context.state.novaState))
                         .padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.center) {
                     VStack(spacing: 2) {
                         Text("Nova")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundColor(.white.opacity(0.9))
                         Text(context.state.stageLabel)
                             .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundColor(.white.opacity(0.6))
+                            .foregroundColor(stateColor(context.state.novaState))
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    VoiceWaveView(novaState: context.state.novaState)
-                        .frame(width: 28, height: 20)
+                    Text(context.state.startedAt, style: .timer)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.4))
+                        .monospacedDigit()
                         .padding(.trailing, 4)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack(spacing: 0) {
-                        // Elapsed time
-                        Text(context.state.startedAt, style: .timer)
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.4))
-                            .monospacedDigit()
-
-                        Spacer()
-
-                        // State dot
-                        Circle()
-                            .fill(stateColor(context.state.novaState))
-                            .frame(width: 6, height: 6)
-
-                        Text(context.state.stageLabel)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundColor(.white.opacity(0.8))
-                            .padding(.leading, 6)
+                    HStack(spacing: 8) {
+                        // State bar
+                        ForEach(0..<3, id: \.self) { i in
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(i == stateIndex(context.state.novaState)
+                                    ? stateColor(context.state.novaState)
+                                    : Color.white.opacity(0.1))
+                                .frame(height: 3)
+                        }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 4)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 6)
                 }
             } compactLeading: {
                 // ── COMPACT (pill) ──
-                OrbMiniView(novaState: context.state.novaState)
-                    .frame(width: 18, height: 18)
-                    .padding(.leading, 2)
+                Image(systemName: stateIcon(context.state.novaState))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(stateColor(context.state.novaState))
             } compactTrailing: {
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(stateColor(context.state.novaState))
-                        .frame(width: 5, height: 5)
-                    Text(shortLabel(context.state.novaState))
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundColor(.white.opacity(0.85))
-                }
-                .padding(.trailing, 2)
+                Text(shortLabel(context.state.novaState))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(stateColor(context.state.novaState))
             } minimal: {
-                // ── MINIMAL (jen ikonka) ──
-                OrbMiniView(novaState: context.state.novaState)
-                    .frame(width: 14, height: 14)
+                Image(systemName: stateIcon(context.state.novaState))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(stateColor(context.state.novaState))
             }
-            .keylineTint(Color.white.opacity(0.3))
+            .keylineTint(stateColor(context.state.novaState).opacity(0.5))
         }
     }
 
@@ -85,7 +73,25 @@ struct NovaLiveActivityWidget: Widget {
         case "listening": return .orange
         case "thinking": return .cyan
         case "speaking": return .green
-        default: return .gray
+        default: return .white.opacity(0.5)
+        }
+    }
+
+    private func stateIcon(_ state: String) -> String {
+        switch state {
+        case "listening": return "waveform"
+        case "thinking": return "brain"
+        case "speaking": return "speaker.wave.2.fill"
+        default: return "circle.fill"
+        }
+    }
+
+    private func stateIndex(_ state: String) -> Int {
+        switch state {
+        case "listening": return 0
+        case "thinking": return 1
+        case "speaking": return 2
+        default: return -1
         }
     }
 
@@ -99,111 +105,6 @@ struct NovaLiveActivityWidget: Widget {
     }
 }
 
-// MARK: - Mini Orb for Dynamic Island
-@available(iOS 16.2, *)
-private struct OrbMiniView: View {
-    let novaState: String
-    @State private var rotation: Double = 0
-    @State private var pulse: CGFloat = 1.0
-
-    var body: some View {
-        ZStack {
-            // Outer ring
-            Circle()
-                .trim(from: 0, to: trimAmount)
-                .stroke(
-                    AngularGradient(
-                        colors: [
-                            ringColor.opacity(0.05),
-                            ringColor.opacity(0.9),
-                            ringColor.opacity(0.05),
-                        ],
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
-                )
-                .rotationEffect(.degrees(rotation))
-
-            // Core dot
-            Circle()
-                .fill(ringColor.opacity(0.8))
-                .scaleEffect(pulse * 0.35)
-        }
-        .onAppear {
-            withAnimation(.linear(duration: animationSpeed).repeatForever(autoreverses: false)) {
-                rotation = 360
-            }
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                pulse = 0.85
-            }
-        }
-    }
-
-    private var ringColor: Color {
-        switch novaState {
-        case "listening": return .orange
-        case "thinking": return .cyan
-        case "speaking": return .green
-        default: return .white.opacity(0.5)
-        }
-    }
-
-    private var trimAmount: CGFloat {
-        switch novaState {
-        case "listening": return 0.35
-        case "thinking": return 0.2
-        case "speaking": return 0.5
-        default: return 0.25
-        }
-    }
-
-    private var animationSpeed: Double {
-        switch novaState {
-        case "listening": return 4.0
-        case "thinking": return 1.5
-        case "speaking": return 3.0
-        default: return 6.0
-        }
-    }
-}
-
-// MARK: - Voice Wave Bars
-@available(iOS 16.2, *)
-private struct VoiceWaveView: View {
-    let novaState: String
-    @State private var animate = false
-
-    var body: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<4, id: \.self) { i in
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(barColor.opacity(0.7))
-                    .frame(width: 3, height: animate ? barHeight(i) : 4)
-            }
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-                animate = true
-            }
-        }
-    }
-
-    private var barColor: Color {
-        switch novaState {
-        case "listening": return .orange
-        case "speaking": return .green
-        default: return .white.opacity(0.4)
-        }
-    }
-
-    private func barHeight(_ index: Int) -> CGFloat {
-        let isActive = novaState == "listening" || novaState == "speaking"
-        guard isActive else { return 4 }
-        let heights: [CGFloat] = [8, 14, 10, 16]
-        return heights[index % heights.count]
-    }
-}
-
 // MARK: - Lock Screen View
 @available(iOS 16.2, *)
 private struct LockScreenView: View {
@@ -211,7 +112,9 @@ private struct LockScreenView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            OrbMiniView(novaState: state.novaState)
+            Image(systemName: stateIcon)
+                .font(.system(size: 22, weight: .medium))
+                .foregroundColor(stateColor)
                 .frame(width: 32, height: 32)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -248,6 +151,15 @@ private struct LockScreenView: View {
         case "thinking": return .cyan
         case "speaking": return .green
         default: return .gray
+        }
+    }
+
+    private var stateIcon: String {
+        switch state.novaState {
+        case "listening": return "waveform"
+        case "thinking": return "brain"
+        case "speaking": return "speaker.wave.2.fill"
+        default: return "circle.fill"
         }
     }
 }

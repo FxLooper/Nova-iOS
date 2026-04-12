@@ -441,7 +441,7 @@ struct SettingsView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 aboutRow(label: "Verze", value: appVersionString)
                                 aboutRow(label: "Vývojář", value: "FxLooper")
-                                aboutRow(label: "AI", value: "Claude Sonnet 4.6")
+                                aboutRow(label: "AI", value: "Claude Opus 4.6")
                                 aboutRow(label: "Voice ID", value: "ECAPA-TDNN")
                                 aboutRow(label: "STT", value: sttStatusString)
                                 aboutRow(label: "TTS", value: "Microsoft Edge TTS")
