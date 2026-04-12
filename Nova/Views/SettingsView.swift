@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var showVoiceEnrollment = false
     @State private var voiceVerifyEnforced: Bool
     @State private var showClearHistoryAlert = false
+    @State private var selectedDevProject: String
 
     init() {
         _selectedLang = State(initialValue: UserDefaults.standard.string(forKey: "nova_lang") ?? "cs")
@@ -21,7 +22,14 @@ struct SettingsView: View {
         _userName = State(initialValue: UserDefaults.standard.string(forKey: "nova_user_name") ?? "Ondřej")
         _useWhisper = State(initialValue: UserDefaults.standard.bool(forKey: "nova_use_whisper"))
         _voiceVerifyEnforced = State(initialValue: UserDefaults.standard.bool(forKey: "nova_voice_verify_enforce"))
+        _selectedDevProject = State(initialValue: UserDefaults.standard.string(forKey: "nova_dev_project") ?? "backend")
     }
+
+    static let devProjects: [(key: String, label: String, icon: String)] = [
+        ("backend",  "Nova Backend (Mac)", "server.rack"),
+        ("nova-ios", "Nova iOS app",       "iphone"),
+        ("fxlooper", "FxLooper",           "chart.line.uptrend.xyaxis"),
+    ]
 
     static let languages: [(code: String, name: String, flag: String)] = [
         ("cs", "Čeština", "🇨🇿"),
@@ -353,6 +361,30 @@ struct SettingsView: View {
                             }
                         }
 
+                        // Dev Mode — auto detection info
+                        SettingsSection(title: "Dev mode") {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Nova automaticky pozná na kterém projektu chceš pracovat z kontextu konverzace.")
+                                    .font(.system(size: 12, weight: .light))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+
+                                ForEach(Self.devProjects, id: \.key) { project in
+                                    HStack(spacing: 12) {
+                                        Image(systemName: project.icon)
+                                            .font(.system(size: 14, weight: .light))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                                            .frame(width: 20)
+                                        Text(project.label)
+                                            .font(.system(size: 13, weight: .light))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
+                                        Spacer()
+                                    }
+                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, 14)
+                                }
+                            }
+                        }
+
                         // Memory & History
                         SettingsSection(title: "Paměť") {
                             VStack(alignment: .leading, spacing: 12) {
@@ -535,6 +567,7 @@ struct SettingsView: View {
         UserDefaults.standard.set(userName, forKey: "nova_user_name")
         UserDefaults.standard.set(useWhisper, forKey: "nova_use_whisper")
         UserDefaults.standard.set(voiceVerifyEnforced, forKey: "nova_voice_verify_enforce")
+        UserDefaults.standard.set(selectedDevProject, forKey: "nova_dev_project")
         nova.setUseWhisper(useWhisper)
         nova.voiceVerificationEnforced = voiceVerifyEnforced
 

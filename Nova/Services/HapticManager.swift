@@ -84,6 +84,18 @@ class HapticManager {
         softImpact.impactOccurred(intensity: 0.4)
     }
 
+    /// Nova response arrived — premium 3-tap micro-chord (light → soft → light).
+    /// Feels like fingertips on glass. Subtle but unmistakable.
+    func novaResponseChord() {
+        lightImpact.impactOccurred(intensity: 0.55)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+            self?.softImpact.impactOccurred(intensity: 0.7)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { [weak self] in
+            self?.lightImpact.impactOccurred(intensity: 0.4)
+        }
+    }
+
     /// Confirmation button pressed (Yes/No in dev mode flow).
     func confirmationPressed() {
         rigidImpact.impactOccurred()

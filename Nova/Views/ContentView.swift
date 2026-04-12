@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct ContentView: View {
     @EnvironmentObject var nova: NovaService
@@ -23,7 +24,7 @@ struct SetupView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: "f5f0e8").ignoresSafeArea()
+            NovaBackground()
 
             if step == 0 {
                 welcomeStep
@@ -39,35 +40,17 @@ struct SetupView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            // Animated orb logo
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color(hex: "1a1a2e").opacity(0.15),
-                                Color(hex: "1a1a2e").opacity(0.02)
-                            ],
-                            center: .center,
-                            startRadius: 10,
-                            endRadius: 100
-                        )
-                    )
-                    .frame(width: 200, height: 200)
-                    .scaleEffect(orbScale)
-                    .opacity(orbOpacity)
-
-                Image(systemName: "sparkles")
-                    .font(.system(size: 50, weight: .ultraLight))
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
-                    .opacity(orbOpacity)
-            }
-            .onAppear {
-                withAnimation(.easeOut(duration: 1.5)) {
-                    orbScale = 1.0
-                    orbOpacity = 1.0
+            // Animated orb logo — same orb as in main app
+            OrbView(state: .idle, audioLevel: 0)
+                .frame(width: 200, height: 200)
+                .scaleEffect(orbScale)
+                .opacity(orbOpacity)
+                .onAppear {
+                    withAnimation(.easeOut(duration: 1.5)) {
+                        orbScale = 1.0
+                        orbOpacity = 1.0
+                    }
                 }
-            }
 
             Spacer().frame(height: 40)
 
@@ -211,9 +194,21 @@ struct ChatView: View {
     @State private var showSettings = false
     @FocusState private var isInputFocused: Bool
 
+    // Voice-to-Text Dictation states
+    enum DictationState {
+        case idle       // Normal input bar
+        case dictating  // Recording, live transcript
+        case review     // Stopped, editable text, send button
+    }
+    @State private var dictationState: DictationState = .idle
+    @State private var dictatedText = ""
+    @State private var recordingPulse = false
+    @State private var showCamera = false
+    @State private var showVoiceConversation = false
+
     var body: some View {
         ZStack {
-            Color(hex: "f5f0e8").ignoresSafeArea()
+            NovaBackground()
 
             VStack(spacing: 0) {
                 // Header: nova title above orb + state label
@@ -253,7 +248,7 @@ struct ChatView: View {
                     OrbWebView(state: nova.state.rawValue, audioLevel: 0)
                         .frame(height: 180)
                         .onTapGesture {
-                            nova.toggleConversation()
+                            showVoiceConversation = true
                         }
                         .contextMenu {
                             Button {
@@ -264,13 +259,10 @@ struct ChatView: View {
                                       systemImage: nova.isMuted ? "speaker.wave.2" : "speaker.slash")
                             }
 
-                            if nova.conversationActive {
-                                Button(role: .destructive) {
-                                    nova.endConversation()
-                                    HapticManager.shared.conversationToggle()
-                                } label: {
-                                    Label("Ukončit konverzaci", systemImage: "phone.down")
-                                }
+                            Button {
+                                showVoiceConversation = true
+                            } label: {
+                                Label("Hlasová konverzace", systemImage: "waveform")
                             }
 
                             Button {
@@ -280,9 +272,8 @@ struct ChatView: View {
                             }
                         }
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(nova.conversationActive ? "Zastavit konverzaci s Novou" : "Začít hlasovou konverzaci s Novou")
-                        .accessibilityHint("Klepnutím spustíš nebo zastavíš hlasový režim. Dlouhým podržením otevři menu.")
-                        .accessibilityValue(nova.state.rawValue)
+                        .accessibilityLabel("Začít hlasovou konverzaci s Novou")
+                        .accessibilityHint("Klepnutím otevři hlasový režim. Dlouhým podržením otevři menu.")
                         .accessibilityAddTraits(.isButton)
 
                     // State label pod orbem
@@ -317,7 +308,7 @@ struct ChatView: View {
                     }
                 }
                 .animation(.easeInOut(duration: 0.3), value: nova.lastVerificationFailed)
-                .background(Color(hex: "f5f0e8").opacity(0.95))
+                .background(.ultraThinMaterial)
 
                 Divider().opacity(0.15)
 
@@ -337,8 +328,8 @@ struct ChatView: View {
                                     .id(msg.id)
                             }
 
-                            // Interim speech text
-                            if !nova.interimText.isEmpty {
+                            // Interim speech text (PTT dictation preview)
+                            if !nova.interimText.isEmpty && dictationState == .dictating {
                                 HStack {
                                     Text(nova.interimText)
                                         .font(.system(size: 14, weight: .light))
@@ -357,16 +348,51 @@ struct ChatView: View {
                                 .padding(.horizontal, 20)
                             }
 
-                            // Thinking indicator
-                            if nova.state == .thinking {
-                                HStack {
-                                    ThinkingDots()
-                                    Spacer()
+                            // Streaming AI response — premium live typing
+                            if nova.isStreaming && !nova.streamingText.isEmpty {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    // Streaming text bubble s typing kurzorem
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("Nova")
+                                                .font(.system(size: 11, weight: .medium))
+                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
+
+                                            StreamingTextView(text: nova.streamingText)
+                                                .padding(.horizontal, 16)
+                                                .padding(.vertical, 10)
+                                                .background(Color(hex: "1a1a2e").opacity(0.03))
+                                                .cornerRadius(16)
+                                        }
+                                        Spacer(minLength: 60)
+                                    }
+                                    .padding(.horizontal, 16)
+
+                                    // Kompaktní stage bar pod streaming textem
+                                    if nova.thinkingStage != nil {
+                                        CompactStageBar()
+                                            .transition(.asymmetric(
+                                                insertion: .opacity.combined(with: .move(edge: .top)),
+                                                removal: .opacity
+                                            ))
+                                    }
                                 }
-                                .padding(.horizontal, 20)
+                                .id("streaming-bubble")
+                            }
+
+                            // Thinking bubble — Zen spinner PŘED streamingem (čekáme na první token)
+                            if nova.state == .thinking && !nova.isStreaming {
+                                ThinkingBubbleView()
+                                    .id("thinking-bubble")
+                                    .transition(.asymmetric(
+                                        insertion: .scale(scale: 0.92).combined(with: .opacity),
+                                        removal: .scale(scale: 0.85).combined(with: .opacity)
+                                    ))
                             }
                         }
                         .padding(.vertical, 16)
+                        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: nova.state)
+                        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: nova.thinkingStage)
                     }
                     .onAppear {
                         if let last = nova.messages.last {
@@ -375,79 +401,179 @@ struct ChatView: View {
                     }
                     .onChange(of: nova.messages.count) {
                         if let last = nova.messages.last {
-                            withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
+                                proxy.scrollTo(last.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: nova.state) { _, newState in
+                        if newState == .thinking {
+                            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
+                                proxy.scrollTo("thinking-bubble", anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: nova.streamingText) {
+                        if nova.isStreaming {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
+                                proxy.scrollTo("streaming-bubble", anchor: .bottom)
+                            }
                         }
                     }
                 }
 
                 Divider().opacity(0.15)
 
-                // Input bar
-                HStack(spacing: 12) {
-                    // Voice button (Live Conversation — tap = toggle continuous)
-                    Button(action: {
-                        nova.toggleConversation()
-                    }) {
-                        Image(systemName: nova.conversationActive ? "waveform.circle.fill" : "waveform.circle")
-                            .font(.system(size: 28))
-                            .foregroundColor(
-                                nova.state == .listening ? Color.red.opacity(0.7) :
-                                nova.conversationActive ? Color(hex: "1a1a2e").opacity(0.5) :
-                                Color(hex: "1a1a2e").opacity(0.7)
-                            )
-                    }
-                    .accessibilityLabel(nova.conversationActive ? "Vypnout živou konverzaci" : "Zapnout živou konverzaci")
-                    .accessibilityHint("Continuous voice mode — Nova poslouchá nepřetržitě")
-
-                    // Push-to-Talk button (hold to speak, release to send)
-                    Image(systemName: nova.pushToTalkActive ? "mic.fill" : "mic")
-                        .font(.system(size: 24))
-                        .foregroundColor(
-                            nova.pushToTalkActive ? Color.red.opacity(0.8) :
-                            Color(hex: "1a1a2e").opacity(0.5)
-                        )
-                        .frame(width: 36, height: 36)
-                        .contentShape(Rectangle())
-                        .gesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { _ in
-                                    if !nova.pushToTalkActive {
-                                        nova.startPushToTalk()
+                // ─── Premium Input Bar ──────────────────────────────────
+                VStack(spacing: 0) {
+                    // Dictation live transcript bar (appears above input when dictating)
+                    if dictationState == .dictating && !nova.interimText.isEmpty {
+                        HStack(spacing: 8) {
+                            // Recording pulse indicator
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 8, height: 8)
+                                .opacity(recordingPulse ? 1.0 : 0.3)
+                                .onAppear {
+                                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                                        recordingPulse = true
                                     }
                                 }
-                                .onEnded { _ in
-                                    nova.endPushToTalk()
-                                }
-                        )
-                        .accessibilityLabel("Push to Talk mikrofon")
-                        .accessibilityHint("Drž a mluv. Po uvolnění se zpráva odešle.")
-                        .accessibilityAddTraits(.isButton)
 
-                    TextField(L10n.t("write_nova"), text: $inputText)
-                        .font(.system(size: 15, weight: .light))
-                        .focused($isInputFocused)
-                        .onSubmit { sendText() }
-
-                    Button(action: { sendText() }) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(inputText.isEmpty
-                                ? Color(hex: "1a1a2e").opacity(0.15)
-                                : Color(hex: "1a1a2e").opacity(0.7))
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                Text(nova.interimText)
+                                    .font(.system(size: 14, weight: .light))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .opacity
+                        ))
                     }
-                    .disabled(inputText.isEmpty)
+
+                    // Main input bar — changes based on state
+                    HStack(spacing: 12) {
+                        switch dictationState {
+                        case .idle:
+                            // ── IDLE: [TextField] [Mic 🎙 / Send ▶] ──
+                            // Text input
+                            TextField(L10n.t("write_nova"), text: $inputText)
+                                .font(.system(size: 15, weight: .light))
+                                .focused($isInputFocused)
+                                .onSubmit { sendText() }
+
+                            if inputText.isEmpty {
+                                // Mic button — tap to start dictation (PTT)
+                                Button(action: { startDictation() }) {
+                                    Image(systemName: "mic")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                        .frame(width: 36, height: 36)
+                                }
+                            } else {
+                                // Send button (when text typed)
+                                Button(action: { sendText() }) {
+                                    Image(systemName: "arrow.up.circle.fill")
+                                        .font(.system(size: 28))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                                }
+                            }
+
+                        case .dictating:
+                            // ── DICTATING: [Cancel] [Live text] [Stop] ──
+                            Button(action: { cancelDictation() }) {
+                                Image(systemName: "xmark.circle")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                            }
+
+                            // Live transcript (scrollable, growing)
+                            Text(nova.interimText.isEmpty ? "Mluvte..." : nova.interimText)
+                                .font(.system(size: 15, weight: .light))
+                                .foregroundColor(nova.interimText.isEmpty
+                                    ? Color(hex: "1a1a2e").opacity(0.25)
+                                    : Color(hex: "1a1a2e").opacity(0.7))
+                                .lineLimit(2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            // Stop button (pulsing red)
+                            Button(action: { stopDictation() }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.red.opacity(0.15))
+                                        .frame(width: 36, height: 36)
+                                    Circle()
+                                        .fill(Color.red.opacity(0.8))
+                                        .frame(width: 14, height: 14)
+                                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                                }
+                            }
+
+                        case .review:
+                            // ── REVIEW: [Cancel] [Editable text] [Send ▶] ──
+                            Button(action: { cancelDictation() }) {
+                                Image(systemName: "xmark.circle")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                            }
+
+                            // Editable text field with dictated content
+                            TextField("", text: $dictatedText)
+                                .font(.system(size: 15, weight: .light))
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                                .focused($isInputFocused)
+                                .onSubmit { sendDictatedText() }
+                                .onAppear { isInputFocused = true }
+
+                            // Send button
+                            Button(action: { sendDictatedText() }) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(dictatedText.isEmpty
+                                        ? Color(hex: "1a1a2e").opacity(0.15)
+                                        : Color(hex: "1a1a2e").opacity(0.7))
+                            }
+                            .disabled(dictatedText.isEmpty)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: dictationState)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(Color(hex: "f5f0e8").opacity(0.95))
+                .background(.ultraThinMaterial)
+                .overlay(
+                    Rectangle()
+                        .frame(height: 0.5)
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.08)),
+                    alignment: .top
+                )
             }
         }
         .onAppear {
             nova.connectWebSocket()
         }
+        .fullScreenCover(isPresented: $showVoiceConversation) {
+            VoiceConversationView(isPresented: $showVoiceConversation)
+                .environmentObject(nova)
+        }
         .fullScreenCover(isPresented: $showSettings) {
             SettingsView()
                 .environmentObject(nova)
+        }
+        .sheet(isPresented: $showCamera) {
+            CameraCaptureView { image in
+                showCamera = false
+                guard let image = image else { return }
+                // TODO: Send image to Nova for analysis
+                // For now: save to message context
+                Task {
+                    await nova.sendMessage("[Fotka pořízena — popis: \(image.size.width)x\(image.size.height)]")
+                }
+            }
         }
     }
 
@@ -477,7 +603,8 @@ struct ChatView: View {
 
     private var personalizedGreeting: String {
         let userName = UserDefaults.standard.string(forKey: "nova_user_name") ?? ""
-        let nameSuffix = userName.isEmpty ? "" : ", \(userName)"
+        let vocative = L10n.vocative(userName)
+        let nameSuffix = vocative.isEmpty ? "" : ", \(vocative)"
 
         let hour = Calendar.current.component(.hour, from: Date())
         let timeGreeting: String
@@ -501,10 +628,6 @@ struct ChatView: View {
 
     private var emptyWelcomeView: some View {
         VStack(spacing: 24) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 36, weight: .ultraLight))
-                .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
-
             VStack(spacing: 8) {
                 Text(personalizedGreeting)
                     .font(.system(size: 22, weight: .light))
@@ -587,6 +710,46 @@ struct ChatView: View {
         isInputFocused = false
         Task { await nova.sendMessage(text) }
     }
+
+    // MARK: - Dictation Controls
+
+    private func startDictation() {
+        dictationState = .dictating
+        dictatedText = ""
+        recordingPulse = false
+        HapticManager.shared.pushToTalkStart()
+        nova.startPushToTalk()
+    }
+
+    private func stopDictation() {
+        // Stop recording, keep text for review
+        nova.endPushToTalk()
+        dictatedText = nova.interimText.trimmingCharacters(in: .whitespacesAndNewlines)
+        HapticManager.shared.selectionChanged()
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+            dictationState = .review
+        }
+    }
+
+    private func cancelDictation() {
+        nova.endPushToTalk()
+        dictatedText = ""
+        HapticManager.shared.selectionChanged()
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+            dictationState = .idle
+        }
+    }
+
+    private func sendDictatedText() {
+        let text = dictatedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        dictatedText = ""
+        isInputFocused = false
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+            dictationState = .idle
+        }
+        Task { await nova.sendMessage(text) }
+    }
 }
 
 // MARK: - Message Bubble
@@ -602,28 +765,35 @@ struct MessageBubble: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
 
-                Text(message.content)
-                    .font(.system(size: 15, weight: .light))
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(
-                        message.role == "user"
-                            ? Color(hex: "1a1a2e").opacity(0.06)
-                            : Color(hex: "1a1a2e").opacity(0.03)
-                    )
-                    .cornerRadius(16)
-                    .textSelection(.enabled)
-                    .contextMenu {
-                        Button {
-                            UIPasteboard.general.string = message.content
-                        } label: {
-                            Label("Kopírovat", systemImage: "doc.on.doc")
-                        }
-                        ShareLink(item: message.content) {
-                            Label("Sdílet", systemImage: "square.and.arrow.up")
-                        }
+                // Markdown rendering pro AI, plain text pro user
+                Group {
+                    if message.role != "user", let md = try? AttributedString(markdown: message.content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                        Text(md)
+                    } else {
+                        Text(message.content)
                     }
+                }
+                .font(.system(size: 15, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(
+                    message.role == "user"
+                        ? Color(hex: "1a1a2e").opacity(0.06)
+                        : Color(hex: "1a1a2e").opacity(0.03)
+                )
+                .cornerRadius(16)
+                .textSelection(.enabled)
+                .contextMenu {
+                    Button {
+                        UIPasteboard.general.string = message.content
+                    } label: {
+                        Label("Kopírovat", systemImage: "doc.on.doc")
+                    }
+                    ShareLink(item: message.content) {
+                        Label("Sdílet", systemImage: "square.and.arrow.up")
+                    }
+                }
 
                 Text(timeString)
                     .font(.system(size: 10, weight: .light))
@@ -642,23 +812,77 @@ struct MessageBubble: View {
     }
 }
 
-// MARK: - Thinking Dots
-struct ThinkingDots: View {
-    @State private var dotCount = 0
-    let timer = Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()
+// MARK: - Streaming Text with Typing Cursor
+struct StreamingTextView: View {
+    let text: String
+    @State private var cursorVisible = true
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<3) { i in
-                Circle()
-                    .fill(Color(hex: "1a1a2e").opacity(i < dotCount ? 0.4 : 0.1))
-                    .frame(width: 6, height: 6)
-            }
-        }
-        .onReceive(timer) { _ in
-            dotCount = (dotCount % 3) + 1
+        HStack(alignment: .lastTextBaseline, spacing: 0) {
+            Text(text)
+                .font(.system(size: 15, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                .textSelection(.enabled)
+
+            // Blikající kurzor
+            RoundedRectangle(cornerRadius: 1)
+                .fill(Color(hex: "1a1a2e").opacity(cursorVisible ? 0.5 : 0))
+                .frame(width: 2, height: 16)
+                .padding(.leading, 1)
+                .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: cursorVisible)
+                .onAppear { cursorVisible = false }
         }
     }
+}
+
+// MARK: - Compact Stage Bar (pod streaming bublinou)
+struct CompactStageBar: View {
+    @EnvironmentObject var nova: NovaService
+
+    private var label: String {
+        L10n.stage(nova.thinkingStage?.key, detail: nova.thinkingStage?.detail)
+    }
+
+    private var transitionId: String {
+        "\(nova.thinkingStage?.key ?? "")|\(nova.thinkingStage?.detail ?? "")"
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            // Mini spinner
+            Circle()
+                .trim(from: 0, to: 0.25)
+                .stroke(
+                    Color(hex: "1a1a2e").opacity(0.35),
+                    style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
+                )
+                .frame(width: 12, height: 12)
+                .rotationEffect(.degrees(rotation))
+                .onAppear {
+                    withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                        rotation = 360
+                    }
+                }
+
+            Text(label)
+                .font(.system(size: 12, weight: .regular, design: .rounded))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .id(transitionId)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .leading)),
+                    removal: .opacity
+                ))
+
+            Spacer()
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 4)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: transitionId)
+    }
+
+    @State private var rotation: Double = 0
 }
 
 // MARK: - Styles

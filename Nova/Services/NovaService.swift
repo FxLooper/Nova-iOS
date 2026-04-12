@@ -7,7 +7,14 @@ import Combine
 class NovaService: ObservableObject {
     // MARK: - Published State
     @Published var messages: [Message] = []
-    @Published var state: NovaState = .idle
+    @Published var state: NovaState = .idle {
+        didSet {
+            if state != .thinking && thinkingStage != nil {
+                thinkingStage = nil
+            }
+            updateLiveActivityForState()
+        }
+    }
     @Published var isConnected = false
     @Published var isMuted = false
     @Published var interimText = ""
@@ -46,6 +53,19 @@ class NovaService: ObservableObject {
     let networkMonitor = NetworkMonitor()
     @Published var voiceVerificationEnforced: Bool = UserDefaults.standard.bool(forKey: "nova_voice_verify_enforce")
     @Published var lastVerificationFailed: Bool = false  // UI indicator
+
+    // MARK: - Thinking stage (granular progress shown in chat bubble)
+    struct ThinkingStage: Equatable {
+        let key: String
+        let detail: String?
+    }
+    @Published var thinkingStage: ThinkingStage?
+
+    // MARK: - Streaming chat
+    @Published var streamingText: String = ""
+    @Published var isStreaming: Bool = false
+    private var activeRequestId: String?
+    private var streamCompletion: CheckedContinuation<String, Error>?
 
     // Rolling audio buffer (last 5s) for voice verification
     private var audioRingBuffer: [Float] = []
@@ -142,12 +162,12 @@ class NovaService: ObservableObject {
     func loadMessages() {
         if let data = UserDefaults.standard.data(forKey: messagesKey),
            let saved = try? JSONDecoder().decode([Message].self, from: data) {
-            messages = saved.suffix(100)
+            messages = saved.suffix(200)
         }
     }
 
     func saveMessages() {
-        let recent = Array(messages.suffix(100))
+        let recent = Array(messages.suffix(200))
         if let data = try? JSONEncoder().encode(recent) {
             UserDefaults.standard.set(data, forKey: messagesKey)
         }
@@ -156,9 +176,26 @@ class NovaService: ObservableObject {
     func clearMessages() {
         messages.removeAll()
         UserDefaults.standard.removeObject(forKey: messagesKey)
+        // Reset server sessions (chat + dev) — Nova začne s čistou hlavou
+        Task {
+            if let url = URL(string: "\(serverURL)/api/chat/reset") {
+                var req = URLRequest(url: url)
+                req.httpMethod = "POST"
+                req.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+                try? await URLSession.shared.data(for: req)
+            }
+            if let url = URL(string: "\(serverURL)/api/dev/reset") {
+                var req = URLRequest(url: url)
+                req.httpMethod = "POST"
+                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                req.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+                req.httpBody = try? JSONSerialization.data(withJSONObject: [:])
+                try? await URLSession.shared.data(for: req)
+            }
+        }
     }
 
-    // MARK: - API Communication
+    // MARK: - API Communication (streaming přes WebSocket)
     func sendMessage(_ text: String) async {
         guard !text.isEmpty else { return }
 
@@ -166,10 +203,12 @@ class NovaService: ObservableObject {
         messages.append(userMsg)
         saveMessages()
         state = .thinking
+        streamingText = ""
+        isStreaming = false
 
         do {
             let payload: [String: Any] = [
-                "messages": messages.suffix(20).map { ["role": $0.role == "user" ? "user" : "assistant", "content": $0.content] },
+                "messages": messages.suffix(50).map { ["role": $0.role == "user" ? "user" : "assistant", "content": $0.content] },
                 "profile": profile.isEmpty ? ["lang": "cs", "name": "Ondřej", "city": "Plzeň", "agentName": "Nova"] : profile
             ]
             let jsonData = try JSONSerialization.data(withJSONObject: payload)
@@ -186,17 +225,26 @@ class NovaService: ObservableObject {
                 throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Server error"])
             }
 
-            let chatResponse = try JSONDecoder().decode(ChatResponse.self, from: data)
-            let reply = chatResponse.content ?? "Omlouvám se, něco se pokazilo."
+            // Server vrátí { streaming: true, requestId: "..." }
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let requestId = json["requestId"] as? String {
+                activeRequestId = requestId
+            }
+
+            // Čekej na stream-end přes WebSocket (tokeny mezitím tečou do streamingText)
+            let reply: String = try await withCheckedThrowingContinuation { continuation in
+                self.streamCompletion = continuation
+            }
+
+            // Stream dokončen — finalizuj zprávu
+            isStreaming = false
+            streamingText = ""
+            activeRequestId = nil
 
             let aiMsg = Message(role: "ai", content: reply)
             messages.append(aiMsg)
             saveMessages()
-
-            // Handle action if present
-            if let action = chatResponse.action {
-                await handleAction(action)
-            }
+            HapticManager.shared.novaResponseChord()
 
             // TTS
             state = .speaking
@@ -205,10 +253,13 @@ class NovaService: ObservableObject {
             // Debounce po TTS — nech mikrofon "odechnout" od echa
             try? await Task.sleep(nanoseconds: 500_000_000)
 
-            // Po odpovědi → pokračuj v konverzaci (state guard drží .speaking → .listening)
+            // Po odpovědi → pokračuj v konverzaci
             continueConversation()
 
         } catch {
+            isStreaming = false
+            streamingText = ""
+            activeRequestId = nil
             let errorMsg = Message(role: "ai", content: "Chyba: \(error.localizedDescription)")
             messages.append(errorMsg)
             saveMessages()
@@ -278,6 +329,10 @@ class NovaService: ObservableObject {
         if useWhisper && whisperState == .ready {
             startWhisperListening()
         } else {
+            // Live konverzace: auto-load Whisper pro auto-detect jazyka
+            if !useWhisper {
+                setUseWhisper(true)
+            }
             startDictation()
         }
     }
@@ -303,10 +358,10 @@ class NovaService: ObservableObject {
         HapticManager.shared.pushToTalkEnd()
         pushToTalkActive = false
 
-        // Zastav SR a pošli to co už máme
+        // Zachovej interimText pro review v UI (dictation mode)
         let text = currentUtterance.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Stop everything
+        // Stop recognition
         analyzerTask?.cancel()
         analyzerTask = nil
         analyzer = nil
@@ -317,15 +372,17 @@ class NovaService: ObservableObject {
         audioEngine.inputNode.removeTap(onBus: 0)
 
         currentUtterance = ""
-        interimText = ""
+        // interimText zůstává — UI ho přečte pro dictation review
+        // Pokud se nepoužívá dictation mode, vyčistí ho volající
 
-        if !text.isEmpty {
-            print("[ptt] sending: \(text)")
-            state = .thinking
-            Task { await sendMessage(text) }
-        } else {
+        if text.isEmpty {
             print("[ptt] no text captured")
+            interimText = ""
             state = .idle
+        } else {
+            print("[ptt] captured: \(text)")
+            interimText = text  // Uchovej pro review
+            state = .idle  // UI rozhodne co dál
         }
     }
 
@@ -365,7 +422,10 @@ class NovaService: ObservableObject {
                 self.interimText = text
                 if isFinal {
                     print("[whisper] final (\(language ?? "?")): \(text)")
-                    await self.handleUtteranceEnd()
+                    // V PTT módu NEPOSÍLEJ automaticky — text zůstane pro review
+                    if !self.pushToTalkActive {
+                        await self.handleUtteranceEnd()
+                    }
                 }
             }
         }
@@ -763,6 +823,58 @@ class NovaService: ObservableObject {
             if let s = json["state"] as? String {
                 state = NovaState(rawValue: s) ?? .idle
             }
+        case "stage":
+            if let key = json["key"] as? String {
+                let detail = json["detail"] as? String
+                let newStage = ThinkingStage(key: key, detail: detail)
+                if thinkingStage != newStage {
+                    thinkingStage = newStage
+                    HapticManager.shared.selectionChanged()
+                    pushLiveActivityStage(key: key, detail: detail)
+                }
+            } else {
+                thinkingStage = nil
+            }
+        case "stream-start":
+            if let rid = json["requestId"] as? String, rid == activeRequestId {
+                isStreaming = true
+                streamingText = ""
+                state = .thinking
+            }
+        case "stream-token":
+            if let rid = json["requestId"] as? String, rid == activeRequestId,
+               let token = json["token"] as? String {
+                streamingText += token
+                // Po prvním tokenu přepneme stav — už máme text
+                if !isStreaming { isStreaming = true }
+            }
+        case "stream-end":
+            if let rid = json["requestId"] as? String, rid == activeRequestId,
+               let text = json["text"] as? String {
+                streamCompletion?.resume(returning: text)
+                streamCompletion = nil
+            }
+        case "stream-replace":
+            // Server detekoval JSON akci — nahraď ošklivý JSON čistým textem
+            if let rid = json["requestId"] as? String, rid == activeRequestId,
+               let cleanText = json["text"] as? String {
+                streamingText = cleanText
+            }
+        case "stream-error":
+            if let rid = json["requestId"] as? String, rid == activeRequestId {
+                let errorText = json["error"] as? String ?? "Stream error"
+                streamCompletion?.resume(throwing: NSError(domain: "nova.stream", code: -1, userInfo: [NSLocalizedDescriptionKey: errorText]))
+                streamCompletion = nil
+            }
+        case "stream-action":
+            if let rid = json["requestId"] as? String, rid == activeRequestId,
+               let actionData = json["action"] {
+                // Akce přijde po stream-end, zpracuje se v sendMessage flow
+                if let actionJson = try? JSONSerialization.data(withJSONObject: actionData),
+                   let action = try? JSONDecoder().decode(ActionResponse.self, from: actionJson) {
+                    Task { await handleAction(action) }
+                }
+            }
         default: break
         }
     }
@@ -771,15 +883,16 @@ class NovaService: ObservableObject {
     private func executeDevAction(_ action: ActionResponse) async {
         do {
             let task = action.params?["task"]?.value as? String ?? ""
-            let devMessages = messages.suffix(10).map { ["role": $0.role == "user" ? "user" : "assistant", "content": $0.content] } + [["role": "user", "content": task]]
+            let devMessages = messages.suffix(50).map { ["role": $0.role == "user" ? "user" : "assistant", "content": $0.content] } + [["role": "user", "content": task]]
 
             // Step 1: Plan
             var planRequest = URLRequest(url: URL(string: "\(serverURL)/api/dev/plan")!)
             planRequest.httpMethod = "POST"
             planRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
             planRequest.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+            // Auto-detection: server sám pozná projekt z kontextu zpráv
             planRequest.httpBody = try JSONSerialization.data(withJSONObject: ["messages": devMessages])
-            planRequest.timeoutInterval = 120
+            planRequest.timeoutInterval = 600
 
             let (planData, _) = try await URLSession.shared.data(for: planRequest)
             let planJson = try JSONSerialization.jsonObject(with: planData) as? [String: Any]
@@ -835,8 +948,9 @@ class NovaService: ObservableObject {
             execRequest.httpMethod = "POST"
             execRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
             execRequest.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+            // Auto-detection: server sám pozná projekt z kontextu zpráv
             execRequest.httpBody = try JSONSerialization.data(withJSONObject: ["messages": devMsgs])
-            execRequest.timeoutInterval = 120
+            execRequest.timeoutInterval = 600
 
             let (execData, _) = try await URLSession.shared.data(for: execRequest)
             let execJson = try JSONSerialization.jsonObject(with: execData) as? [String: Any]
@@ -934,5 +1048,40 @@ class NovaService: ObservableObject {
             saveMessages()
         }
         state = .idle
+    }
+
+    // MARK: - Live Activity (Dynamic Island)
+    private func updateLiveActivityForState() {
+        if #available(iOS 16.2, *) {
+            switch state {
+            case .thinking:
+                let key = thinkingStage?.key ?? "thinking"
+                let detail = thinkingStage?.detail
+                LiveActivityManager.shared.start(
+                    stageKey: key,
+                    stageDetail: detail,
+                    label: L10n.stage(key, detail: detail)
+                )
+            case .idle:
+                LiveActivityManager.shared.end()
+            case .listening, .speaking:
+                let key = state.rawValue
+                LiveActivityManager.shared.update(
+                    stageKey: key,
+                    stageDetail: nil,
+                    label: L10n.stage(key, detail: nil)
+                )
+            }
+        }
+    }
+
+    private func pushLiveActivityStage(key: String, detail: String?) {
+        if #available(iOS 16.2, *) {
+            LiveActivityManager.shared.update(
+                stageKey: key,
+                stageDetail: detail,
+                label: L10n.stage(key, detail: detail)
+            )
+        }
     }
 }
