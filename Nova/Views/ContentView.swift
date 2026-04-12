@@ -329,8 +329,11 @@ struct ChatView: View {
                             }
 
                             ForEach(nova.messages) { msg in
-                                MessageBubble(message: msg)
-                                    .id(msg.id)
+                                MessageBubble(
+                                    message: msg,
+                                    isLatest: msg.id == nova.messages.last?.id
+                                )
+                                .id(msg.id)
                             }
 
                             // Interim speech text (PTT dictation preview)
@@ -353,34 +356,33 @@ struct ChatView: View {
                                 .padding(.horizontal, 20)
                             }
 
-                            // Streaming AI response — premium live typing
+                            // Streaming AI response — typewriter
                             if nova.isStreaming && !nova.streamingText.isEmpty {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    // Streaming text bubble s typing kurzorem
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("Nova")
-                                                .font(.system(size: 11, weight: .medium))
-                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
-
-                                            StreamingTextView(text: nova.streamingText)
-                                                .padding(.horizontal, 16)
-                                                .padding(.vertical, 10)
-                                                .background(Color(hex: "1a1a2e").opacity(0.03))
-                                                .cornerRadius(16)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack(spacing: 6) {
+                                        Text("Nova")
+                                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.35))
+                                        if nova.thinkingStage != nil {
+                                            CompactStageBar()
                                         }
-                                        Spacer(minLength: 60)
                                     }
-                                    .padding(.horizontal, 16)
+                                    .padding(.horizontal, 14)
 
-                                    // Kompaktní stage bar pod streaming textem
-                                    if nova.thinkingStage != nil {
-                                        CompactStageBar()
-                                            .transition(.asymmetric(
-                                                insertion: .opacity.combined(with: .move(edge: .top)),
-                                                removal: .opacity
-                                            ))
+                                    HStack {
+                                        StreamingTextView(text: nova.streamingText)
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 10)
+                                            .background(Color(hex: "f0ece4").opacity(0.6))
+                                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                    .stroke(Color(hex: "1a1a2e").opacity(0.04), lineWidth: 0.5)
+                                            )
+                                            .shadow(color: Color(hex: "1a1a2e").opacity(0.03), radius: 6, x: 0, y: 2)
+                                        Spacer(minLength: 48)
                                     }
+                                    .padding(.horizontal, 14)
                                 }
                                 .id("streaming-bubble")
                             }
@@ -774,37 +776,61 @@ struct ChatView: View {
     }
 }
 
-// MARK: - Message Bubble
+// MARK: - Message Bubble (Modern 2026)
 struct MessageBubble: View {
     let message: Message
+    let isLatest: Bool
+
+    init(message: Message, isLatest: Bool = false) {
+        self.message = message
+        self.isLatest = isLatest
+    }
+
+    @State private var appeared = false
+
+    private var isUser: Bool { message.role == "user" }
 
     var body: some View {
-        HStack {
-            if message.role == "user" { Spacer(minLength: 60) }
+        HStack(alignment: .bottom, spacing: 0) {
+            if isUser { Spacer(minLength: 48) }
 
-            VStack(alignment: message.role == "user" ? .trailing : .leading, spacing: 4) {
-                Text(message.role == "user" ? L10n.t("you") : "Nova")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
+            VStack(alignment: isUser ? .trailing : .leading, spacing: 3) {
+                // Sender + time inline
+                HStack(spacing: 6) {
+                    if !isUser {
+                        Text("Nova")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.35))
+                    }
+                    Text(timeString)
+                        .font(.system(size: 10, weight: .light, design: .monospaced))
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.18))
+                    if isUser {
+                        Text(L10n.t("you"))
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.35))
+                    }
+                }
 
-                // Markdown rendering pro AI, plain text pro user
+                // Bubble
                 Group {
-                    if message.role != "user", let md = try? AttributedString(markdown: message.content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                    if !isUser, let md = try? AttributedString(markdown: message.content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
                         Text(md)
                     } else {
                         Text(message.content)
                     }
                 }
                 .font(.system(size: 15, weight: .light))
-                .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-                .padding(.horizontal, 16)
+                .foregroundColor(Color(hex: "1a1a2e").opacity(isUser ? 0.85 : 0.75))
+                .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(
-                    message.role == "user"
-                        ? Color(hex: "1a1a2e").opacity(0.06)
-                        : Color(hex: "1a1a2e").opacity(0.03)
+                .background(bubbleBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color(hex: "1a1a2e").opacity(isUser ? 0.0 : 0.04), lineWidth: 0.5)
                 )
-                .cornerRadius(16)
+                .shadow(color: Color(hex: "1a1a2e").opacity(0.03), radius: 6, x: 0, y: 2)
                 .textSelection(.enabled)
                 .contextMenu {
                     Button {
@@ -816,15 +842,34 @@ struct MessageBubble: View {
                         Label("Sdílet", systemImage: "square.and.arrow.up")
                     }
                 }
-
-                Text(timeString)
-                    .font(.system(size: 10, weight: .light))
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.2))
             }
 
-            if message.role != "user" { Spacer(minLength: 60) }
+            if !isUser { Spacer(minLength: 48) }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 14)
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 12)
+        .onAppear {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                appeared = true
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var bubbleBackground: some View {
+        if isUser {
+            LinearGradient(
+                colors: [
+                    Color(hex: "1a1a2e").opacity(0.07),
+                    Color(hex: "1a1a2e").opacity(0.04)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            Color(hex: "f0ece4").opacity(0.6)
+        }
     }
 
     private var timeString: String {
@@ -834,25 +879,60 @@ struct MessageBubble: View {
     }
 }
 
-// MARK: - Streaming Text with Typing Cursor
+// MARK: - Streaming Text with Typewriter Effect
 struct StreamingTextView: View {
     let text: String
+    @State private var displayedCount: Int = 0
     @State private var cursorVisible = true
+    @State private var prevText = ""
 
     var body: some View {
         HStack(alignment: .lastTextBaseline, spacing: 0) {
-            Text(text)
-                .font(.system(size: 15, weight: .light))
-                .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-                .textSelection(.enabled)
+            // Typewriter: zobraz jen displayedCount znaků
+            let shown = String(text.prefix(displayedCount))
+            if let md = try? AttributedString(markdown: shown, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                Text(md)
+                    .font(.system(size: 15, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.75))
+                    .textSelection(.enabled)
+            } else {
+                Text(shown)
+                    .font(.system(size: 15, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.75))
+                    .textSelection(.enabled)
+            }
 
             // Blikající kurzor
             RoundedRectangle(cornerRadius: 1)
-                .fill(Color(hex: "1a1a2e").opacity(cursorVisible ? 0.5 : 0))
-                .frame(width: 2, height: 16)
+                .fill(Color(hex: "1a1a2e").opacity(cursorVisible ? 0.45 : 0))
+                .frame(width: 2, height: 15)
                 .padding(.leading, 1)
                 .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: cursorVisible)
                 .onAppear { cursorVisible = false }
+        }
+        .onChange(of: text) { _, newText in
+            typewriterCatchUp(to: newText)
+        }
+        .onAppear {
+            displayedCount = 0
+            typewriterCatchUp(to: text)
+        }
+    }
+
+    private func typewriterCatchUp(to newText: String) {
+        // Nové znaky od posledního stavu
+        let target = newText.count
+        guard target > displayedCount else { return }
+
+        // Rychlost: 15ms na znak (rychlé, plynulé)
+        let start = displayedCount
+        for i in start..<target {
+            let delay = Double(i - start) * 0.015
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                if displayedCount <= i {
+                    displayedCount = i + 1
+                }
+            }
         }
     }
 }

@@ -83,55 +83,44 @@ class WhisperService: ObservableObject {
         state = .loading
         loadProgress = 0.0
 
-        // Device-aware model selection: použij recommended, nebo force size
-        let modelName: String
+        // Model selection s fallback chain
+        let modelsToTry: [String]
         if let size = size {
-            modelName = size.rawValue
+            modelsToTry = [size.rawValue]
         } else {
             let recommended = WhisperKit.recommendedModels()
-            modelName = recommended.default
-            print("[whisper] device recommends: \(modelName)")
+            let rec = recommended.default
+            print("[whisper] device recommends: \(rec)")
+            // Fallback chain: recommended → base → tiny
+            modelsToTry = [rec, ModelSize.base.rawValue, ModelSize.tiny.rawValue]
+                .reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
         }
 
-        print("[whisper] loading model: \(modelName)")
-
-        do {
-            // Fáze 1: Stažení modelu s progress callback
-            print("[whisper] downloading model from HuggingFace...")
-            let modelFolder = try await WhisperKit.download(
-                variant: modelName,
-                progressCallback: { [weak self] progress in
-                    Task { @MainActor in
-                        self?.loadProgress = progress.fractionCompleted
-                        if Int(progress.fractionCompleted * 100) % 10 == 0 {
-                            print("[whisper] download progress: \(Int(progress.fractionCompleted * 100))%")
-                        }
-                    }
-                }
-            )
-            print("[whisper] model downloaded to: \(modelFolder.path)")
-
-            await MainActor.run { self.loadProgress = 1.0 }
-
-            // Fáze 2: Načtení modelu (prewarm Neural Engine)
-            print("[whisper] loading model into memory (this may take 30-60s on first run)...")
-            let config = WhisperKitConfig(
-                model: modelName,
-                modelFolder: modelFolder.path,
-                verbose: false,
-                logLevel: .error,
-                prewarm: true,
-                load: true,
-                download: false  // Už máme stažené
-            )
-
-            whisperKit = try await WhisperKit(config)
-            state = .ready
-            print("[whisper] ✅ model ready: \(modelName)")
-        } catch {
-            print("[whisper] model load error: \(error)")
-            state = .error("Načtení modelu selhalo: \(error.localizedDescription)")
+        for modelName in modelsToTry {
+            print("[whisper] trying model: \(modelName)")
+            do {
+                whisperKit = try await WhisperKit(
+                    WhisperKitConfig(
+                        model: modelName,
+                        verbose: false,
+                        logLevel: .error,
+                        prewarm: true,
+                        load: true,
+                        download: true
+                    )
+                )
+                await MainActor.run { self.loadProgress = 1.0 }
+                state = .ready
+                print("[whisper] model ready: \(modelName)")
+                return
+            } catch {
+                print("[whisper] model \(modelName) failed: \(error.localizedDescription)")
+                continue
+            }
         }
+
+        state = .error("Whisper nelze načíst")
+        print("[whisper] all models failed")
     }
 
     // MARK: - Listening control
