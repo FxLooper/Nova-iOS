@@ -8,3 +8,4 @@ tools/speaker-verification/__pycache__/
 build/
 *.xcarchive
 *.ipa
+AuthKey_*.p8
