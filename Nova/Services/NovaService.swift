@@ -66,6 +66,7 @@ class NovaService: ObservableObject {
     // MARK: - Streaming chat
     @Published var streamingText: String = ""
     @Published var isStreaming: Bool = false
+    private var streamReplacedText: String? = nil  // Clean speech text z stream-replace
     private var activeRequestId: String?
     private var streamCompletion: CheckedContinuation<String, Error>?
 
@@ -207,6 +208,7 @@ class NovaService: ObservableObject {
         state = .thinking
         streamingText = ""
         isStreaming = false
+        streamReplacedText = nil
 
         do {
             let payload: [String: Any] = [
@@ -243,14 +245,18 @@ class NovaService: ObservableObject {
             streamingText = ""
             activeRequestId = nil
 
-            let aiMsg = Message(role: "ai", content: reply)
+            // Pokud server nahradil JSON za čistý speech, použij ten
+            let displayText = streamReplacedText ?? reply
+            streamReplacedText = nil
+
+            let aiMsg = Message(role: "ai", content: displayText)
             messages.append(aiMsg)
             saveMessages()
             HapticManager.shared.novaResponseChord()
 
-            // TTS
+            // TTS — přečte speech text, ne raw JSON
             state = .speaking
-            await playTTS(reply)
+            await playTTS(displayText)
 
             // Debounce po TTS — nech mikrofon "odechnout" od echa
             try? await Task.sleep(nanoseconds: 500_000_000)
@@ -905,6 +911,7 @@ class NovaService: ObservableObject {
             if let rid = json["requestId"] as? String, rid == activeRequestId,
                let cleanText = json["text"] as? String {
                 streamingText = cleanText
+                streamReplacedText = cleanText  // Pro TTS — přečte speech, ne JSON
             }
         case "stream-error":
             if let rid = json["requestId"] as? String, rid == activeRequestId {
