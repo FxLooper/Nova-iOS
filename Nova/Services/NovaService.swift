@@ -865,13 +865,9 @@ class NovaService: ObservableObject {
             return
         }
 
-        // Pass auth token via request header
-        var request = URLRequest(url: url)
-        request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
-
         let session = URLSession(configuration: .default)
         wsSession = session
-        webSocket = session.webSocketTask(with: request)
+        webSocket = session.webSocketTask(with: url)
         webSocket?.resume()
         isReconnecting = false
         // isConnected set to true after first successful receive
@@ -898,12 +894,15 @@ class NovaService: ObservableObject {
                 Task { @MainActor in
                     self?.receiveWebSocket()
                 }
-            case .failure:
+            case .failure(let error):
                 Task { @MainActor in
                     self?.isConnected = false
-                    // Resume any pending stream continuation on disconnect
-                    self?.streamCompletion?.resume(throwing: NSError(domain: "nova.ws", code: -1, userInfo: [NSLocalizedDescriptionKey: "WebSocket disconnected"]))
-                    self?.streamCompletion = nil
+                    print("[ws] receive failed: \(error.localizedDescription)")
+                    // Resume pending stream continuation only if one exists (user was waiting for response)
+                    if let completion = self?.streamCompletion {
+                        completion.resume(throwing: NSError(domain: "nova.ws", code: -1, userInfo: [NSLocalizedDescriptionKey: "Spojení se serverem se přerušilo"]))
+                        self?.streamCompletion = nil
+                    }
                     try? await Task.sleep(nanoseconds: 3_000_000_000)
                     self?.connectWebSocket()
                 }
