@@ -32,6 +32,10 @@ class ServerHealthMonitor: ObservableObject {
     private var monitorTask: Task<Void, Never>?
     private var consecutiveFailures: Int = 0
 
+    deinit {
+        monitorTask?.cancel()
+    }
+
     // Adaptive ping interval (1s on success, exponential backoff on failure)
     private var pingInterval: TimeInterval {
         switch consecutiveFailures {

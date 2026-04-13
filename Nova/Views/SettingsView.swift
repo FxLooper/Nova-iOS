@@ -587,7 +587,7 @@ struct SettingsView: View {
         formatter.dateFormat = "HH:mm dd.MM.yyyy"
 
         for msg in nova.messages {
-            let role = msg.role == "user" ? "Ondřej" : "Nova"
+            let role = msg.role == "user" ? userName : "Nova"
             let time = formatter.string(from: msg.timestamp)
             lines.append("**\(role)** _\(time)_")
             lines.append(msg.content)

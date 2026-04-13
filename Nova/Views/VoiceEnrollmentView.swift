@@ -74,6 +74,13 @@ struct VoiceEnrollmentView: View {
                 Spacer()
             }
         }
+        .onAppear {
+            recorder.onAutoStop = { url in
+                Task {
+                    await voiceProfile.addEnrollmentSample(url)
+                }
+            }
+        }
     }
 
     // MARK: - Intro (not enrolled)
@@ -296,6 +303,9 @@ class VoiceRecorder: NSObject, ObservableObject {
     @Published var currentDuration: TimeInterval = 0
     @Published var audioLevel: Float = 0
 
+    /// Called when recording auto-stops at max duration, with the recorded file URL
+    var onAutoStop: ((URL) -> Void)?
+
     private var audioRecorder: AVAudioRecorder?
     private var timer: Timer?
     private var currentURL: URL?
@@ -333,7 +343,9 @@ class VoiceRecorder: NSObject, ObservableObject {
                 self.audioLevel = max(0, min(1, (avgPower + 60) / 60))
 
                 if self.currentDuration >= self.maxDuration {
-                    _ = self.stopRecording()
+                    if let url = self.stopRecording() {
+                        self.onAutoStop?(url)
+                    }
                 }
             }
         }

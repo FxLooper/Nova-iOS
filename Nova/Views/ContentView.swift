@@ -270,6 +270,7 @@ struct ChatView: View {
                                     .background(Color(hex: "1a1a2e").opacity(0.04))
                                     .clipShape(Capsule())
                                 }
+                                .disabled(nova.isStreaming || nova.state == .thinking)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -652,6 +653,7 @@ struct ChatView: View {
     }
 
     private func sendText() {
+        guard !nova.isStreaming && nova.state != .thinking else { return }
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         inputText = ""
@@ -815,10 +817,14 @@ struct MessageBubble: View {
         }
     }
 
-    private var timeString: String {
+    private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "HH:mm"
-        return f.string(from: message.timestamp)
+        return f
+    }()
+
+    private var timeString: String {
+        Self.timeFormatter.string(from: message.timestamp)
     }
 
     /// For AI messages: if content is raw JSON with "speech" key, extract the speech text
@@ -875,19 +881,18 @@ struct StreamingTextView: View {
         }
     }
 
+    @State private var typewriterTask: Task<Void, Never>?
+
     private func typewriterCatchUp(to newText: String) {
-        // Nové znaky od posledního stavu
         let target = newText.count
         guard target > displayedCount else { return }
 
-        // Rychlost: 15ms na znak (rychlé, plynulé)
-        let start = displayedCount
-        for i in start..<target {
-            let delay = Double(i - start) * 0.035
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                if displayedCount <= i {
-                    displayedCount = i + 1
-                }
+        // Cancel previous typewriter animation
+        typewriterTask?.cancel()
+        typewriterTask = Task { @MainActor in
+            while displayedCount < target && !Task.isCancelled {
+                displayedCount += 1
+                try? await Task.sleep(nanoseconds: 35_000_000) // 35ms per char
             }
         }
     }

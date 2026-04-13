@@ -18,7 +18,8 @@ struct OrbWebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        webView.evaluateJavaScript("setOrbState('\(state)', \(audioLevel))") { _, _ in }
+        let safeState = state.replacingOccurrences(of: "'", with: "\\'")
+        webView.evaluateJavaScript("setOrbState('\(safeState)', \(audioLevel))") { _, _ in }
     }
 
     private var orbHTML: String {
@@ -33,6 +34,7 @@ struct OrbWebView: UIViewRepresentable {
         </style>
         </head><body>
         <canvas id="c"></canvas>
+        <!-- TODO: Bundle three.min.js locally for offline support (add to Xcode project Resources) -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
         <script>
         const canvas = document.getElementById('c');

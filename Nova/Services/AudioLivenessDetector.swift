@@ -34,7 +34,6 @@ struct LivenessResult {
     let rmsCV: Float  // coefficient of variation
 }
 
-@MainActor
 class AudioLivenessDetector {
 
     // Thresholds (kalibrované empiricky)

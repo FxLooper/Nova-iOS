@@ -58,6 +58,7 @@ class NetworkMonitor: ObservableObject {
 
     private func handlePathUpdate(_ path: NWPath) {
         let wasConnected = isConnected
+        let oldType = connectionType
         let nowConnected = path.status == .satisfied
 
         isConnected = nowConnected
@@ -81,8 +82,8 @@ class NetworkMonitor: ObservableObject {
 
         print("[network] status=\(nowConnected ? "ONLINE" : "OFFLINE") type=\(connectionType) expensive=\(isExpensive)")
 
-        // Notify callback if status flipped
-        if wasConnected != nowConnected {
+        // Notify callback if status flipped OR connection type changed (e.g. WiFi → Cellular)
+        if wasConnected != nowConnected || (nowConnected && oldType != connectionType) {
             onConnectionChange?(nowConnected)
         }
     }

@@ -76,7 +76,53 @@ class WhisperService: ObservableObject {
 
     // MARK: - Init
 
-    init() {}
+    private var interruptionObserver: NSObjectProtocol?
+
+    init() {
+        setupInterruptionHandling()
+    }
+
+    deinit {
+        if let observer = interruptionObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    private func setupInterruptionHandling() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                self?.handleAudioInterruption(notification)
+            }
+        }
+    }
+
+    private func handleAudioInterruption(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+        switch type {
+        case .began:
+            print("[whisper] audio interrupted (phone call, Siri, etc.)")
+            if case .listening = state {
+                stopListening()
+            }
+        case .ended:
+            let shouldResume = (info[AVAudioSessionInterruptionOptionKey] as? UInt)
+                .flatMap { AVAudioSession.InterruptionOptions(rawValue: $0) }
+                .map { $0.contains(.shouldResume) } ?? false
+            print("[whisper] interruption ended, shouldResume: \(shouldResume)")
+            if shouldResume && state == .ready {
+                try? startListening()
+            }
+        @unknown default:
+            break
+        }
+    }
 
     // MARK: - Model loading
 
@@ -203,7 +249,9 @@ class WhisperService: ObservableObject {
 
     // MARK: - Audio processing
 
-    private func handleAudioBuffer(_ buffer: AVAudioPCMBuffer, converter: AVAudioConverter, targetFormat: AVAudioFormat) {
+    /// Audio buffer processing — called from audio tap (real-time thread).
+    /// Extracted as nonisolated to avoid @MainActor violation on audio render thread.
+    nonisolated private func handleAudioBuffer(_ buffer: AVAudioPCMBuffer, converter: AVAudioConverter, targetFormat: AVAudioFormat) {
         // Konverze na 16kHz mono Float32
         let frameRatio = targetFormat.sampleRate / buffer.format.sampleRate
         let convertedFrameCount = AVAudioFrameCount(Double(buffer.frameLength) * frameRatio)
@@ -215,21 +263,26 @@ class WhisperService: ObservableObject {
             return buffer
         }
 
+        if let error = error {
+            print("[whisper] audio conversion error: \(error)")
+        }
         guard error == nil, let channelData = convertedBuffer.floatChannelData?[0] else { return }
         let frameLength = Int(convertedBuffer.frameLength)
         let samples = Array(UnsafeBufferPointer(start: channelData, count: frameLength))
 
-        // Voice ID ring buffer — export raw 16kHz samples
-        self.onRawAudio?(samples)
+        // Voice ID ring buffer — export raw 16kHz samples (nonisolated safe)
+        let rawAudioCallback = self.onRawAudio
+        rawAudioCallback?(samples)
 
         // Voice Activity Detection — RMS amplitude
-        let rms = computeRMS(samples)
-        let isVoice = rms > vadThreshold
+        let rms = Self.computeRMS(samples)
+        let threshold = self.vadThreshold
 
-        Task { @MainActor in
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
             self.audioBuffer.append(contentsOf: samples)
 
-            if isVoice {
+            if rms > threshold {
                 self.lastVoiceTime = Date()
             }
 
@@ -241,7 +294,7 @@ class WhisperService: ObservableObject {
         }
     }
 
-    private func computeRMS(_ samples: [Float]) -> Float {
+    nonisolated private static func computeRMS(_ samples: [Float]) -> Float {
         guard !samples.isEmpty else { return 0 }
         let sumSquares = samples.reduce(0) { $0 + $1 * $1 }
         return sqrt(sumSquares / Float(samples.count))

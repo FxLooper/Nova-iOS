@@ -217,7 +217,10 @@ class NovaService: ObservableObject {
             ]
             let jsonData = try JSONSerialization.data(withJSONObject: payload)
 
-            var request = URLRequest(url: URL(string: "\(serverURL)/api/chat")!)
+            guard let chatURL = URL(string: "\(serverURL)/api/chat") else {
+                throw NSError(domain: "nova", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid server URL"])
+            }
+            var request = URLRequest(url: chatURL)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
@@ -236,6 +239,9 @@ class NovaService: ObservableObject {
             }
 
             // Čekej na stream-end přes WebSocket (tokeny mezitím tečou do streamingText)
+            // Resume any orphaned continuation before setting a new one
+            streamCompletion?.resume(throwing: CancellationError())
+            streamCompletion = nil
             let reply: String = try await withCheckedThrowingContinuation { continuation in
                 self.streamCompletion = continuation
             }
@@ -329,7 +335,7 @@ class NovaService: ObservableObject {
             audioPlayer = nil
         } catch {
             print("[TTS] playback error: \(error.localizedDescription) — skipping voice")
-            // Žádný fallback na anglický hlas — lepší ticho než špatný jazyk
+            state = .idle
         }
     }
 
@@ -836,15 +842,39 @@ class NovaService: ObservableObject {
     }
 
     // MARK: - WebSocket
+    private var wsSession: URLSession?
+    private var isReconnecting = false
+
     func connectWebSocket() {
-        guard !serverURL.isEmpty else { return }
-        let wsURL = serverURL.replacingOccurrences(of: "http", with: "ws")
-        guard let url = URL(string: wsURL) else { return }
+        guard !serverURL.isEmpty, !isReconnecting else { return }
+        isReconnecting = true
+
+        // Clean up previous connection
+        webSocket?.cancel(with: .goingAway, reason: nil)
+        wsSession?.invalidateAndCancel()
+
+        // Prefix-only scheme replacement (http→ws, https→wss)
+        let wsURL: String
+        if serverURL.hasPrefix("https") {
+            wsURL = "wss" + serverURL.dropFirst(5)
+        } else {
+            wsURL = "ws" + serverURL.dropFirst(4)
+        }
+        guard let url = URL(string: wsURL) else {
+            isReconnecting = false
+            return
+        }
+
+        // Pass auth token via request header
+        var request = URLRequest(url: url)
+        request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
 
         let session = URLSession(configuration: .default)
-        webSocket = session.webSocketTask(with: url)
+        wsSession = session
+        webSocket = session.webSocketTask(with: request)
         webSocket?.resume()
-        isConnected = true
+        isReconnecting = false
+        // isConnected set to true after first successful receive
         receiveWebSocket()
     }
 
@@ -852,6 +882,12 @@ class NovaService: ObservableObject {
         webSocket?.receive { [weak self] result in
             switch result {
             case .success(let message):
+                Task { @MainActor in
+                    // Mark connected after first successful receive
+                    if self?.isConnected == false {
+                        self?.isConnected = true
+                    }
+                }
                 if case .string(let text) = message,
                    let data = text.data(using: .utf8),
                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
@@ -865,6 +901,9 @@ class NovaService: ObservableObject {
             case .failure:
                 Task { @MainActor in
                     self?.isConnected = false
+                    // Resume any pending stream continuation on disconnect
+                    self?.streamCompletion?.resume(throwing: NSError(domain: "nova.ws", code: -1, userInfo: [NSLocalizedDescriptionKey: "WebSocket disconnected"]))
+                    self?.streamCompletion = nil
                     try? await Task.sleep(nanoseconds: 3_000_000_000)
                     self?.connectWebSocket()
                 }
@@ -950,7 +989,8 @@ class NovaService: ObservableObject {
             let devMessages = messages.suffix(50).map { ["role": $0.role == "user" ? "user" : "assistant", "content": $0.content] } + [["role": "user", "content": task]]
 
             // Step 1: Plan
-            var planRequest = URLRequest(url: URL(string: "\(serverURL)/api/dev/plan")!)
+            guard let planURL = URL(string: "\(serverURL)/api/dev/plan") else { return }
+            var planRequest = URLRequest(url: planURL)
             planRequest.httpMethod = "POST"
             planRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
             planRequest.setValue(token, forHTTPHeaderField: "X-Nova-Token")
@@ -1008,7 +1048,8 @@ class NovaService: ObservableObject {
             devMsgs.append(["role": "assistant", "content": plan.planContent])
             devMsgs.append(["role": "user", "content": "Ano, proveď to."])
 
-            var execRequest = URLRequest(url: URL(string: "\(serverURL)/api/dev/execute")!)
+            guard let execURL = URL(string: "\(serverURL)/api/dev/execute") else { return }
+            var execRequest = URLRequest(url: execURL)
             execRequest.httpMethod = "POST"
             execRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
             execRequest.setValue(token, forHTTPHeaderField: "X-Nova-Token")

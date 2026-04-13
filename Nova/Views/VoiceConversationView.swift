@@ -81,9 +81,9 @@ struct VoiceConversationView: View {
     private var stateLabel: String {
         switch nova.state {
         case .idle: return ""
-        case .listening: return "POSLOUCHÁM"
-        case .thinking: return "PŘEMÝŠLÍM"
-        case .speaking: return "ODPOVÍDÁM"
+        case .listening: return L10n.t("listening").uppercased()
+        case .thinking: return L10n.t("thinking").uppercased()
+        case .speaking: return L10n.t("speaking").uppercased()
         }
     }
 
