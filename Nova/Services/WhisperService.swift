@@ -51,13 +51,13 @@ class WhisperService: ObservableObject {
     var silenceThreshold: TimeInterval = 1.5
 
     /// Práh amplitudy pro VAD (0.0 - 1.0). Pod tímto = ticho.
-    var vadThreshold: Float = 0.015
+    nonisolated(unsafe) var vadThreshold: Float = 0.015
 
     /// Jazykový hint — nil = auto-detect, "cs" = preferuj češtinu
     var languageHint: String? = nil
 
     /// Callback pro raw 16kHz Float32 samples — pro Voice ID ring buffer
-    var onRawAudio: (([Float]) -> Void)?
+    nonisolated(unsafe) var onRawAudio: (([Float]) -> Void)?
 
     // MARK: - Private
 
