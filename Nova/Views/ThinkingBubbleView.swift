@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Zen status bubble — shows what Nova is doing right now (like Claude Code's white dot stages)
 struct ThinkingBubbleView: View {
     @EnvironmentObject var nova: NovaService
 
@@ -12,19 +13,33 @@ struct ThinkingBubbleView: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            ZenSpinner()
-                .frame(width: 18, height: 18)
+        HStack(spacing: 10) {
+            // Animated dot — pulzuje bíle jako Claude Code
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "1a1a2e").opacity(0.06))
+                    .frame(width: 24, height: 24)
 
+                Circle()
+                    .fill(Color(hex: "1a1a2e").opacity(0.5))
+                    .frame(width: 7, height: 7)
+
+                // Outer pulse ring
+                Circle()
+                    .stroke(Color(hex: "1a1a2e").opacity(0.15), lineWidth: 1)
+                    .frame(width: 18, height: 18)
+            }
+
+            // Stage label s plynulou transition
             Text(label)
                 .font(.system(size: 14, weight: .regular, design: .rounded))
-                .foregroundColor(Color(hex: "1a1a2e").opacity(0.72))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.65))
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .id(transitionId)
                 .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .move(edge: .top)),
-                    removal: .opacity.combined(with: .move(edge: .bottom))
+                    insertion: .opacity.combined(with: .move(edge: .leading)),
+                    removal: .opacity
                 ))
 
             Spacer(minLength: 0)
@@ -32,47 +47,15 @@ struct ThinkingBubbleView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(
-            Capsule(style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .overlay(
-                    Capsule(style: .continuous)
-                        .stroke(Color(hex: "1a1a2e").opacity(0.06), lineWidth: 0.5)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color(hex: "1a1a2e").opacity(0.05), lineWidth: 0.5)
                 )
-                .shadow(color: Color(hex: "1a1a2e").opacity(0.05), radius: 8, x: 0, y: 2)
+                .shadow(color: Color(hex: "1a1a2e").opacity(0.04), radius: 8, x: 0, y: 2)
         )
-        .padding(.horizontal, 20)
-        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: transitionId)
-    }
-}
-
-// MARK: - Zen spinner — slow, breathing, not nervous
-private struct ZenSpinner: View {
-    @State private var rotation: Double = 0
-    @State private var pulse: CGFloat = 1.0
-
-    var body: some View {
-        Circle()
-            .trim(from: 0, to: 0.28)
-            .stroke(
-                AngularGradient(
-                    colors: [
-                        Color(hex: "1a1a2e").opacity(0.05),
-                        Color(hex: "1a1a2e").opacity(0.55),
-                        Color(hex: "1a1a2e").opacity(0.05),
-                    ],
-                    center: .center
-                ),
-                style: StrokeStyle(lineWidth: 1.8, lineCap: .round)
-            )
-            .rotationEffect(.degrees(rotation))
-            .scaleEffect(pulse)
-            .onAppear {
-                withAnimation(.linear(duration: 5).repeatForever(autoreverses: false)) {
-                    rotation = 360
-                }
-                withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
-                    pulse = 0.92
-                }
-            }
+        .padding(.horizontal, 16)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: transitionId)
     }
 }

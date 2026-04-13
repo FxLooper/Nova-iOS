@@ -17,6 +17,7 @@ class NovaService: ObservableObject {
     }
     @Published var isConnected = false
     @Published var isMuted = false
+    @Published var ttsEnabled: Bool = UserDefaults.standard.object(forKey: "nova_tts_enabled") == nil ? true : UserDefaults.standard.bool(forKey: "nova_tts_enabled")
     @Published var interimText = ""
     @Published var pendingConfirmation: PendingConfirmation?
     @Published var conversationActive = false // Tap orb = zapni/vypni konverzaci
@@ -69,7 +70,7 @@ class NovaService: ObservableObject {
     private var streamCompletion: CheckedContinuation<String, Error>?
 
     // Rolling audio buffer (last 5s) for voice verification
-    private var audioRingBuffer: [Float] = []
+    private var _ringBuffer: [Float] = []  // Accessed ONLY via audioRingBufferQueue
     private let audioRingBufferMaxSize = 16000 * 5  // 5 seconds @ 16kHz
     private let audioRingBufferQueue = DispatchQueue(label: "com.fxlooper.nova.audioring")
 
@@ -270,6 +271,11 @@ class NovaService: ObservableObject {
 
     // MARK: - TTS
     func playTTS(_ text: String) async {
+        guard ttsEnabled else {
+            // TTS vypnutý — přeskoč mluvení, rovnou pokračuj
+            state = .idle
+            return
+        }
         guard let url = URL(string: "\(serverURL)/api/tts") else { return }
 
         do {
@@ -277,7 +283,8 @@ class NovaService: ObservableObject {
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
-            request.httpBody = try JSONSerialization.data(withJSONObject: ["text": text, "voice": "cs-vlasta"])
+            let selectedVoice = profile["voice"] ?? UserDefaults.standard.string(forKey: "nova_voice") ?? "cs-vlasta"
+            request.httpBody = try JSONSerialization.data(withJSONObject: ["text": text, "voice": selectedVoice])
 
             let (data, _) = try await URLSession.shared.data(for: request)
 
@@ -418,6 +425,11 @@ class NovaService: ObservableObject {
             Task { @MainActor in
                 self?.whisperLoadProgress = progress
             }
+        }
+
+        // Whisper raw audio → Voice ID ring buffer
+        whisper.onRawAudio = { [weak self] samples in
+            self?.appendToAudioRing(samples)
         }
 
         // Whisper transcript callback
@@ -679,15 +691,14 @@ class NovaService: ObservableObject {
 
     /// Appends incoming audio samples to rolling buffer (thread-safe).
     /// Called from audio tap callback.
+    /// Thread-safe ring buffer append — called from audio tap (realtime thread)
     nonisolated func appendToAudioRing(_ samples: [Float]) {
-        audioRingBufferQueue.sync {
-            // Access is serialized via dispatch queue
-        }
-        Task { @MainActor in
-            self.audioRingBuffer.append(contentsOf: samples)
-            if self.audioRingBuffer.count > self.audioRingBufferMaxSize {
-                let excess = self.audioRingBuffer.count - self.audioRingBufferMaxSize
-                self.audioRingBuffer.removeFirst(excess)
+        audioRingBufferQueue.async { [weak self] in
+            guard let self = self else { return }
+            self._ringBuffer.append(contentsOf: samples)
+            if self._ringBuffer.count > self.audioRingBufferMaxSize {
+                let excess = self._ringBuffer.count - self.audioRingBufferMaxSize
+                self._ringBuffer.removeFirst(excess)
             }
         }
     }
@@ -697,11 +708,13 @@ class NovaService: ObservableObject {
     private func saveRingBufferToWAV(seconds: Double = 3.0) -> URL? {
         let sampleRate: Double = 16000
         let targetSamples = Int(sampleRate * seconds)
+        // Thread-safe read from ring buffer
+        let ringSnapshot: [Float] = audioRingBufferQueue.sync { _ringBuffer }
         let samples: [Float]
-        if audioRingBuffer.count >= targetSamples {
-            samples = Array(audioRingBuffer.suffix(targetSamples))
-        } else if audioRingBuffer.count >= Int(sampleRate * 1.0) {
-            samples = audioRingBuffer  // alespoň 1s
+        if ringSnapshot.count >= targetSamples {
+            samples = Array(ringSnapshot.suffix(targetSamples))
+        } else if ringSnapshot.count >= Int(sampleRate * 1.0) {
+            samples = ringSnapshot  // alespoň 1s
         } else {
             return nil
         }
@@ -759,7 +772,8 @@ class NovaService: ObservableObject {
 
     private func verifyRecentAudio() async -> Bool {
         // 1. Anti-spoofing — liveness check (FAST, on-device)
-        let recentSamples = Array(audioRingBuffer.suffix(Int(16000 * 3.0)))
+        let ringSnapshot: [Float] = audioRingBufferQueue.sync { _ringBuffer }
+        let recentSamples = Array(ringSnapshot.suffix(Int(16000 * 3.0)))
         if recentSamples.count >= 16000 {
             let liveness = livenessDetector.analyze(samples: recentSamples)
             print("[liveness] flatness=\(String(format: "%.3f", liveness.spectralFlatness)) variance=\(String(format: "%.4f", liveness.energyVariance)) rmsCV=\(String(format: "%.3f", liveness.rmsCV)) → live=\(liveness.isLive)")
@@ -773,7 +787,7 @@ class NovaService: ObservableObject {
         // 2. Speaker verification (Mac server ECAPA-TDNN)
         guard let wavURL = saveRingBufferToWAV(seconds: 3.0) else {
             print("[voice-id] no audio in ring buffer for verification")
-            return true  // fail-open: if no audio, allow through
+            return false  // fail-close: bez audia nepustím nikoho
         }
         defer {
             try? FileManager.default.removeItem(at: wavURL)
@@ -795,6 +809,11 @@ class NovaService: ObservableObject {
     func toggleMute() {
         isMuted.toggle()
         if isMuted { stopListening() }
+    }
+
+    func toggleTTS() {
+        ttsEnabled.toggle()
+        UserDefaults.standard.set(ttsEnabled, forKey: "nova_tts_enabled")
     }
 
     // MARK: - WebSocket

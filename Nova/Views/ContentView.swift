@@ -60,7 +60,7 @@ struct SetupView: View {
                     .tracking(14)
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
 
-                Text("Tvoje osobní AI asistentka")
+                Text(L10n.t("personal_ai"))
                     .font(.system(size: 15, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
             }
@@ -124,7 +124,7 @@ struct SetupView: View {
                     .font(.system(size: 18, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
 
-                Text("Tvůj Mac server běží Claude Code")
+                Text(L10n.t("mac_server_info"))
                     .font(.system(size: 13, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
             }
@@ -205,117 +205,77 @@ struct ChatView: View {
     @State private var recordingPulse = false
     @State private var showCamera = false
     @State private var showVoiceConversation = false
+    @State private var quickActions: [QuickAction] = QuickAction.load()
 
     var body: some View {
         ZStack {
             NovaBackground()
 
             VStack(spacing: 0) {
-                // Header: nova title above orb + state label
-                VStack(spacing: 0) {
-                    // Top bar: settings + mute
-                    HStack {
-                        Button(action: { showSettings = true }) {
-                            Image(systemName: "gearshape")
-                                .font(.system(size: 14, weight: .light))
-                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.25))
-                        }
-                        Spacer()
-                        Button(action: { nova.toggleMute() }) {
-                            Image(systemName: nova.isMuted ? "mic.slash" : "mic")
-                                .font(.system(size: 16, weight: .light))
-                                .foregroundColor(Color(hex: "1a1a2e").opacity(nova.isMuted ? 0.6 : 0.25))
-                        }
+                // Compact header — nova title + settings + health
+                HStack {
+                    Button(action: { showSettings = true }) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 14, weight: .light))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.25))
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 8)
 
-                    // Nova title centered above orb + server health dot
-                    HStack(spacing: 8) {
+                    Spacer()
+
+                    HStack(spacing: 6) {
                         Text("nova")
-                            .font(.system(size: 22, weight: .ultraLight))
-                            .tracking(10)
-                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.55))
+                            .font(.system(size: 18, weight: .ultraLight))
+                            .tracking(8)
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
 
                         Circle()
                             .fill(serverHealthColor)
-                            .frame(width: 6, height: 6)
+                            .frame(width: 5, height: 5)
                             .opacity(0.8)
-                            .animation(.easeInOut(duration: 0.5), value: nova.serverHealth.status)
                     }
 
-                    // Orb (Three.js — identický jako desktop)
-                    OrbWebView(state: nova.state.rawValue, audioLevel: 0)
-                        .frame(height: 180)
-                        .onTapGesture {
-                            showVoiceConversation = true
-                        }
-                        .contextMenu {
-                            Button {
-                                nova.toggleMute()
-                                HapticManager.shared.selectionChanged()
-                            } label: {
-                                Label(nova.isMuted ? "Zrušit ztlumení" : "Ztlumit Novu",
-                                      systemImage: nova.isMuted ? "speaker.wave.2" : "speaker.slash")
-                            }
+                    Spacer()
 
-                            Button {
-                                showVoiceConversation = true
-                            } label: {
-                                Label("Hlasová konverzace", systemImage: "waveform")
-                            }
-
-                            Button {
-                                showSettings = true
-                            } label: {
-                                Label("Nastavení", systemImage: "gearshape")
-                            }
-                        }
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Začít hlasovou konverzaci s Novou")
-                        .accessibilityHint("Klepnutím otevři hlasový režim. Dlouhým podržením otevři menu.")
-                        .accessibilityAddTraits(.isButton)
-
-                    // "Mluvit s Novou" button pod orbem
-                    Button(action: { showVoiceConversation = true }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "waveform")
-                                .font(.system(size: 11, weight: .medium))
-                            Text("Mluvit s Novou")
-                                .font(.system(size: 12, weight: .light))
-                                .tracking(1)
-                        }
-                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
-                    }
-                    .padding(.bottom, 4)
-
-                    // Voice ID verification feedback
-                    if nova.lastVerificationFailed {
-                        HStack(spacing: 6) {
-                            Image(systemName: "person.crop.circle.badge.xmark")
-                                .font(.system(size: 11))
-                            Text("Hlas nepoznán")
-                                .font(.system(size: 11, weight: .medium))
-                                .tracking(2)
-                        }
-                        .foregroundColor(.red.opacity(0.8))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Color.red.opacity(0.1))
-                        .clipShape(Capsule())
-                        .padding(.bottom, 8)
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.8)),
-                            removal: .opacity
-                        ))
-                    } else {
-                        Spacer().frame(height: 8)
+                    Button(action: { nova.toggleTTS() }) {
+                        Image(systemName: nova.ttsEnabled ? "speaker.wave.2" : "speaker.slash")
+                            .font(.system(size: 14, weight: .light))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(nova.ttsEnabled ? 0.25 : 0.6))
                     }
                 }
-                .animation(.easeInOut(duration: 0.3), value: nova.lastVerificationFailed)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
                 .background(.ultraThinMaterial)
 
                 Divider().opacity(0.15)
+
+                // Quick Actions strip — vždy viditelný
+                if !quickActions.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(quickActions) { action in
+                                Button(action: {
+                                    HapticManager.shared.selectionChanged()
+                                    Task { await nova.sendMessage(action.prompt) }
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: action.icon)
+                                            .font(.system(size: 11, weight: .medium))
+                                        Text(action.label)
+                                            .font(.system(size: 13, weight: .light))
+                                            .lineLimit(1)
+                                    }
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color(hex: "1a1a2e").opacity(0.04))
+                                    .clipShape(Capsule())
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                    }
+                }
 
                 // Messages
                 ScrollViewReader { proxy in
@@ -422,6 +382,9 @@ struct ChatView: View {
                                     removal: .opacity
                                 ))
                             }
+
+                            // Bottom anchor — vždy na konci
+                            Color.clear.frame(height: 1).id("bottom-anchor")
                         }
                         .padding(.vertical, 16)
                         .animation(.spring(response: 0.45, dampingFraction: 0.85), value: nova.state)
@@ -433,25 +396,18 @@ struct ChatView: View {
                         }
                     }
                     .onChange(of: nova.messages.count) {
-                        if let last = nova.messages.last {
-                            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
-                                proxy.scrollTo(last.id, anchor: .bottom)
-                            }
-                        }
+                        scrollToBottom(proxy)
                     }
-                    .onChange(of: nova.state) { _, newState in
-                        if newState == .thinking {
-                            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
-                                proxy.scrollTo("thinking-bubble", anchor: .bottom)
-                            }
-                        }
+                    .onChange(of: nova.state) { _, _ in
+                        scrollToBottom(proxy)
                     }
                     .onChange(of: nova.streamingText) {
                         if nova.isStreaming {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
-                                proxy.scrollTo("streaming-bubble", anchor: .bottom)
-                            }
+                            scrollToBottom(proxy)
                         }
+                    }
+                    .onChange(of: nova.thinkingStage?.key) { _, _ in
+                        scrollToBottom(proxy)
                     }
                 }
 
@@ -492,7 +448,16 @@ struct ChatView: View {
                     HStack(spacing: 12) {
                         switch dictationState {
                         case .idle:
-                            // ── IDLE: [TextField] [Mic 🎙 / Send ▶] ──
+                            // ── IDLE: [≋ Voice] [TextField] [🎙 PTT / Send ▶] ──
+
+                            // Voice conversation button (vlevo — palec levé ruky)
+                            Button(action: { showVoiceConversation = true }) {
+                                Image(systemName: "waveform")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                                    .frame(width: 36, height: 36)
+                            }
+
                             // Text input
                             TextField(L10n.t("write_nova"), text: $inputText)
                                 .font(.system(size: 15, weight: .light))
@@ -500,7 +465,7 @@ struct ChatView: View {
                                 .onSubmit { sendText() }
 
                             if inputText.isEmpty {
-                                // Mic button — tap to start dictation (PTT)
+                                // PTT mic button (vpravo — palec pravé ruky, nejčastější akce)
                                 Button(action: { startDictation() }) {
                                     Image(systemName: "mic")
                                         .font(.system(size: 22))
@@ -525,7 +490,7 @@ struct ChatView: View {
                             }
 
                             // Live transcript (scrollable, growing)
-                            Text(nova.interimText.isEmpty ? "Mluvte..." : nova.interimText)
+                            Text(nova.interimText.isEmpty ? L10n.t("speak_now") : nova.interimText)
                                 .font(.system(size: 15, weight: .light))
                                 .foregroundColor(nova.interimText.isEmpty
                                     ? Color(hex: "1a1a2e").opacity(0.25)
@@ -548,29 +513,39 @@ struct ChatView: View {
 
                         case .review:
                             // ── REVIEW: [Cancel] [Editable text] [Send ▶] ──
-                            Button(action: { cancelDictation() }) {
-                                Image(systemName: "xmark.circle")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
-                            }
+                            VStack(spacing: 8) {
+                                // Full text view — expanduje se podle obsahu
+                                TextField("", text: $dictatedText, axis: .vertical)
+                                    .font(.system(size: 15, weight: .light))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                                    .lineLimit(1...8)
+                                    .focused($isInputFocused)
+                                    .onAppear { isInputFocused = true }
 
-                            // Editable text field with dictated content
-                            TextField("", text: $dictatedText)
-                                .font(.system(size: 15, weight: .light))
-                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-                                .focused($isInputFocused)
-                                .onSubmit { sendDictatedText() }
-                                .onAppear { isInputFocused = true }
+                                // Buttons row
+                                HStack {
+                                    Button(action: { cancelDictation() }) {
+                                        Text(L10n.t("cancel"))
+                                            .font(.system(size: 13, weight: .light))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                                    }
 
-                            // Send button
-                            Button(action: { sendDictatedText() }) {
-                                Image(systemName: "arrow.up.circle.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(dictatedText.isEmpty
-                                        ? Color(hex: "1a1a2e").opacity(0.15)
-                                        : Color(hex: "1a1a2e").opacity(0.7))
+                                    Spacer()
+
+                                    Button(action: { sendDictatedText() }) {
+                                        HStack(spacing: 4) {
+                                            Text(L10n.t("send"))
+                                                .font(.system(size: 14, weight: .medium))
+                                            Image(systemName: "arrow.up.circle.fill")
+                                                .font(.system(size: 18))
+                                        }
+                                        .foregroundColor(dictatedText.isEmpty
+                                            ? Color(hex: "1a1a2e").opacity(0.15)
+                                            : Color(hex: "1a1a2e").opacity(0.7))
+                                    }
+                                    .disabled(dictatedText.isEmpty)
+                                }
                             }
-                            .disabled(dictatedText.isEmpty)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -651,79 +626,15 @@ struct ChatView: View {
     }
 
     private var emptyWelcomeView: some View {
-        VStack(spacing: 24) {
-            VStack(spacing: 8) {
-                Text(personalizedGreeting)
-                    .font(.system(size: 22, weight: .light))
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.75))
-                    .multilineTextAlignment(.center)
+        VStack(spacing: 16) {
+            Text(personalizedGreeting)
+                .font(.system(size: 22, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.75))
+                .multilineTextAlignment(.center)
 
-                Text("Co dnes potřebuješ?")
-                    .font(.system(size: 14, weight: .light))
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
-            }
-
-            // Quick action chips — predesignované prompty
-            VStack(spacing: 8) {
-                Text("Zkus říct nebo napsat")
-                    .font(.system(size: 11, weight: .light))
-                    .tracking(2)
-                    .textCase(.uppercase)
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
-
-                quickActionChip(text: "Jaké je počasí v Plzni?", icon: "cloud.sun")
-                quickActionChip(text: "Přečti mi nejnovější zprávy", icon: "newspaper")
-                quickActionChip(text: "Co dávají dnes v kině?", icon: "film")
-                quickActionChip(text: "Kolik je hodin?", icon: "clock")
-            }
-            .padding(.top, 4)
-
-            // Quick hints
-            VStack(alignment: .leading, spacing: 12) {
-                emptyStateHint(icon: "circle.fill", text: "Tap orb pro hlasovou konverzaci")
-                emptyStateHint(icon: "mic.fill", text: "Drž mic pro Push-to-Talk")
-                emptyStateHint(icon: "lock.shield.fill", text: "Voice ID v Nastavení pro bezpečnost")
-            }
-            .padding(.top, 16)
-
-            Spacer().frame(height: 20)
-        }
-    }
-
-    private func quickActionChip(text: String, icon: String) -> some View {
-        Button(action: {
-            HapticManager.shared.selectionChanged()
-            inputText = text
-            sendText()
-        }) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .light))
-                Text(text)
-                    .font(.system(size: 14, weight: .light))
-                Spacer()
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 13, weight: .light))
-                    .opacity(0.4)
-            }
-            .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color.white.opacity(0.6))
-            .cornerRadius(12)
-        }
-    }
-
-    private func emptyStateHint(icon: String, text: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .light))
+            Text(L10n.t("what_today"))
+                .font(.system(size: 14, weight: .light))
                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
-                .frame(width: 16)
-            Text(text)
-                .font(.system(size: 13, weight: .light))
-                .foregroundColor(Color(hex: "1a1a2e").opacity(0.55))
-            Spacer()
         }
     }
 
@@ -773,6 +684,12 @@ struct ChatView: View {
             dictationState = .idle
         }
         Task { await nova.sendMessage(text) }
+    }
+
+    private func scrollToBottom(_ proxy: ScrollViewProxy) {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            proxy.scrollTo("bottom-anchor", anchor: .bottom)
+        }
     }
 }
 
@@ -1033,6 +950,43 @@ struct NovaStateBubble: View {
             withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
                 pulse = true
             }
+        }
+    }
+}
+
+// MARK: - Quick Action Model
+struct QuickAction: Identifiable, Codable {
+    let id: UUID
+    var label: String   // Co se zobrazí na tlačítku
+    var prompt: String  // Co se pošle Nově
+    var icon: String    // SF Symbol name
+
+    init(label: String, prompt: String, icon: String) {
+        self.id = UUID()
+        self.label = label
+        self.prompt = prompt
+        self.icon = icon
+    }
+
+    static let defaults: [QuickAction] = [
+        QuickAction(label: "Počasí", prompt: "Jaké je počasí?", icon: "cloud.sun"),
+        QuickAction(label: "Zprávy", prompt: "Přečti mi nejnovější zprávy", icon: "newspaper"),
+        QuickAction(label: "Kalendář", prompt: "Co mám dnes v kalendáři?", icon: "calendar"),
+        QuickAction(label: "Emaily", prompt: "Mám nějaké nové emaily?", icon: "envelope"),
+    ]
+
+    static func load() -> [QuickAction] {
+        guard let data = UserDefaults.standard.data(forKey: "nova_quick_actions"),
+              let actions = try? JSONDecoder().decode([QuickAction].self, from: data),
+              !actions.isEmpty else {
+            return defaults
+        }
+        return actions
+    }
+
+    static func save(_ actions: [QuickAction]) {
+        if let data = try? JSONEncoder().encode(actions) {
+            UserDefaults.standard.set(data, forKey: "nova_quick_actions")
         }
     }
 }

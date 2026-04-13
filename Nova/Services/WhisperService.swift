@@ -56,6 +56,9 @@ class WhisperService: ObservableObject {
     /// Jazykový hint — nil = auto-detect, "cs" = preferuj češtinu
     var languageHint: String? = nil
 
+    /// Callback pro raw 16kHz Float32 samples — pro Voice ID ring buffer
+    var onRawAudio: (([Float]) -> Void)?
+
     // MARK: - Private
 
     private var whisperKit: WhisperKit?
@@ -216,6 +219,9 @@ class WhisperService: ObservableObject {
         let frameLength = Int(convertedBuffer.frameLength)
         let samples = Array(UnsafeBufferPointer(start: channelData, count: frameLength))
 
+        // Voice ID ring buffer — export raw 16kHz samples
+        self.onRawAudio?(samples)
+
         // Voice Activity Detection — RMS amplitude
         let rms = computeRMS(samples)
         let isVoice = rms > vadThreshold
@@ -285,14 +291,17 @@ class WhisperService: ObservableObject {
 
         transcribeTask = Task {
             do {
-                // Pokud je nastaven languageHint, použij ho — jinak auto-detect
+                // Pokud je nastaven languageHint, vynuť jazyk (žádný auto-detect drift)
                 let options = DecodingOptions(
                     verbose: false,
                     task: .transcribe,
                     language: self.languageHint,
+                    temperature: 0.0,
+                    temperatureFallbackCount: self.languageHint != nil ? 0 : 3,
                     detectLanguage: self.languageHint == nil,
                     skipSpecialTokens: true,
-                    withoutTimestamps: true
+                    withoutTimestamps: true,
+                    noSpeechThreshold: 0.6
                 )
                 let result: [TranscriptionResult] = try await whisperKit.transcribe(
                     audioArray: samples,

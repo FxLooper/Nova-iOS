@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var voiceVerifyEnforced: Bool
     @State private var showClearHistoryAlert = false
     @State private var selectedDevProject: String
+    @State private var editableQuickActions: [QuickAction]
 
     init() {
         _selectedLang = State(initialValue: UserDefaults.standard.string(forKey: "nova_lang") ?? "cs")
@@ -23,6 +24,7 @@ struct SettingsView: View {
         _useWhisper = State(initialValue: UserDefaults.standard.bool(forKey: "nova_use_whisper"))
         _voiceVerifyEnforced = State(initialValue: UserDefaults.standard.bool(forKey: "nova_voice_verify_enforce"))
         _selectedDevProject = State(initialValue: UserDefaults.standard.string(forKey: "nova_dev_project") ?? "backend")
+        _editableQuickActions = State(initialValue: QuickAction.load())
     }
 
     static let devProjects: [(key: String, label: String, icon: String)] = [
@@ -87,14 +89,19 @@ struct SettingsView: View {
                         .tracking(3)
                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
                     Spacer()
-                    Button(action: { saveAndDismiss() }) {
-                        Text(L10n.t("save"))
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
-                    }
+                    // Invisible spacer pro symetrii
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .light))
+                        .opacity(0)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
+                // Auto-save při každé změně
+                .onChange(of: selectedLang) { _, _ in autoSave() }
+                .onChange(of: selectedCity) { _, _ in autoSave() }
+                .onChange(of: selectedVoiceGender) { _, _ in autoSave() }
+                .onChange(of: userName) { _, _ in autoSave() }
+                .onChange(of: editableQuickActions.count) { _, _ in autoSave() }
 
                 ScrollView {
                     VStack(spacing: 32) {
@@ -165,44 +172,36 @@ struct SettingsView: View {
                             }
                         }
 
-                        // Server info
-                        // Speech Recognition Engine
-                        SettingsSection(title: "Rozpoznávání řeči") {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Toggle(isOn: $useWhisper) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Whisper (experimentální)")
-                                            .font(.system(size: 15, weight: .regular))
-                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-                                        Text(useWhisper ? "On-device, auto-detect jazyka" : "Apple DictationTranscriber")
-                                            .font(.system(size: 12, weight: .light))
-                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
-                                    }
+                        // Speech Recognition Status
+                        SettingsSection(title: L10n.t("speech_recognition")) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 8) {
+                                    Circle()
+                                        .fill(whisperStatusColor)
+                                        .frame(width: 8, height: 8)
+                                    Text(whisperStatusText)
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
                                 }
-                                .tint(Color(hex: "1a1a2e").opacity(0.7))
 
                                 if nova.whisperState == .loading {
                                     HStack(spacing: 8) {
                                         ProgressView()
                                             .scaleEffect(0.7)
-                                        Text("Stahuji model... \(Int(nova.whisperLoadProgress * 100))%")
+                                        Text("\(L10n.t("stt_loading")) \(Int(nova.whisperLoadProgress * 100))%")
                                             .font(.system(size: 12, weight: .light))
                                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                                     }
-                                } else if case .error(let msg) = nova.whisperState {
-                                    Text("⚠️ \(msg)")
-                                        .font(.system(size: 12, weight: .light))
-                                        .foregroundColor(.red.opacity(0.7))
-                                } else if nova.whisperState == .ready && useWhisper {
-                                    Text("✅ Model načten, připraven")
-                                        .font(.system(size: 12, weight: .light))
-                                        .foregroundColor(.green.opacity(0.7))
                                 }
+
+                                Text(L10n.t("stt_desc"))
+                                    .font(.system(size: 12, weight: .light))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
                             }
                         }
 
                         // Voice ID (Voice Biometrics)
-                        SettingsSection(title: "Voice ID") {
+                        SettingsSection(title: L10n.t("voice_id")) {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack(spacing: 12) {
                                     Image(systemName: voiceProfile.state == .enrolled ? "checkmark.seal.fill" : "waveform.circle")
@@ -210,10 +209,10 @@ struct SettingsView: View {
                                         .foregroundColor(voiceProfile.state == .enrolled ? .green.opacity(0.7) : Color(hex: "1a1a2e").opacity(0.5))
 
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(voiceProfile.state == .enrolled ? "Hlasový profil aktivní" : "Hlasový profil nevytvořen")
+                                        Text(voiceProfile.state == .enrolled ? L10n.t("voice_profile_active") : L10n.t("voice_profile_none"))
                                             .font(.system(size: 15, weight: .regular))
                                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-                                        Text(voiceProfile.state == .enrolled ? "Nova reaguje jen na tebe" : "Face ID pro tvůj hlas")
+                                        Text(voiceProfile.state == .enrolled ? L10n.t("voice_responds_you") : L10n.t("face_id_voice"))
                                             .font(.system(size: 12, weight: .light))
                                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                                     }
@@ -221,7 +220,7 @@ struct SettingsView: View {
                                 }
 
                                 Button(action: { showVoiceEnrollment = true }) {
-                                    Text(voiceProfile.state == .enrolled ? "Spravovat profil" : "Vytvořit profil")
+                                    Text(voiceProfile.state == .enrolled ? L10n.t("manage_profile") : L10n.t("create_profile"))
                                         .font(.system(size: 14, weight: .medium))
                                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
                                         .padding(.vertical, 10)
@@ -238,12 +237,12 @@ struct SettingsView: View {
 
                                     Toggle(isOn: $voiceVerifyEnforced) {
                                         VStack(alignment: .leading, spacing: 4) {
-                                            Text("Vyžadovat ověření hlasu")
+                                            Text(L10n.t("require_verification"))
                                                 .font(.system(size: 15, weight: .regular))
                                                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
                                             Text(voiceVerifyEnforced
-                                                 ? "Nova reaguje jen pokud poznám tvůj hlas"
-                                                 : "Nova reaguje na všechny mluvčí")
+                                                 ? L10n.t("verify_on")
+                                                 : L10n.t("verify_off"))
                                                 .font(.system(size: 12, weight: .light))
                                                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                                         }
@@ -260,7 +259,7 @@ struct SettingsView: View {
                                             Image(systemName: voiceProfile.lastVerificationResult ? "checkmark.circle.fill" : "xmark.circle.fill")
                                                 .font(.system(size: 12))
                                                 .foregroundColor(voiceProfile.lastVerificationResult ? .green.opacity(0.7) : .red.opacity(0.7))
-                                            Text("Poslední shoda: \(Int(voiceProfile.verificationConfidence * 100))%")
+                                            Text("\(L10n.t("last_match")): \(Int(voiceProfile.verificationConfidence * 100))%")
                                                 .font(.system(size: 12, weight: .light))
                                                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                                         }
@@ -271,7 +270,7 @@ struct SettingsView: View {
 
                                     VStack(alignment: .leading, spacing: 6) {
                                         HStack {
-                                            Text("Přísnost ověření")
+                                            Text(L10n.t("verification_strict"))
                                                 .font(.system(size: 13, weight: .regular))
                                                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
                                             Spacer()
@@ -291,13 +290,13 @@ struct SettingsView: View {
                                         .tint(Color(hex: "1a1a2e").opacity(0.6))
 
                                         HStack {
-                                            Text("Permisivní")
+                                            Text(L10n.t("permissive"))
                                                 .font(.system(size: 10, weight: .light))
                                             Spacer()
-                                            Text("Vyvážené")
+                                            Text(L10n.t("balanced"))
                                                 .font(.system(size: 10, weight: .light))
                                             Spacer()
-                                            Text("Přísné")
+                                            Text(L10n.t("strict"))
                                                 .font(.system(size: 10, weight: .light))
                                         }
                                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
@@ -436,11 +435,64 @@ struct SettingsView: View {
                             }
                         }
 
+                        // Quick Actions editor
+                        SettingsSection(title: L10n.t("quick_actions")) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(L10n.t("quick_actions_desc"))
+                                    .font(.system(size: 12, weight: .light))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+
+                                ForEach(editableQuickActions.indices, id: \.self) { i in
+                                    HStack(spacing: 8) {
+                                        Image(systemName: editableQuickActions[i].icon)
+                                            .font(.system(size: 14))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                            .frame(width: 24)
+
+                                        VStack(spacing: 4) {
+                                            TextField(L10n.t("action_name"), text: $editableQuickActions[i].label)
+                                                .font(.system(size: 13, weight: .medium))
+                                            TextField(L10n.t("action_prompt"), text: $editableQuickActions[i].prompt)
+                                                .font(.system(size: 12, weight: .light))
+                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
+                                        }
+
+                                        Button(action: {
+                                            editableQuickActions.remove(at: i)
+                                        }) {
+                                            Image(systemName: "minus.circle")
+                                                .font(.system(size: 16))
+                                                .foregroundColor(.red.opacity(0.5))
+                                        }
+                                    }
+                                    .padding(.vertical, 4)
+                                    if i < editableQuickActions.count - 1 {
+                                        Divider().opacity(0.1)
+                                    }
+                                }
+
+                                Button(action: {
+                                    editableQuickActions.append(
+                                        QuickAction(label: "", prompt: "", icon: "star")
+                                    )
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "plus.circle")
+                                            .font(.system(size: 14))
+                                        Text(L10n.t("add_action"))
+                                            .font(.system(size: 13, weight: .light))
+                                    }
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                }
+                                .padding(.top, 4)
+                            }
+                        }
+
                         // About section
-                        SettingsSection(title: "O aplikaci") {
+                        SettingsSection(title: L10n.t("about")) {
                             VStack(alignment: .leading, spacing: 8) {
-                                aboutRow(label: "Verze", value: appVersionString)
-                                aboutRow(label: "Vývojář", value: "FxLooper")
+                                aboutRow(label: L10n.t("version"), value: appVersionString)
+                                aboutRow(label: L10n.t("developer"), value: "FxLooper")
                                 aboutRow(label: "AI", value: "Claude Opus 4.6")
                                 aboutRow(label: "Voice ID", value: "ECAPA-TDNN")
                                 aboutRow(label: "STT", value: sttStatusString)
@@ -460,14 +512,14 @@ struct SettingsView: View {
                 }
             }
         }
-        .alert("Smazat historii?", isPresented: $showClearHistoryAlert) {
-            Button("Zrušit", role: .cancel) {}
-            Button("Smazat", role: .destructive) {
+        .alert(L10n.t("delete_history_confirm"), isPresented: $showClearHistoryAlert) {
+            Button(L10n.t("cancel"), role: .cancel) {}
+            Button(L10n.t("delete"), role: .destructive) {
                 HapticManager.shared.errorOccurred()
                 nova.clearMessages()
             }
         } message: {
-            Text("Tato akce je nevratná. Všechny zprávy v konverzaci budou smazány.")
+            Text(L10n.t("delete_history_msg"))
         }
         .fullScreenCover(isPresented: $showVoiceEnrollment) {
             VoiceEnrollmentView()
@@ -553,6 +605,24 @@ struct SettingsView: View {
         return "\(version) (build \(build))"
     }
 
+    private var whisperStatusColor: Color {
+        switch nova.whisperState {
+        case .ready, .listening, .transcribing: return .green
+        case .loading: return .orange
+        case .error: return .red
+        case .unloaded: return .gray
+        }
+    }
+
+    private var whisperStatusText: String {
+        switch nova.whisperState {
+        case .ready, .listening, .transcribing: return L10n.t("stt_connected")
+        case .loading: return L10n.t("stt_loading")
+        case .error: return L10n.t("stt_error")
+        case .unloaded: return L10n.t("stt_offline")
+        }
+    }
+
     private var sttStatusString: String {
         if nova.useWhisper {
             switch nova.whisperState {
@@ -583,15 +653,32 @@ struct SettingsView: View {
         }
     }
 
+    private func autoSave() {
+        UserDefaults.standard.set(selectedLang, forKey: "nova_lang")
+        UserDefaults.standard.set(selectedCity, forKey: "nova_city")
+        UserDefaults.standard.set(selectedVoiceGender, forKey: "nova_voice_gender")
+        UserDefaults.standard.set(userName, forKey: "nova_user_name")
+        UserDefaults.standard.set(selectedDevProject, forKey: "nova_dev_project")
+        let validActions = editableQuickActions.filter { !$0.label.isEmpty && !$0.prompt.isEmpty }
+        QuickAction.save(validActions)
+
+        let voices = Self.voiceMap[selectedLang] ?? ("cs-vlasta", "cs-antonin")
+        let voice = selectedVoiceGender == "female" ? voices.female : voices.male
+        UserDefaults.standard.set(voice, forKey: "nova_voice")
+
+        nova.updateProfile(lang: selectedLang, city: selectedCity, name: userName, voice: voice, voiceGender: selectedVoiceGender)
+    }
+
     private func saveAndDismiss() {
         UserDefaults.standard.set(selectedLang, forKey: "nova_lang")
         UserDefaults.standard.set(selectedCity, forKey: "nova_city")
         UserDefaults.standard.set(selectedVoiceGender, forKey: "nova_voice_gender")
         UserDefaults.standard.set(userName, forKey: "nova_user_name")
-        UserDefaults.standard.set(useWhisper, forKey: "nova_use_whisper")
         UserDefaults.standard.set(voiceVerifyEnforced, forKey: "nova_voice_verify_enforce")
         UserDefaults.standard.set(selectedDevProject, forKey: "nova_dev_project")
-        nova.setUseWhisper(useWhisper)
+        // Quick actions — ulož jen neprázdné
+        let validActions = editableQuickActions.filter { !$0.label.isEmpty && !$0.prompt.isEmpty }
+        QuickAction.save(validActions)
         nova.voiceVerificationEnforced = voiceVerifyEnforced
 
         // Vyber hlas podle jazyka a pohlaví
