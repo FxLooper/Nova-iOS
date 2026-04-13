@@ -317,7 +317,11 @@ struct ChatView: View {
                             }
 
                             // Streaming AI response — typewriter
+                            // Hide raw JSON during streaming — wait for stream-replace to clean it
                             if nova.isStreaming && !nova.streamingText.isEmpty {
+                                let cleanStreamText = Self.extractSpeechIfJSON(nova.streamingText)
+                                let isRawJSON = nova.streamingText.trimmingCharacters(in: .whitespaces).hasPrefix("{") && cleanStreamText == nil
+
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack(spacing: 6) {
                                         Text("Nova")
@@ -329,20 +333,22 @@ struct ChatView: View {
                                     }
                                     .padding(.horizontal, 14)
 
-                                    HStack {
-                                        StreamingTextView(text: nova.streamingText)
-                                            .padding(.horizontal, 14)
-                                            .padding(.vertical, 10)
-                                            .background(Color(hex: "f0ece4").opacity(0.6))
-                                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                                    .stroke(Color(hex: "1a1a2e").opacity(0.04), lineWidth: 0.5)
-                                            )
-                                            .shadow(color: Color(hex: "1a1a2e").opacity(0.03), radius: 6, x: 0, y: 2)
-                                        Spacer(minLength: 48)
+                                    if !isRawJSON {
+                                        HStack {
+                                            StreamingTextView(text: cleanStreamText ?? nova.streamingText)
+                                                .padding(.horizontal, 14)
+                                                .padding(.vertical, 10)
+                                                .background(Color(hex: "f0ece4").opacity(0.6))
+                                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                        .stroke(Color(hex: "1a1a2e").opacity(0.04), lineWidth: 0.5)
+                                                )
+                                                .shadow(color: Color(hex: "1a1a2e").opacity(0.03), radius: 6, x: 0, y: 2)
+                                            Spacer(minLength: 48)
+                                        }
+                                        .padding(.horizontal, 14)
                                     }
-                                    .padding(.horizontal, 14)
                                 }
                                 .id("streaming-bubble")
                             }
@@ -514,11 +520,13 @@ struct ChatView: View {
                         case .review:
                             // ── REVIEW: [Cancel] [Editable text] [Send ▶] ──
                             VStack(spacing: 8) {
-                                // Full text view — expanduje se podle obsahu
-                                TextField("", text: $dictatedText, axis: .vertical)
+                                // Full text view — expanduje se podle obsahu (multi-line, never truncated)
+                                TextEditor(text: $dictatedText)
                                     .font(.system(size: 15, weight: .light))
                                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-                                    .lineLimit(1...8)
+                                    .scrollContentBackground(.hidden)
+                                    .frame(minHeight: 36, maxHeight: 120)
+                                    .fixedSize(horizontal: false, vertical: true)
                                     .focused($isInputFocused)
                                     .onAppear { isInputFocused = true }
 
@@ -696,6 +704,18 @@ struct ChatView: View {
             proxy.scrollTo("bottom-anchor", anchor: .bottom)
         }
     }
+
+    /// Extract "speech" value from JSON string, returns nil if not JSON or no speech key
+    static func extractSpeechIfJSON(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("{"), trimmed.hasSuffix("}"),
+              let data = trimmed.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let speech = json["speech"] as? String, !speech.isEmpty else {
+            return nil
+        }
+        return speech
+    }
 }
 
 // MARK: - Message Bubble (Modern 2026)
@@ -734,12 +754,13 @@ struct MessageBubble: View {
                     }
                 }
 
-                // Bubble
+                // Bubble — extract speech from JSON if needed (fallback for missed stream-replace)
                 Group {
-                    if !isUser, let md = try? AttributedString(markdown: message.content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                    let displayContent = MessageBubble.cleanContent(message.content, isUser: isUser)
+                    if !isUser, let md = try? AttributedString(markdown: displayContent, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
                         Text(md)
                     } else {
-                        Text(message.content)
+                        Text(displayContent)
                     }
                 }
                 .font(.system(size: 15, weight: .light))
@@ -756,11 +777,11 @@ struct MessageBubble: View {
                 .textSelection(.enabled)
                 .contextMenu {
                     Button {
-                        UIPasteboard.general.string = message.content
+                        UIPasteboard.general.string = MessageBubble.cleanContent(message.content, isUser: isUser)
                     } label: {
                         Label("Kopírovat", systemImage: "doc.on.doc")
                     }
-                    ShareLink(item: message.content) {
+                    ShareLink(item: MessageBubble.cleanContent(message.content, isUser: isUser)) {
                         Label("Sdílet", systemImage: "square.and.arrow.up")
                     }
                 }
@@ -798,6 +819,19 @@ struct MessageBubble: View {
         let f = DateFormatter()
         f.dateFormat = "HH:mm"
         return f.string(from: message.timestamp)
+    }
+
+    /// For AI messages: if content is raw JSON with "speech" key, extract the speech text
+    static func cleanContent(_ content: String, isUser: Bool) -> String {
+        guard !isUser else { return content }
+        let trimmed = content.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("{"),
+              let data = trimmed.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let speech = json["speech"] as? String, !speech.isEmpty else {
+            return content
+        }
+        return speech
     }
 }
 

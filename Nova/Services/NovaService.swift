@@ -246,7 +246,18 @@ class NovaService: ObservableObject {
             activeRequestId = nil
 
             // Pokud server nahradil JSON za čistý speech, použij ten
-            let displayText = streamReplacedText ?? reply
+            // FALLBACK: pokud stream-replace nepřišel (timing), ale reply je JSON s "speech", extrahuj ho
+            let displayText: String
+            if let replaced = streamReplacedText {
+                displayText = replaced
+            } else if reply.trimmingCharacters(in: .whitespaces).hasPrefix("{"),
+                      let jsonData = reply.data(using: .utf8),
+                      let jsonObj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                      let speech = jsonObj["speech"] as? String, !speech.isEmpty {
+                displayText = speech
+            } else {
+                displayText = reply
+            }
             streamReplacedText = nil
 
             let aiMsg = Message(role: "ai", content: displayText)
