@@ -572,6 +572,11 @@ struct ChatView: View {
             SettingsView()
                 .environmentObject(nova)
         }
+        .onChange(of: showSettings) { _, isShowing in
+            if !isShowing {
+                quickActions = QuickAction.load()
+            }
+        }
         .sheet(isPresented: $showCamera) {
             CameraCaptureView { image in
                 showCamera = false
