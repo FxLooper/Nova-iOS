@@ -286,11 +286,17 @@ class NovaService: ObservableObject {
             let selectedVoice = profile["voice"] ?? UserDefaults.standard.string(forKey: "nova_voice") ?? "cs-vlasta"
             request.httpBody = try JSONSerialization.data(withJSONObject: ["text": text, "voice": selectedVoice])
 
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.data(for: request)
 
-            // POZOR: Zachováme .playAndRecord + .voiceChat pro hardware AEC.
-            // Přepnutí na .playback by vypnulo echo cancellation a mic by chytil
-            // zpět Novin hlas z reproduktoru.
+            // Ověř že server vrátil audio, ne error JSON
+            let httpResponse = response as? HTTPURLResponse
+            let contentType = httpResponse?.value(forHTTPHeaderField: "Content-Type") ?? ""
+            guard httpResponse?.statusCode == 200, contentType.contains("audio"), data.count > 200 else {
+                print("[TTS] server error: HTTP \(httpResponse?.statusCode ?? 0), type=\(contentType), size=\(data.count)")
+                state = .idle
+                return
+            }
+
             let session = AVAudioSession.sharedInstance()
             if session.category != .playAndRecord {
                 try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
@@ -300,17 +306,13 @@ class NovaService: ObservableObject {
             audioPlayer = try AVAudioPlayer(data: data)
             audioPlayer?.play()
 
-            // Wait for playback to finish
             while audioPlayer?.isPlaying == true {
                 try await Task.sleep(nanoseconds: 100_000_000)
             }
             audioPlayer = nil
         } catch {
-            // Fallback: iOS native TTS
-            let utterance = AVSpeechUtterance(string: text)
-            utterance.voice = AVSpeechSynthesisVoice(language: "cs-CZ")
-            utterance.rate = 0.55
-            synthesizer.speak(utterance)
+            print("[TTS] playback error: \(error.localizedDescription) — skipping voice")
+            // Žádný fallback na anglický hlas — lepší ticho než špatný jazyk
         }
     }
 
