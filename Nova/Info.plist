@@ -33,6 +33,13 @@
 				<key>NSIncludesSubdomains</key>
 				<true/>
 			</dict>
+			<key>192.168.0.183</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
 		</dict>
 	</dict>
 	<key>NSBonjourServices</key>
@@ -41,6 +48,8 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Nova connects to your Nova backend server on your local network or VPN.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Nova uses your location to find nearby places, weather, and local information.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Nova needs microphone access for voice conversation with your AI assistant.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

@@ -531,15 +531,17 @@ struct SettingsView: View {
     // MARK: - Helper subviews
 
     private var serverHealthDetailRow: some View {
-        HStack(spacing: 6) {
+        let status = nova.serverHealth.status
+        let latency = nova.serverHealth.lastPingLatency
+        return HStack(spacing: 6) {
             Circle()
                 .fill(serverHealthStatusColor)
                 .frame(width: 6, height: 6)
             Text(serverHealthStatusText)
                 .font(.system(size: 11, weight: .light))
                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
-            if nova.serverHealth.lastPingLatency > 0 {
-                Text("(\(Int(nova.serverHealth.lastPingLatency * 1000))ms)")
+            if latency > 0 {
+                Text("(\(Int(latency * 1000))ms)")
                     .font(.system(size: 11, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
             }

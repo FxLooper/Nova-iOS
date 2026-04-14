@@ -16,7 +16,9 @@ struct ContentView: View {
 // MARK: - Setup View (first launch — premium welcome)
 struct SetupView: View {
     @EnvironmentObject var nova: NovaService
-    @State private var server = "http://192.168.0.183:3000"
+    @State private var server = "http://100.105.26.7:3000"
+    // Token pre-fill pro dev
+    // Pro produkci odstranit
     @State private var token = ""
     @State private var step: Int = 0  // 0=welcome, 1=connection
     @State private var orbScale: CGFloat = 0.8
@@ -270,7 +272,7 @@ struct ChatView: View {
                                     .background(Color(hex: "1a1a2e").opacity(0.04))
                                     .clipShape(Capsule())
                                 }
-                                .disabled(nova.isStreaming || nova.state == .thinking)
+                                .opacity(nova.state == .speaking ? 0.5 : 1.0)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -317,51 +319,43 @@ struct ChatView: View {
                                 .padding(.horizontal, 20)
                             }
 
-                            // Streaming AI response — typewriter
-                            // Hide raw JSON during streaming — wait for stream-replace to clean it
-                            if nova.isStreaming && !nova.streamingText.isEmpty {
-                                let cleanStreamText = Self.extractSpeechIfJSON(nova.streamingText)
-                                let isRawJSON = nova.streamingText.trimmingCharacters(in: .whitespaces).hasPrefix("{") && cleanStreamText == nil
+                            // Live status — viditelný CELOU dobu co Nova pracuje
+                            // Zobrazí se kdykoli je thinkingStage nastavený
+                            if nova.thinkingStage != nil {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    // Live stage indikátor — vždy nahoře
+                                    LiveStageIndicator()
 
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack(spacing: 6) {
-                                        Text("Nova")
-                                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.35))
-                                        if nova.thinkingStage != nil {
-                                            CompactStageBar()
-                                        }
-                                    }
-                                    .padding(.horizontal, 14)
+                                    // Streaming text pod ním — skryj JSON/akce úplně
+                                    if nova.isStreaming && !nova.streamingText.isEmpty {
+                                        let trimmed = nova.streamingText.trimmingCharacters(in: .whitespaces)
+                                        let looksLikeJSON = trimmed.hasPrefix("{") || trimmed.hasPrefix("[") || trimmed.hasPrefix("```") || trimmed.hasPrefix("(") || trimmed.contains("\"action\"") || trimmed.contains("\"speech\"") || trimmed.contains("\"params\"")
+                                        let cleanStreamText = looksLikeJSON ? Self.extractSpeechIfJSON(nova.streamingText) : nil
+                                        let displayStream = cleanStreamText ?? (looksLikeJSON ? nil : nova.streamingText)
 
-                                    if !isRawJSON {
-                                        HStack {
-                                            StreamingTextView(text: cleanStreamText ?? nova.streamingText)
-                                                .padding(.horizontal, 14)
-                                                .padding(.vertical, 10)
-                                                .background(Color(hex: "f0ece4").opacity(0.6))
-                                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                                .overlay(
-                                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                                        .stroke(Color(hex: "1a1a2e").opacity(0.04), lineWidth: 0.5)
-                                                )
-                                                .shadow(color: Color(hex: "1a1a2e").opacity(0.03), radius: 6, x: 0, y: 2)
-                                            Spacer(minLength: 48)
+                                        if let displayStream = displayStream, !displayStream.isEmpty {
+                                            HStack {
+                                                StreamingTextView(text: displayStream)
+                                                    .padding(.horizontal, 14)
+                                                    .padding(.vertical, 10)
+                                                    .background(Color(hex: "f0ece4").opacity(0.6))
+                                                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                            .stroke(Color(hex: "1a1a2e").opacity(0.04), lineWidth: 0.5)
+                                                    )
+                                                    .shadow(color: Color(hex: "1a1a2e").opacity(0.03), radius: 6, x: 0, y: 2)
+                                                Spacer(minLength: 48)
+                                            }
+                                            .padding(.horizontal, 14)
                                         }
-                                        .padding(.horizontal, 14)
                                     }
                                 }
                                 .id("streaming-bubble")
-                            }
-
-                            // Nova status bubble — listening / thinking / speaking
-                            if nova.state == .thinking && !nova.isStreaming {
-                                ThinkingBubbleView()
-                                    .id("thinking-bubble")
-                                    .transition(.asymmetric(
-                                        insertion: .scale(scale: 0.92).combined(with: .opacity),
-                                        removal: .scale(scale: 0.85).combined(with: .opacity)
-                                    ))
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.92).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
                             }
 
                             if nova.state == .listening && dictationState == .idle {
@@ -894,6 +888,275 @@ struct StreamingTextView: View {
                 displayedCount += 1
                 try? await Task.sleep(nanoseconds: 35_000_000) // 35ms per char
             }
+        }
+    }
+}
+
+// MARK: - Live Stage Indicator (vždy viditelný když Nova pracuje)
+struct LiveStageIndicator: View {
+    @EnvironmentObject var nova: NovaService
+    @State private var rotation: Double = 0
+
+    private var label: String {
+        if let stage = nova.thinkingStage {
+            return L10n.stage(stage.key, detail: stage.detail)
+        }
+        if nova.isStreaming {
+            return L10n.stage("generating_response")
+        }
+        return L10n.stage("thinking")
+    }
+
+    private var transitionId: String {
+        "\(nova.thinkingStage?.key ?? "default")|\(nova.thinkingStage?.detail ?? "")"
+    }
+
+    private let accent = Color(red: 0.2, green: 0.6, blue: 1.0)
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // JARVIS REACTOR
+            ZStack {
+                // Layer 0 — ambient glow
+                Circle()
+                    .fill(accent.opacity(pulse1 * 0.12))
+                    .frame(width: 42, height: 42)
+                    .blur(radius: 8)
+
+                // Layer 1 — outer ring, slow, wide arc
+                Circle()
+                    .trim(from: 0, to: 0.55)
+                    .stroke(
+                        accent.opacity(0.12 + pulse1 * 0.2),
+                        style: StrokeStyle(lineWidth: 1, lineCap: .round)
+                    )
+                    .frame(width: 34, height: 34)
+                    .rotationEffect(.degrees(ring1))
+
+                // Layer 2 — main ring, medium speed
+                Circle()
+                    .trim(from: 0, to: 0.35)
+                    .stroke(
+                        accent.opacity(0.35 + pulse2 * 0.55),
+                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                    )
+                    .frame(width: 26, height: 26)
+                    .rotationEffect(.degrees(ring2))
+
+                // Layer 3 — inner ring, fast, counter-rotate
+                Circle()
+                    .trim(from: 0, to: 0.25)
+                    .stroke(
+                        accent.opacity(0.25 + pulse3 * 0.4),
+                        style: StrokeStyle(lineWidth: 1.8, lineCap: .round)
+                    )
+                    .frame(width: 18, height: 18)
+                    .rotationEffect(.degrees(ring3))
+
+                // Layer 4 — micro ring, fastest
+                Circle()
+                    .trim(from: 0, to: 0.15)
+                    .stroke(
+                        accent.opacity(0.2 + pulse1 * 0.3),
+                        style: StrokeStyle(lineWidth: 1, lineCap: .round)
+                    )
+                    .frame(width: 12, height: 12)
+                    .rotationEffect(.degrees(ring4))
+
+                // Orbiting light pulse — světelný bod obíhá po hlavním prstenci
+                Circle()
+                    .fill(accent.opacity(0.6 + pulse2 * 0.4))
+                    .frame(width: 4, height: 4)
+                    .shadow(color: accent.opacity(0.5), radius: 4)
+                    .offset(x: 13)
+                    .rotationEffect(.degrees(orbitLight))
+
+                // Druhý orbiting pulse — protiběžný, subtilnější
+                Circle()
+                    .fill(accent.opacity(0.3 + pulse3 * 0.3))
+                    .frame(width: 3, height: 3)
+                    .shadow(color: accent.opacity(0.3), radius: 3)
+                    .offset(x: 17)
+                    .rotationEffect(.degrees(-orbitLight * 0.6))
+
+                // Core — pulzující střed s glow
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                accent.opacity(0.5 + pulse2 * 0.5),
+                                accent.opacity(0.15 + pulse2 * 0.15),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 7
+                        )
+                    )
+                    .frame(width: 14, height: 14)
+
+                Circle()
+                    .fill(accent.opacity(0.6 + pulse1 * 0.4))
+                    .frame(width: 4, height: 4)
+            }
+            .frame(width: 42, height: 42)
+            .onAppear {
+                // Každý ring má jinou rychlost a směr
+                withAnimation(.linear(duration: 6.0).repeatForever(autoreverses: false)) {
+                    ring1 = 360
+                }
+                withAnimation(.linear(duration: 2.2).repeatForever(autoreverses: false)) {
+                    ring2 = 360
+                }
+                withAnimation(.linear(duration: 3.5).repeatForever(autoreverses: false)) {
+                    ring3 = -360
+                }
+                withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) {
+                    ring4 = 360
+                }
+                // Orbiting light — plynulý, ne moc rychlý
+                withAnimation(.linear(duration: 1.8).repeatForever(autoreverses: false)) {
+                    orbitLight = 360
+                }
+                // Pulse — každý s jiným timingem pro organický feel
+                withAnimation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true)) {
+                    pulse1 = 1.0
+                }
+                withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true).delay(0.3)) {
+                    pulse2 = 1.0
+                }
+                withAnimation(.easeInOut(duration: 1.7).repeatForever(autoreverses: true).delay(0.6)) {
+                    pulse3 = 1.0
+                }
+            }
+
+            // Text — typewriter + shimmer + fade out
+            JarvisTextView(text: label, accent: accent)
+                .id(transitionId)
+                .transition(.asymmetric(
+                    insertion: .opacity,
+                    removal: .push(from: .top).combined(with: .opacity)
+                ))
+
+            Spacer()
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: transitionId)
+    }
+
+    // Ring rotations — každý svou rychlostí
+    @State private var ring1: Double = 0
+    @State private var ring2: Double = 0
+    @State private var ring3: Double = 0
+    @State private var ring4: Double = 0
+    @State private var orbitLight: Double = 0
+    // Pulses — každý s jiným timingem
+    @State private var pulse1: Double = 0
+    @State private var pulse2: Double = 0
+    @State private var pulse3: Double = 0
+}
+
+// MARK: - Jarvis Text View (typewriter → shimmer → fade)
+struct JarvisTextView: View {
+    let text: String
+    let accent: Color
+
+    @State private var displayedChars: Int = 0
+    @State private var shimmerX: CGFloat = -60
+    @State private var phase: Phase = .typing
+    @State private var textOpacity: Double = 1.0
+    @State private var animTask: Task<Void, Never>?
+
+    enum Phase {
+        case typing, shimmer, visible, fadeOut
+    }
+
+    var visibleText: String {
+        String(text.prefix(displayedChars))
+    }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            // Base text
+            Text(visibleText)
+                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.55 * textOpacity))
+                .lineLimit(1)
+
+            // Shimmer overlay — jen ve fázi shimmer
+            if phase == .shimmer || phase == .visible {
+                GeometryReader { geo in
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            accent.opacity(0.25),
+                            Color.white.opacity(0.7),
+                            accent.opacity(0.25),
+                            Color.clear,
+                        ],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                    .frame(width: 50)
+                    .offset(x: shimmerX)
+                    .blur(radius: 1)
+                }
+                .mask(
+                    Text(visibleText)
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .lineLimit(1)
+                )
+            }
+
+            // Typing cursor
+            if phase == .typing {
+                Text(visibleText + "▌")
+                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.clear)
+                    .lineLimit(1)
+                    .overlay(alignment: .trailing) {
+                        Rectangle()
+                            .fill(accent.opacity(0.6))
+                            .frame(width: 2, height: 16)
+                            .opacity(displayedChars % 2 == 0 ? 1 : 0.4)
+                    }
+            }
+        }
+        .onAppear { startAnimation() }
+        .onChange(of: text) { _, _ in startAnimation() }
+    }
+
+    private func startAnimation() {
+        animTask?.cancel()
+        displayedChars = 0
+        phase = .typing
+        textOpacity = 1.0
+        shimmerX = -60
+
+        animTask = Task { @MainActor in
+            // Phase 1: Typewriter — písmenko po písmenku
+            for i in 1...text.count {
+                if Task.isCancelled { return }
+                displayedChars = i
+                try? await Task.sleep(nanoseconds: 35_000_000) // 35ms per char
+            }
+
+            if Task.isCancelled { return }
+
+            // Phase 2: Shimmer přejede přes text
+            phase = .shimmer
+            shimmerX = -60
+            withAnimation(.linear(duration: 0.8)) {
+                shimmerX = 300
+            }
+
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            if Task.isCancelled { return }
+
+            // Phase 3: Visible — text zůstane viditelný dokud se nezmění stage
+            phase = .visible
+            // Žádný fade-out — text zůstává dokud nepřijde nový stage
         }
     }
 }

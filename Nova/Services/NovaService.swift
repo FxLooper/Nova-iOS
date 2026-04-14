@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import Speech
 import Combine
+import UIKit
 
 @MainActor
 class NovaService: ObservableObject {
@@ -9,9 +10,6 @@ class NovaService: ObservableObject {
     @Published var messages: [Message] = []
     @Published var state: NovaState = .idle {
         didSet {
-            if state != .thinking && thinkingStage != nil {
-                thinkingStage = nil
-            }
             updateLiveActivityForState()
         }
     }
@@ -88,6 +86,8 @@ class NovaService: ObservableObject {
         // Whisper se loaduje vždy — auto-detect jazyka, lepší kvalita STT
         if !useWhisper { setUseWhisper(true) }
         Task { await loadWhisperModel() }
+        // Start GPS
+        LocationService.shared.startUpdating()
         // Configure voice profile service with current server/token
         voiceProfile.configure(serverURL: serverURL, token: token)
         // Start monitoring Mac server health
@@ -199,21 +199,54 @@ class NovaService: ObservableObject {
     }
 
     // MARK: - API Communication (streaming přes WebSocket)
+    private var isSending = false
+    private var lastSendTime: Date = .distantPast
+    private var activeTask: Task<Void, Never>?
+
     func sendMessage(_ text: String) async {
         guard !text.isEmpty else { return }
+
+        // Vždy zastav předchozí práci
+        activeTask?.cancel()
+        audioPlayer?.stop()
+        audioPlayer = nil
+        isSending = false
+
+        // Debounce — ignoruj taps rychlejší než 1s
+        let now = Date()
+        guard now.timeIntervalSince(lastSendTime) > 1.0 else { return }
+
+        isSending = true
+        lastSendTime = now
+        print("[chat] === SENDING: \(text.prefix(40)) ===")
+
+        // Zastav TTS pokud Nova právě mluví
+        audioPlayer?.stop()
+        audioPlayer = nil
 
         let userMsg = Message(role: "user", content: text)
         messages.append(userMsg)
         saveMessages()
         state = .thinking
+        thinkingStage = ThinkingStage(key: "understanding", detail: nil)
         streamingText = ""
         isStreaming = false
         streamReplacedText = nil
 
         do {
+            var profileDict = profile.isEmpty ? ["lang": "cs", "name": "Ondřej", "city": "Plzeň", "agentName": "Nova"] : profile
+            // Přidej GPS souřadnice pokud jsou dostupné
+            if let loc = LocationService.shared.locationDict {
+                profileDict["latitude"] = "\(loc["latitude"] ?? "")"
+                profileDict["longitude"] = "\(loc["longitude"] ?? "")"
+                if let gpsCity = loc["city"] as? String { profileDict["city"] = gpsCity }
+                print("[GPS] sending: \(loc)")
+            } else {
+                print("[GPS] no location available")
+            }
             let payload: [String: Any] = [
                 "messages": messages.suffix(50).map { ["role": $0.role == "user" ? "user" : "assistant", "content": $0.content] },
-                "profile": profile.isEmpty ? ["lang": "cs", "name": "Ondřej", "city": "Plzeň", "agentName": "Nova"] : profile
+                "profile": profileDict
             ]
             let jsonData = try JSONSerialization.data(withJSONObject: payload)
 
@@ -227,9 +260,14 @@ class NovaService: ObservableObject {
             request.httpBody = jsonData
             request.timeoutInterval = 60
 
+            print("[chat] POST \(serverURL)/api/chat, wsConnected=\(isConnected)")
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Server error"])
+            let httpResponse = response as? HTTPURLResponse
+            print("[chat] response status: \(httpResponse?.statusCode ?? -1)")
+            guard httpResponse?.statusCode == 200 else {
+                let body = String(data: data, encoding: .utf8) ?? ""
+                print("[chat] error body: \(body)")
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Server error (\(httpResponse?.statusCode ?? -1))"])
             }
 
             // Server vrátí { streaming: true, requestId: "..." }
@@ -238,50 +276,57 @@ class NovaService: ObservableObject {
                 activeRequestId = requestId
             }
 
-            // Čekej na stream-end přes WebSocket (tokeny mezitím tečou do streamingText)
-            // Resume any orphaned continuation before setting a new one
-            streamCompletion?.resume(throwing: CancellationError())
-            streamCompletion = nil
-            let reply: String = try await withCheckedThrowingContinuation { continuation in
-                self.streamCompletion = continuation
-            }
+            // Vždy použij HTTP polling — WebSocket je nespolehlivý na iOS
+            let reply: String = try await pollForResponse(requestId: activeRequestId ?? "")
 
             // Stream dokončen — finalizuj zprávu
             isStreaming = false
             streamingText = ""
             activeRequestId = nil
 
-            // Pokud server nahradil JSON za čistý speech, použij ten
-            // FALLBACK: pokud stream-replace nepřišel (timing), ale reply je JSON s "speech", extrahuj ho
-            let displayText: String
-            if let replaced = streamReplacedText {
-                displayText = replaced
-            } else if reply.trimmingCharacters(in: .whitespaces).hasPrefix("{"),
-                      let jsonData = reply.data(using: .utf8),
-                      let jsonObj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-                      let speech = jsonObj["speech"] as? String, !speech.isEmpty {
-                displayText = speech
-            } else {
-                displayText = reply
-            }
+            // Server zpracoval akce sám — polling vrací hotový výsledek
             streamReplacedText = nil
+            var displayText = reply
+
+            // Detekuj __OPEN_URL__ token — otevři URL na iPhone
+            if let range = displayText.range(of: "__OPEN_URL__") {
+                let urlString = String(displayText[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                displayText = String(displayText[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                if let url = URL(string: urlString) {
+                    print("[openURL] \(url)")
+                    await UIApplication.shared.open(url)
+                }
+            }
 
             let aiMsg = Message(role: "ai", content: displayText)
             messages.append(aiMsg)
             saveMessages()
             HapticManager.shared.novaResponseChord()
 
+            // Pokud byl task zrušen (nová zpráva přerušila), nedělej TTS
+            guard !Task.isCancelled else {
+                isSending = false
+                return
+            }
+
             // TTS — přečte speech text, ne raw JSON
             state = .speaking
             await playTTS(displayText)
+
+            guard !Task.isCancelled else {
+                isSending = false
+                return
+            }
 
             // Debounce po TTS — nech mikrofon "odechnout" od echa
             try? await Task.sleep(nanoseconds: 500_000_000)
 
             // Po odpovědi → pokračuj v konverzaci
+            isSending = false
             continueConversation()
 
         } catch {
+            isSending = false
             isStreaming = false
             streamingText = ""
             activeRequestId = nil
@@ -290,6 +335,52 @@ class NovaService: ObservableObject {
             saveMessages()
             state = .idle
         }
+    }
+
+    // MARK: - HTTP Polling Fallback
+    private func pollForResponse(requestId: String) async throws -> String {
+        guard !requestId.isEmpty else {
+            throw NSError(domain: "nova", code: -1, userInfo: [NSLocalizedDescriptionKey: "No requestId"])
+        }
+        let pollURL = URL(string: "\(serverURL)/api/poll/\(requestId)")!
+        var request = URLRequest(url: pollURL)
+        request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+
+        // Nastav výchozí stage hned
+        thinkingStage = ThinkingStage(key: "understanding", detail: nil)
+
+        for i in 0..<120 { // max 60 sekund (120 × 500ms)
+            try Task.checkCancellation()
+            try await Task.sleep(nanoseconds: 500_000_000)
+            let (data, _) = try await URLSession.shared.data(for: request)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let status = json["status"] as? String {
+                let text = json["text"] as? String ?? ""
+                if !text.isEmpty { streamingText = text; isStreaming = true }
+                // Stage update — drž vždy nějaký stage viditelný
+                let stageKey = json["stage"] as? String ?? ""
+                let stageDetail = json["stageDetail"] as? String
+                if !stageKey.isEmpty {
+                    let newStage = ThinkingStage(key: stageKey, detail: stageDetail)
+                    if thinkingStage != newStage {
+                        thinkingStage = newStage
+                        HapticManager.shared.selectionChanged()
+                    }
+                } else if !text.isEmpty && thinkingStage?.key != "generating_response" && thinkingStage?.key != "composing" {
+                    // Text přichází ale stage je starý — přepni na formuluji
+                    thinkingStage = ThinkingStage(key: "generating_response", detail: nil)
+                } else if i > 3 && thinkingStage?.key == "understanding" {
+                    thinkingStage = ThinkingStage(key: "analyzing", detail: nil)
+                }
+                if status == "done" {
+                    thinkingStage = ThinkingStage(key: "finishing", detail: nil)
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    thinkingStage = nil
+                    return text
+                }
+            }
+        }
+        throw NSError(domain: "nova", code: -1, userInfo: [NSLocalizedDescriptionKey: "Timeout čekání na odpověď"])
     }
 
     // MARK: - TTS
@@ -306,7 +397,8 @@ class NovaService: ObservableObject {
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
-            let selectedVoice = profile["voice"] ?? UserDefaults.standard.string(forKey: "nova_voice") ?? "cs-vlasta"
+            let selectedVoice = UserDefaults.standard.string(forKey: "nova_voice") ?? profile["voice"] ?? "cs-vlasta"
+            print("[TTS] sending voice: \(selectedVoice)")
             request.httpBody = try JSONSerialization.data(withJSONObject: ["text": text, "voice": selectedVoice])
 
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -330,6 +422,12 @@ class NovaService: ObservableObject {
             audioPlayer?.play()
 
             while audioPlayer?.isPlaying == true {
+                if !ttsEnabled {
+                    audioPlayer?.stop()
+                    audioPlayer = nil
+                    state = .idle
+                    return
+                }
                 try await Task.sleep(nanoseconds: 100_000_000)
             }
             audioPlayer = nil
@@ -839,14 +937,24 @@ class NovaService: ObservableObject {
     func toggleTTS() {
         ttsEnabled.toggle()
         UserDefaults.standard.set(ttsEnabled, forKey: "nova_tts_enabled")
+        // Okamžitě zastav přehrávání pokud se TTS vypíná
+        if !ttsEnabled {
+            audioPlayer?.stop()
+            audioPlayer = nil
+            if state == .speaking { state = .idle }
+        }
     }
 
     // MARK: - WebSocket
     private var wsSession: URLSession?
     private var isReconnecting = false
+    private var wsReconnectCount = 0
+    private let wsMaxReconnects = 5
 
     func connectWebSocket() {
-        guard !serverURL.isEmpty, !isReconnecting else { return }
+        // WS disabled — používáme HTTP polling
+        return
+        guard !serverURL.isEmpty, !isReconnecting, wsReconnectCount < wsMaxReconnects else { return }
         isReconnecting = true
 
         // Clean up previous connection
@@ -860,14 +968,20 @@ class NovaService: ObservableObject {
         } else {
             wsURL = "ws" + serverURL.dropFirst(4)
         }
-        guard let url = URL(string: wsURL) else {
+        guard let url = URL(string: "\(wsURL)?token=\(token)") else {
             isReconnecting = false
             return
         }
+        print("[ws] connecting to: \(url.absoluteString)")
 
-        let session = URLSession(configuration: .default)
+        let config = URLSessionConfiguration.default
+        config.waitsForConnectivity = false
+        config.timeoutIntervalForRequest = 15
+        let session = URLSession(configuration: config)
         wsSession = session
-        webSocket = session.webSocketTask(with: url)
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        webSocket = session.webSocketTask(with: request)
         webSocket?.resume()
         isReconnecting = false
         // isConnected set to true after first successful receive
@@ -882,6 +996,7 @@ class NovaService: ObservableObject {
                     // Mark connected after first successful receive
                     if self?.isConnected == false {
                         self?.isConnected = true
+                        self?.wsReconnectCount = 0
                     }
                 }
                 if case .string(let text) = message,
@@ -896,14 +1011,19 @@ class NovaService: ObservableObject {
                 }
             case .failure(let error):
                 Task { @MainActor in
-                    self?.isConnected = false
-                    print("[ws] receive failed: \(error.localizedDescription)")
+                    if self?.isConnected != false { self?.isConnected = false }
+                    self?.wsReconnectCount += 1
+                    print("[ws] receive failed (\(self?.wsReconnectCount ?? 0)/\(self?.wsMaxReconnects ?? 3)): \(error.localizedDescription)")
                     // Resume pending stream continuation only if one exists (user was waiting for response)
                     if let completion = self?.streamCompletion {
                         completion.resume(throwing: NSError(domain: "nova.ws", code: -1, userInfo: [NSLocalizedDescriptionKey: "Spojení se serverem se přerušilo"]))
                         self?.streamCompletion = nil
                     }
-                    try? await Task.sleep(nanoseconds: 3_000_000_000)
+                    guard (self?.wsReconnectCount ?? 99) < (self?.wsMaxReconnects ?? 3) else {
+                        print("[ws] max reconnects reached, stopping")
+                        return
+                    }
+                    try? await Task.sleep(nanoseconds: 10_000_000_000)
                     self?.connectWebSocket()
                 }
             }

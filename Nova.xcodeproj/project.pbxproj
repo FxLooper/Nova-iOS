@@ -32,6 +32,7 @@
 		BB5926592F89B05000A68034 /* AudioLivenessDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926582F89B05000A68034 /* AudioLivenessDetector.swift */; };
 		BB59265B2F89B0A000A68034 /* ServerHealthMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB59265A2F89B0A000A68034 /* ServerHealthMonitor.swift */; };
 		BB59265D2F89B0F000A68034 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB59265C2F89B0F000A68034 /* NetworkMonitor.swift */; };
+		BB5926812F8BF10000A68034 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926802F8BF10000A68034 /* LocationService.swift */; };
 		BB59265D2F8AC79000A68034 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB59265C2F8AC79000A68034 /* WidgetKit.framework */; };
 		BB59265F2F8AC79000A68034 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB59265E2F8AC79000A68034 /* SwiftUI.framework */; };
 		BB5926702F8AC79100A68034 /* NovaWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB59265A2F8AC79000A68034 /* NovaWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -90,6 +91,7 @@
 		BB59265A2F89B0A000A68034 /* ServerHealthMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerHealthMonitor.swift; sourceTree = "<group>"; };
 		BB59265A2F8AC79000A68034 /* NovaWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NovaWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB59265C2F89B0F000A68034 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		BB5926802F8BF10000A68034 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		BB59265C2F8AC79000A68034 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		BB59265E2F8AC79000A68034 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		C1000001 /* Nova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nova.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -210,6 +212,7 @@
 				BB5926562F89B00100A68034 /* HapticManager.swift */,
 				BB59265A2F89B0A000A68034 /* ServerHealthMonitor.swift */,
 				BB59265C2F89B0F000A68034 /* NetworkMonitor.swift */,
+				BB5926802F8BF10000A68034 /* LocationService.swift */,
 				BB5926492F8972B000A68034 /* WhisperService.swift */,
 				B1000003 /* NovaService.swift */,
 				B1000004 /* KeychainHelper.swift */,
@@ -341,6 +344,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB59265D2F89B0F000A68034 /* NetworkMonitor.swift in Sources */,
+				BB5926812F8BF10000A68034 /* LocationService.swift in Sources */,
 				BB59265B2F89B0A000A68034 /* ServerHealthMonitor.swift in Sources */,
 				BB5926592F89B05000A68034 /* AudioLivenessDetector.swift in Sources */,
 				BB5926572F89B00100A68034 /* HapticManager.swift in Sources */,
