@@ -1194,14 +1194,14 @@ class NovaService: ObservableObject {
             if planJson?["streaming"] as? Bool == true,
                let requestId = planJson?["requestId"] as? String {
                 needsConfirm = planJson?["needsConfirm"] as? Bool ?? true
-                // Nastav stage hned aby uživatel viděl že Nova pracuje
+                pendingConfirmToken = planJson?["confirmToken"] as? String
                 thinkingStage = ThinkingStage(key: "analyzing", detail: nil)
                 state = .thinking
                 planContent = try await pollForResponse(requestId: requestId)
             } else {
-                // Starý synchronous flow
                 planContent = planJson?["content"] as? String ?? "Nemůžu navrhnout plán."
                 needsConfirm = planJson?["needsConfirm"] as? Bool ?? true
+                pendingConfirmToken = planJson?["confirmToken"] as? String
             }
 
             let planMsg = Message(role: "ai", content: planContent)
@@ -1235,6 +1235,7 @@ class NovaService: ObservableObject {
         let devMessages: [[String: String]]
     }
     var pendingDevPlan: DevPlan?
+    var pendingConfirmToken: String?
 
     func confirmDevAction() async {
         guard let plan = pendingDevPlan else { return }
@@ -1255,7 +1256,12 @@ class NovaService: ObservableObject {
             execRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
             execRequest.setValue(token, forHTTPHeaderField: "X-Nova-Token")
             // Auto-detection: server sám pozná projekt z kontextu zpráv
-            execRequest.httpBody = try JSONSerialization.data(withJSONObject: ["messages": devMsgs])
+            var execPayload: [String: Any] = ["messages": devMsgs]
+            if let confirmToken = pendingConfirmToken {
+                execPayload["confirmToken"] = confirmToken
+                pendingConfirmToken = nil
+            }
+            execRequest.httpBody = try JSONSerialization.data(withJSONObject: execPayload)
             execRequest.timeoutInterval = 600
 
             let (execData, _) = try await URLSession.shared.data(for: execRequest)
