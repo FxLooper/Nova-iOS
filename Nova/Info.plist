@@ -48,6 +48,10 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Nova connects to your Nova backend server on your local network or VPN.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Nova saves generated images to your Photos when you ask.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Nova uses the camera to analyze photos — describe objects, read text, identify places.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Nova uses your location to find nearby places, weather, and local information.</string>
 	<key>NSMicrophoneUsageDescription</key>

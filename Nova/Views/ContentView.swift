@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import PDFKit
 
 struct ContentView: View {
     @EnvironmentObject var nova: NovaService
@@ -206,6 +207,9 @@ struct ChatView: View {
     @State private var dictatedText = ""
     @State private var recordingPulse = false
     @State private var showCamera = false
+    @State private var showPhotoPicker = false
+    @State private var showFilePicker = false
+    @State private var selectedPhoto: PhotosPickerItem?
     @State private var showVoiceConversation = false
     @State private var quickActions: [QuickAction] = QuickAction.load()
 
@@ -238,10 +242,35 @@ struct ChatView: View {
 
                     Spacer()
 
-                    Button(action: { nova.toggleTTS() }) {
-                        Image(systemName: nova.ttsEnabled ? "speaker.wave.2" : "speaker.slash")
-                            .font(.system(size: 14, weight: .light))
-                            .foregroundColor(Color(hex: "1a1a2e").opacity(nova.ttsEnabled ? 0.25 : 0.6))
+                    HStack(spacing: 14) {
+                        // Dev mode indikátor
+                        Text("DEV")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .tracking(1)
+                            .foregroundColor(nova.isDevMode
+                                ? Color(red: 0.2, green: 0.6, blue: 1.0)
+                                : Color(hex: "1a1a2e").opacity(0.2))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(nova.isDevMode
+                                        ? Color(red: 0.2, green: 0.6, blue: 1.0).opacity(0.1)
+                                        : Color.clear)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(nova.isDevMode
+                                        ? Color(red: 0.2, green: 0.6, blue: 1.0).opacity(0.4)
+                                        : Color(hex: "1a1a2e").opacity(0.15), lineWidth: 1)
+                            )
+                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: nova.isDevMode)
+
+                        Button(action: { nova.toggleTTS() }) {
+                            Image(systemName: nova.ttsEnabled ? "speaker.wave.2" : "speaker.slash")
+                                .font(.system(size: 14, weight: .light))
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(nova.ttsEnabled ? 0.25 : 0.6))
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -410,6 +439,17 @@ struct ChatView: View {
                     .onChange(of: nova.thinkingStage?.key) { _, _ in
                         scrollToBottom(proxy)
                     }
+                    .onChange(of: isInputFocused) { _, focused in
+                        if focused {
+                            // Klávesnice se objevila — scrollni dolů aby byla vidět poslední zpráva
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                scrollToBottom(proxy)
+                            }
+                        } else {
+                            // Klávesnice zavřená — scrollni dolů
+                            scrollToBottom(proxy)
+                        }
+                    }
                 }
 
                 Divider().opacity(0.15)
@@ -466,6 +506,33 @@ struct ChatView: View {
                                 .onSubmit { sendText() }
 
                             if inputText.isEmpty {
+                                // Plus menu — kamera, fotky, soubory
+                                Menu {
+                                    Button(action: {
+                                        HapticManager.shared.selectionChanged()
+                                        showCamera = true
+                                    }) {
+                                        Label("Kamera", systemImage: "camera")
+                                    }
+                                    Button(action: {
+                                        HapticManager.shared.selectionChanged()
+                                        showPhotoPicker = true
+                                    }) {
+                                        Label("Fotky", systemImage: "photo.on.rectangle")
+                                    }
+                                    Button(action: {
+                                        HapticManager.shared.selectionChanged()
+                                        showFilePicker = true
+                                    }) {
+                                        Label("Soubory", systemImage: "doc")
+                                    }
+                                } label: {
+                                    Image(systemName: "plus.circle")
+                                        .font(.system(size: 24, weight: .light))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
+                                        .frame(width: 36, height: 36)
+                                }
+
                                 // PTT mic button (vpravo — palec pravé ruky, nejčastější akce)
                                 Button(action: { startDictation() }) {
                                     Image(systemName: "mic")
@@ -584,11 +651,56 @@ struct ChatView: View {
             CameraCaptureView { image in
                 showCamera = false
                 guard let image = image else { return }
-                // TODO: Send image to Nova for analysis
-                // For now: save to message context
-                Task {
-                    await nova.sendMessage("[Fotka pořízena — popis: \(image.size.width)x\(image.size.height)]")
+                Task { await nova.sendImage(image) }
+            }
+        }
+        .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhoto, matching: .images)
+        .onChange(of: selectedPhoto) { _, newItem in
+            guard let item = newItem else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    await nova.sendImage(image)
                 }
+                selectedPhoto = nil
+            }
+        }
+        .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.item], allowsMultipleSelection: false) { result in
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                guard url.startAccessingSecurityScopedResource() else {
+                    print("[file] cannot access: \(url)")
+                    return
+                }
+                defer { url.stopAccessingSecurityScopedResource() }
+                guard let data = try? Data(contentsOf: url) else {
+                    print("[file] cannot read: \(url)")
+                    return
+                }
+                print("[file] loaded \(data.count) bytes from \(url.lastPathComponent)")
+                // Zkus jako obrázek
+                if let image = UIImage(data: data) {
+                    Task { await nova.sendImage(image) }
+                } else if url.pathExtension.lowercased() == "pdf" {
+                    // PDF — extrahuj text přes PDFKit
+                    if let pdf = PDFDocument(data: data) {
+                        let text = (0..<pdf.pageCount).compactMap { pdf.page(at: $0)?.string }.joined(separator: "\n")
+                        if !text.isEmpty {
+                            Task { await nova.sendMessage("Z PDF \(url.lastPathComponent):\n\n\(text.prefix(5000))") }
+                        } else {
+                            Task { await nova.sendMessage("[PDF \(url.lastPathComponent) nemá textový obsah — je to naskenovaný dokument. Potřeboval bys OCR.]") }
+                        }
+                    } else {
+                        Task { await nova.sendMessage("[PDF \(url.lastPathComponent) se nepodařilo otevřít]") }
+                    }
+                } else if let text = String(data: data, encoding: .utf8) {
+                    Task { await nova.sendMessage("Přečetl jsem soubor \(url.lastPathComponent):\n\n\(text.prefix(3000))") }
+                } else {
+                    Task { await nova.sendMessage("[Soubor \(url.lastPathComponent) — \(data.count) B, neumím ho přečíst]") }
+                }
+            case .failure(let error):
+                print("[file] error: \(error.localizedDescription)")
             }
         }
     }
@@ -624,10 +736,10 @@ struct ChatView: View {
             timeGreeting = "Krásné poledne"
         case 14..<18:
             timeGreeting = "Hezké odpoledne"
-        case 18..<22:
+        case 18..<24:
             timeGreeting = "Dobrý večer"
         default:
-            timeGreeting = "Dobrou noc"
+            timeGreeting = "Dobré ráno"
         }
 
         return "\(timeGreeting)\(nameSuffix)"
@@ -750,7 +862,48 @@ struct MessageBubble: View {
                     }
                 }
 
+                // Image bubble (pokud je URL obrázku)
+                if let imgURL = message.imageURL, let url = URL(string: imgURL) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color(hex: "1a1a2e").opacity(0.05))
+                                .frame(width: 240, height: 240)
+                                .overlay(ProgressView())
+                        case .success(let image):
+                            image.resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxWidth: 280)
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .shadow(color: Color(hex: "1a1a2e").opacity(0.1), radius: 8, x: 0, y: 4)
+                                .contextMenu {
+                                    Button {
+                                        Task { await ImageSaver.save(from: url) }
+                                    } label: {
+                                        Label("Uložit do fotek", systemImage: "square.and.arrow.down")
+                                    }
+                                    ShareLink(item: url) {
+                                        Label("Sdílet", systemImage: "square.and.arrow.up")
+                                    }
+                                    Button {
+                                        UIPasteboard.general.string = imgURL
+                                    } label: {
+                                        Label("Kopírovat URL", systemImage: "link")
+                                    }
+                                }
+                        case .failure:
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color(hex: "1a1a2e").opacity(0.05))
+                                .frame(width: 240, height: 80)
+                                .overlay(Text("Obrázek se nepodařilo načíst").font(.system(size: 12)))
+                        @unknown default: EmptyView()
+                        }
+                    }
+                }
+
                 // Bubble — extract speech from JSON if needed (fallback for missed stream-replace)
+                if !message.content.isEmpty {
                 Group {
                     let displayContent = MessageBubble.cleanContent(message.content, isUser: isUser)
                     if !isUser, let md = try? AttributedString(markdown: displayContent, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
@@ -781,6 +934,7 @@ struct MessageBubble: View {
                         Label("Sdílet", systemImage: "square.and.arrow.up")
                     }
                 }
+                } // close if !message.content.isEmpty
             }
 
             if !isUser { Spacer(minLength: 48) }
@@ -1058,6 +1212,22 @@ struct LiveStageIndicator: View {
     @State private var pulse3: Double = 0
 }
 
+// MARK: - Image Saver
+struct ImageSaver {
+    static func save(from url: URL) async {
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let image = UIImage(data: data) else { return }
+            await MainActor.run {
+                UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                HapticManager.shared.novaResponseChord()
+            }
+        } catch {
+            print("[save] error: \(error.localizedDescription)")
+        }
+    }
+}
+
 // MARK: - Jarvis Text View (typewriter → shimmer → fade)
 struct JarvisTextView: View {
     let text: String
@@ -1083,7 +1253,9 @@ struct JarvisTextView: View {
             Text(visibleText)
                 .font(.system(size: 14, weight: .semibold, design: .monospaced))
                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.55 * textOpacity))
-                .lineLimit(1)
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
 
             // Shimmer overlay — jen ve fázi shimmer
             if phase == .shimmer || phase == .visible {
@@ -1105,7 +1277,9 @@ struct JarvisTextView: View {
                 .mask(
                     Text(visibleText)
                         .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                        .lineLimit(1)
+                        .lineLimit(3)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 )
             }
 
@@ -1114,7 +1288,7 @@ struct JarvisTextView: View {
                 Text(visibleText + "▌")
                     .font(.system(size: 14, weight: .semibold, design: .monospaced))
                     .foregroundColor(.clear)
-                    .lineLimit(1)
+                    .lineLimit(3)
                     .overlay(alignment: .trailing) {
                         Rectangle()
                             .fill(accent.opacity(0.6))

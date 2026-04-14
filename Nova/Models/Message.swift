@@ -5,12 +5,14 @@ struct Message: Identifiable, Codable {
     let role: String // "user" or "ai"
     let content: String
     let timestamp: Date
+    let imageURL: String?
 
-    init(role: String, content: String) {
+    init(role: String, content: String, imageURL: String? = nil) {
         self.id = UUID()
         self.role = role
         self.content = content
         self.timestamp = Date()
+        self.imageURL = imageURL
     }
 }
 

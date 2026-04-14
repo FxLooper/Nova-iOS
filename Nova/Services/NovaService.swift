@@ -60,6 +60,7 @@ class NovaService: ObservableObject {
         let detail: String?
     }
     @Published var thinkingStage: ThinkingStage?
+    @Published var isDevMode: Bool = false
 
     // MARK: - Streaming chat
     @Published var streamingText: String = ""
@@ -203,6 +204,55 @@ class NovaService: ObservableObject {
     private var lastSendTime: Date = .distantPast
     private var activeTask: Task<Void, Never>?
 
+    // Pošli obrázek Nově — vision
+    func sendImage(_ image: UIImage) async {
+        guard let jpegData = image.jpegData(compressionQuality: 0.7) else { return }
+        let base64 = jpegData.base64EncodedString()
+
+        // Přidej user zprávu s obrázkem placeholder
+        let userMsg = Message(role: "user", content: "[Fotka 📷]")
+        messages.append(userMsg)
+        saveMessages()
+        state = .thinking
+        thinkingStage = ThinkingStage(key: "processing_image", detail: nil)
+
+        do {
+            guard let url = URL(string: "\(serverURL)/api/vision") else { return }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+            request.timeoutInterval = 60
+
+            let profileDict = profile.isEmpty ? ["lang": "cs", "name": "Ondřej"] : profile
+            let payload: [String: Any] = [
+                "image": base64,
+                "prompt": "Popiš co vidíš na obrázku. Pokud je tam text, přečti ho. Buď stručná ale konkrétní.",
+                "profile": profileDict
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+            let (data, _) = try await URLSession.shared.data(for: request)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let content = json["content"] as? String {
+                thinkingStage = nil
+                let aiMsg = Message(role: "ai", content: content)
+                messages.append(aiMsg)
+                saveMessages()
+                HapticManager.shared.novaResponseChord()
+                state = .speaking
+                await playTTS(content)
+                state = .idle
+            }
+        } catch {
+            thinkingStage = nil
+            let errorMsg = Message(role: "ai", content: "Nepodařilo se zpracovat fotku: \(error.localizedDescription)")
+            messages.append(errorMsg)
+            saveMessages()
+            state = .idle
+        }
+    }
+
     func sendMessage(_ text: String) async {
         guard !text.isEmpty else { return }
 
@@ -229,6 +279,7 @@ class NovaService: ObservableObject {
         saveMessages()
         state = .thinking
         thinkingStage = ThinkingStage(key: "understanding", detail: nil)
+        print("[stage] set to: understanding (sendMessage start)")
         streamingText = ""
         isStreaming = false
         streamReplacedText = nil
@@ -274,6 +325,10 @@ class NovaService: ObservableObject {
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let requestId = json["requestId"] as? String {
                 activeRequestId = requestId
+                // Pokud server auto-detekoval dev akci, zobraz DEV indikátor
+                if json["forceAction"] as? String == "dev" {
+                    isDevMode = true
+                }
             }
 
             // Vždy použij HTTP polling — WebSocket je nespolehlivý na iOS
@@ -298,7 +353,14 @@ class NovaService: ObservableObject {
                 }
             }
 
-            let aiMsg = Message(role: "ai", content: displayText)
+            // Detekuj __IMAGE_URL__ token — zobraz obrázek v bublině
+            var imageURL: String? = nil
+            if let range = displayText.range(of: "__IMAGE_URL__") {
+                imageURL = String(displayText[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                displayText = String(displayText[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+
+            let aiMsg = Message(role: "ai", content: displayText, imageURL: imageURL)
             messages.append(aiMsg)
             saveMessages()
             HapticManager.shared.novaResponseChord()
@@ -308,6 +370,9 @@ class NovaService: ObservableObject {
                 isSending = false
                 return
             }
+
+            // Reset dev mode indikátor — práce skončila
+            isDevMode = false
 
             // TTS — přečte speech text, ne raw JSON
             state = .speaking
@@ -349,7 +414,7 @@ class NovaService: ObservableObject {
         // Nastav výchozí stage hned
         thinkingStage = ThinkingStage(key: "understanding", detail: nil)
 
-        for i in 0..<120 { // max 60 sekund (120 × 500ms)
+        for i in 0..<600 { // max 5 minut (600 × 500ms) — dev mode může trvat déle
             try Task.checkCancellation()
             try await Task.sleep(nanoseconds: 500_000_000)
             let (data, _) = try await URLSession.shared.data(for: request)
@@ -1103,6 +1168,8 @@ class NovaService: ObservableObject {
 
     // MARK: - Dev Mode
     private func executeDevAction(_ action: ActionResponse) async {
+        isDevMode = true
+        defer { isDevMode = false }
         do {
             let task = action.params?["task"]?.value as? String ?? ""
             let devMessages = messages.suffix(50).map { ["role": $0.role == "user" ? "user" : "assistant", "content": $0.content] } + [["role": "user", "content": task]]
@@ -1119,8 +1186,23 @@ class NovaService: ObservableObject {
 
             let (planData, _) = try await URLSession.shared.data(for: planRequest)
             let planJson = try JSONSerialization.jsonObject(with: planData) as? [String: Any]
-            let planContent = planJson?["content"] as? String ?? "Nemůžu navrhnout plán."
-            let needsConfirm = planJson?["needsConfirm"] as? Bool ?? true
+
+            let planContent: String
+            let needsConfirm: Bool
+
+            // Async flow: server vrací {streaming: true, requestId}
+            if planJson?["streaming"] as? Bool == true,
+               let requestId = planJson?["requestId"] as? String {
+                needsConfirm = planJson?["needsConfirm"] as? Bool ?? true
+                // Nastav stage hned aby uživatel viděl že Nova pracuje
+                thinkingStage = ThinkingStage(key: "analyzing", detail: nil)
+                state = .thinking
+                planContent = try await pollForResponse(requestId: requestId)
+            } else {
+                // Starý synchronous flow
+                planContent = planJson?["content"] as? String ?? "Nemůžu navrhnout plán."
+                needsConfirm = planJson?["needsConfirm"] as? Bool ?? true
+            }
 
             let planMsg = Message(role: "ai", content: planContent)
             messages.append(planMsg)
