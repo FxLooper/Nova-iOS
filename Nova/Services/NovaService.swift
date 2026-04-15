@@ -114,6 +114,33 @@ class NovaService: ObservableObject {
         }
     }
 
+    // Načti nové cron výsledky a přidej do chatu jako Nova zprávy
+    private var lastCronCheck: Date = Date()
+    func checkCronResults() async {
+        guard let url = URL(string: "\(serverURL)/api/scheduled/results") else { return }
+        var req = URLRequest(url: url)
+        req.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+        do {
+            let (data, _) = try await URLSession.shared.data(for: req)
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let results = json["results"] as? [[String: Any]] else { return }
+            let formatter = ISO8601DateFormatter()
+            for result in results.reversed() {
+                guard let timestamp = result["timestamp"] as? String,
+                      let ts = formatter.date(from: timestamp),
+                      ts > lastCronCheck,
+                      let resultText = result["result"] as? String,
+                      let taskName = result["taskName"] as? String else { continue }
+                let msg = Message(role: "ai", content: "📅 \(taskName)\n\n\(resultText)")
+                if !messages.contains(where: { $0.content == msg.content }) {
+                    messages.append(msg)
+                }
+            }
+            saveMessages()
+            lastCronCheck = Date()
+        } catch { print("[cron] check error: \(error)") }
+    }
+
     func clearDevHistory() async {
         guard let url = URL(string: "\(serverURL)/api/dev/history/clear") else { return }
         var req = URLRequest(url: url)

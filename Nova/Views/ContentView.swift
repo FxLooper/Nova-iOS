@@ -193,6 +193,7 @@ struct SetupView: View {
 // MARK: - Chat View
 struct ChatView: View {
     @EnvironmentObject var nova: NovaService
+    @Environment(\.scenePhase) private var scenePhase
     @State private var inputText = ""
     @State private var showSettings = false
     @FocusState private var isInputFocused: Bool
@@ -210,6 +211,7 @@ struct ChatView: View {
     @State private var showPhotoPicker = false
     @State private var showFilePicker = false
     @State private var showTerminal = false
+    @State private var showSchedule = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var showVoiceConversation = false
     @State private var quickActions: [QuickAction] = QuickAction.load()
@@ -221,10 +223,17 @@ struct ChatView: View {
             VStack(spacing: 0) {
                 // Compact header — nova title + settings + health
                 HStack {
-                    Button(action: { showSettings = true }) {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 14, weight: .light))
-                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.25))
+                    HStack(spacing: 14) {
+                        Button(action: { showSettings = true }) {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 14, weight: .light))
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.25))
+                        }
+                        Button(action: { showSchedule = true }) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 14, weight: .light))
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.25))
+                        }
                     }
 
                     Spacer()
@@ -674,6 +683,12 @@ struct ChatView: View {
         }
         .onAppear {
             nova.connectWebSocket()
+            Task { await nova.checkCronResults() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await nova.checkCronResults() }
+            }
         }
         .fullScreenCover(isPresented: $showVoiceConversation) {
             VoiceConversationView(isPresented: $showVoiceConversation)
@@ -697,6 +712,10 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showTerminal) {
             TerminalView()
+                .environmentObject(nova)
+        }
+        .sheet(isPresented: $showSchedule) {
+            ScheduledTasksView()
                 .environmentObject(nova)
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhoto, matching: .images)

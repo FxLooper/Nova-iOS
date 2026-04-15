@@ -20,6 +20,7 @@
 		A1000009 /* OrbWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000009 /* OrbWebView.swift */; };
 		A1000010 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000010 /* SettingsView.swift */; };
 		A1000030 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000030 /* TerminalView.swift */; };
+		A1000031 /* ScheduledTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000031 /* ScheduledTasksView.swift */; };
 		A1000011 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000011 /* Localization.swift */; };
 		A1000012 /* ThinkingBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000012 /* ThinkingBubbleView.swift */; };
 		A1000020 /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020 /* CameraCaptureView.swift */; };
@@ -81,6 +82,7 @@
 		B1000009 /* OrbWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbWebView.swift; sourceTree = "<group>"; };
 		B1000010 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B1000030 /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
+		B1000031 /* ScheduledTasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledTasksView.swift; sourceTree = "<group>"; };
 		B1000011 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		B1000012 /* ThinkingBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThinkingBubbleView.swift; sourceTree = "<group>"; };
 		B1000020 /* CameraCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
@@ -199,6 +201,7 @@
 				B1000009 /* OrbWebView.swift */,
 				B1000010 /* SettingsView.swift */,
 				B1000030 /* TerminalView.swift */,
+				B1000031 /* ScheduledTasksView.swift */,
 				B1000012 /* ThinkingBubbleView.swift */,
 				B1000020 /* CameraCaptureView.swift */,
 				C3A1892705B12EAC8698D5AD /* NovaBackground.swift */,
@@ -364,6 +367,7 @@
 				A1000009 /* OrbWebView.swift in Sources */,
 				A1000010 /* SettingsView.swift in Sources */,
 				A1000030 /* TerminalView.swift in Sources */,
+				A1000031 /* ScheduledTasksView.swift in Sources */,
 				A1000011 /* Localization.swift in Sources */,
 				A1000012 /* ThinkingBubbleView.swift in Sources */,
 				A1000020 /* CameraCaptureView.swift in Sources */,
