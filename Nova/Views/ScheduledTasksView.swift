@@ -175,7 +175,7 @@ struct ScheduledTasksView: View {
         req.httpMethod = "PUT"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue(nova.getToken(), forHTTPHeaderField: "X-Nova-Token")
-        let payload: [String: Any] = ["enabled": task.enabled, "name": task.name, "time": task.time, "days": task.days, "prompt": task.prompt]
+        let payload: [String: Any] = ["enabled": task.enabled, "name": task.name, "time": task.time, "days": task.days, "prompt": task.prompt, "trusted": task.trusted]
         req.httpBody = try? JSONSerialization.data(withJSONObject: payload)
         _ = try? await URLSession.shared.data(for: req)
         scheduleLocalNotification(for: task)
@@ -252,6 +252,30 @@ struct TaskRow: View {
                 Text(task.name)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
+                if task.trusted {
+                    Text("TRUSTED")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(RoundedRectangle(cornerRadius: 4).fill(Color.orange.opacity(0.2)))
+                        .foregroundColor(.orange)
+                }
+                if isDevTask {
+                    Text("DEV")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(RoundedRectangle(cornerRadius: 4).fill(Color(red: 0.2, green: 0.6, blue: 1.0).opacity(0.2)))
+                        .foregroundColor(Color(red: 0.2, green: 0.6, blue: 1.0))
+                }
+                if isWebTask {
+                    Text("WEB")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(RoundedRectangle(cornerRadius: 4).fill(Color(red: 0.3, green: 0.85, blue: 0.45).opacity(0.2)))
+                        .foregroundColor(Color(red: 0.3, green: 0.85, blue: 0.45))
+                }
                 Spacer()
                 Toggle("", isOn: $enabled)
                     .labelsHidden()
@@ -316,6 +340,30 @@ struct TaskRow: View {
         if task.days.contains("*") || task.days.isEmpty { return "Každý den" }
         let map = ["mon":"Po","tue":"Út","wed":"St","thu":"Čt","fri":"Pá","sat":"So","sun":"Ne"]
         return task.days.compactMap { map[$0.lowercased()] }.joined(separator: ", ")
+    }
+
+    private var isDevTask: Bool {
+        let p = task.prompt.lowercased()
+        let devPatterns = [
+            "soubor", "kód", "kod", "projekt", "adresář", "adresar", "složka", "slozka",
+            "download", "desktop", "documents", "nova-ios", "fxlooper", "server.js",
+            ".pages", ".numbers", ".keynote", ".docx", ".xlsx", ".csv", ".zip", ".log",
+            ".txt", ".pdf", ".json", ".swift", ".js", ".py", ".md", ".html", ".xml",
+            "přečti", "precti", "obsah", "dokument", "faktur", "git", "commit", "build",
+        ]
+        return devPatterns.contains { p.contains($0) }
+    }
+
+    private var isWebTask: Bool {
+        let p = task.prompt.lowercased()
+        let webPatterns = [
+            "počasí", "pocasi", "zprávy", "zpravy", "novinky", "kurz", "kurzy",
+            "euro", "dolar", "koruna", "wiki", "wikipedia", "nejbližší", "nejblizsi",
+            "restaurace", "kavárna", "kavarna", "lékárna", "lekarna", "hotel",
+            "kino", "cinema", "kalendář", "kalendar", "email pošl", "email posl",
+            "pošli email", "posli email", "search", "vyhledej", "najdi na", "internet",
+        ]
+        return webPatterns.contains { p.contains($0) }
     }
 }
 
@@ -393,12 +441,14 @@ struct EditTaskView: View {
     @State private var prompt: String
     @State private var schedule: AddTaskView.ScheduleType
     @State private var customDays: Set<String>
+    @State private var trusted: Bool
 
     init(task: ScheduledTask, onSave: @escaping (ScheduledTask) -> Void) {
         self.task = task
         self.onSave = onSave
         _name = State(initialValue: task.name)
         _prompt = State(initialValue: task.prompt)
+        _trusted = State(initialValue: task.trusted)
 
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
@@ -447,6 +497,15 @@ struct EditTaskView: View {
                     }
                 }
                 Section("Co má Nova udělat") { TextEditor(text: $prompt).frame(minHeight: 80) }
+
+                Section("Bezpečnost") {
+                    Toggle("Povolit automatické akce", isOn: $trusted).tint(.orange)
+                    if trusted {
+                        Text("⚠️ Úkol bude automaticky odesílat emaily, číst soubory, měnit kód. Bez potvrzení.")
+                            .font(.system(size: 11, weight: .light))
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             .navigationTitle("Upravit úkol")
             .navigationBarTitleDisplayMode(.inline)
@@ -465,7 +524,7 @@ struct EditTaskView: View {
                         case .custom: days = Array(customDays)
                         }
                         var updated = task
-                        updated.name = name; updated.time = timeStr; updated.days = days; updated.prompt = prompt
+                        updated.name = name; updated.time = timeStr; updated.days = days; updated.prompt = prompt; updated.trusted = trusted
                         onSave(updated)
                     }
                     .disabled(name.isEmpty || prompt.isEmpty)

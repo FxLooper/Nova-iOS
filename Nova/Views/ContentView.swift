@@ -690,6 +690,9 @@ struct ChatView: View {
                 Task { await nova.checkCronResults() }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openScheduledTasks)) { _ in
+            showSchedule = true
+        }
         .fullScreenCover(isPresented: $showVoiceConversation) {
             VoiceConversationView(isPresented: $showVoiceConversation)
                 .environmentObject(nova)
