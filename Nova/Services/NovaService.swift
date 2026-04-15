@@ -206,7 +206,27 @@ class NovaService: ObservableObject {
 
     // Pošli obrázek Nově — vision
     func sendImage(_ image: UIImage) async {
-        guard let jpegData = image.jpegData(compressionQuality: 0.7) else { return }
+        // Validace: max 4096x4096 px (větší zmenšit)
+        var processedImage = image
+        let maxDim: CGFloat = 4096
+        if image.size.width > maxDim || image.size.height > maxDim {
+            let scale = min(maxDim / image.size.width, maxDim / image.size.height)
+            let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+            if let resized = UIGraphicsGetImageFromCurrentImageContext() {
+                processedImage = resized
+            }
+            UIGraphicsEndImageContext()
+        }
+        guard let jpegData = processedImage.jpegData(compressionQuality: 0.7) else { return }
+        // Validace: max 10 MB
+        guard jpegData.count < 10_000_000 else {
+            let msg = Message(role: "ai", content: "Obrázek je moc velký (\(jpegData.count / 1_000_000) MB). Zkus menší.")
+            messages.append(msg)
+            saveMessages()
+            return
+        }
         let base64 = jpegData.base64EncodedString()
 
         // Přidej user zprávu s obrázkem placeholder
