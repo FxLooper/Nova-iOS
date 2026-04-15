@@ -456,8 +456,14 @@ struct ChatView: View {
                         .animation(.spring(response: 0.45, dampingFraction: 0.85), value: nova.thinkingStage)
                     }
                     .onAppear {
-                        if let last = nova.messages.last {
-                            proxy.scrollTo(last.id, anchor: .bottom)
+                        // Multi-fire scroll — vykreslení trvá různě dlouho podle počtu zpráv
+                        let scrollAfter: [TimeInterval] = [0.05, 0.2, 0.5, 1.0]
+                        for delay in scrollAfter {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                                if let last = nova.messages.last {
+                                    proxy.scrollTo(last.id, anchor: .bottom)
+                                }
+                            }
                         }
                     }
                     .onChange(of: nova.messages.count) {

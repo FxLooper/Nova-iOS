@@ -70,9 +70,16 @@ class NovaService: ObservableObject {
     @Published var devLogs: [String] = []
     @Published var devHistory: [String] = []
 
-    private func updateModeFromStage() {
+    private var webModeTimer: Timer?
+    func updateModeFromStage() {
         guard let key = thinkingStage?.key else {
-            isWebMode = false
+            // Při ukončení nech WEB ještě 1.5s svítit (pokud je aktivní)
+            if isWebMode {
+                webModeTimer?.invalidate()
+                webModeTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
+                    Task { @MainActor in self?.isWebMode = false }
+                }
+            }
             return
         }
         // Web-related stages
@@ -83,7 +90,11 @@ class NovaService: ObservableObject {
             "reading_web"
         ]
         if webStages.contains(key) {
-            isWebMode = true
+            webModeTimer?.invalidate()
+            if !isWebMode {
+                print("[mode] WEB ON (stage: \(key))")
+                isWebMode = true
+            }
         }
     }
 
@@ -507,6 +518,8 @@ class NovaService: ObservableObject {
                     let newStage = ThinkingStage(key: stageKey, detail: stageDetail)
                     if thinkingStage != newStage {
                         thinkingStage = newStage
+                        updateModeFromStage()  // explicitní fallback
+                        print("[stage] received: \(stageKey)")
                         HapticManager.shared.selectionChanged()
                     }
                 } else if !text.isEmpty && thinkingStage?.key != "generating_response" && thinkingStage?.key != "composing" {
