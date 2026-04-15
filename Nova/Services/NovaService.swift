@@ -347,9 +347,15 @@ class NovaService: ObservableObject {
             if let range = displayText.range(of: "__OPEN_URL__") {
                 let urlString = String(displayText[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
                 displayText = String(displayText[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                if let url = URL(string: urlString) {
-                    print("[openURL] \(url)")
+                // Whitelist bezpečných URL schémat
+                let allowedSchemes: Set<String> = ["https", "http", "maps", "tel", "facetime", "facetime-audio", "mailto", "sms"]
+                if let url = URL(string: urlString),
+                   let scheme = url.scheme?.lowercased(),
+                   allowedSchemes.contains(scheme) {
+                    print("[openURL] \(scheme): \(url.host ?? "")")
                     await UIApplication.shared.open(url)
+                } else {
+                    print("[openURL] BLOCKED unsafe scheme: \(urlString.prefix(30))")
                 }
             }
 
