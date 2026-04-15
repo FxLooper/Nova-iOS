@@ -59,8 +59,59 @@ class NovaService: ObservableObject {
         let key: String
         let detail: String?
     }
-    @Published var thinkingStage: ThinkingStage?
+    @Published var thinkingStage: ThinkingStage? {
+        didSet {
+            // Auto-detekce dev/web mode podle stage
+            updateModeFromStage()
+        }
+    }
     @Published var isDevMode: Bool = false
+    @Published var isWebMode: Bool = false
+    @Published var devLogs: [String] = []
+    @Published var devHistory: [String] = []
+
+    private func updateModeFromStage() {
+        guard let key = thinkingStage?.key else {
+            isWebMode = false
+            return
+        }
+        // Web-related stages
+        let webStages: Set<String> = [
+            "searching_web", "browsing_results", "searching_deeper", "preparing_report",
+            "fetching_news", "analyzing_news", "checking_weather", "searching_wiki",
+            "checking_exchange", "searching_cinema", "searching_places", "calling_api",
+            "reading_web"
+        ]
+        if webStages.contains(key) {
+            isWebMode = true
+        }
+    }
+
+    // Načti historii dev logů ze serveru
+    func loadDevHistory() async {
+        guard let url = URL(string: "\(serverURL)/api/dev/history") else { return }
+        var req = URLRequest(url: url)
+        req.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+        do {
+            let (data, _) = try await URLSession.shared.data(for: req)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let logs = json["logs"] as? [String] {
+                devHistory = logs
+            }
+        } catch {
+            print("[devHistory] error: \(error.localizedDescription)")
+        }
+    }
+
+    func clearDevHistory() async {
+        guard let url = URL(string: "\(serverURL)/api/dev/history/clear") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+        _ = try? await URLSession.shared.data(for: req)
+        devHistory = []
+        devLogs = []  // smaž i live logy
+    }
 
     // MARK: - Streaming chat
     @Published var streamingText: String = ""
@@ -397,8 +448,9 @@ class NovaService: ObservableObject {
                 return
             }
 
-            // Reset dev mode indikátor — práce skončila
+            // Reset indikátorů — práce skončila
             isDevMode = false
+            isWebMode = false
 
             // TTS — přečte speech text, ne raw JSON
             state = .speaking
@@ -462,6 +514,10 @@ class NovaService: ObservableObject {
                     thinkingStage = ThinkingStage(key: "generating_response", detail: nil)
                 } else if i > 3 && thinkingStage?.key == "understanding" {
                     thinkingStage = ThinkingStage(key: "analyzing", detail: nil)
+                }
+                // Update dev logs (pro terminal view)
+                if let logs = json["logs"] as? [String], !logs.isEmpty {
+                    devLogs = logs
                 }
                 if status == "done" {
                     thinkingStage = ThinkingStage(key: "finishing", detail: nil)

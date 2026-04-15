@@ -209,6 +209,7 @@ struct ChatView: View {
     @State private var showCamera = false
     @State private var showPhotoPicker = false
     @State private var showFilePicker = false
+    @State private var showTerminal = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var showVoiceConversation = false
     @State private var quickActions: [QuickAction] = QuickAction.load()
@@ -242,29 +243,63 @@ struct ChatView: View {
 
                     Spacer()
 
-                    HStack(spacing: 14) {
-                        // Dev mode indikátor
-                        Text("DEV")
+                    HStack(spacing: 10) {
+                        // WEB indikátor — svítí když Nova něco stahuje z netu
+                        Text("WEB")
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                             .tracking(1)
-                            .foregroundColor(nova.isDevMode
-                                ? Color(red: 0.2, green: 0.6, blue: 1.0)
+                            .foregroundColor(nova.isWebMode
+                                ? Color(red: 0.3, green: 0.85, blue: 0.45)
                                 : Color(hex: "1a1a2e").opacity(0.2))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
                             .background(
                                 RoundedRectangle(cornerRadius: 6)
-                                    .fill(nova.isDevMode
-                                        ? Color(red: 0.2, green: 0.6, blue: 1.0).opacity(0.1)
+                                    .fill(nova.isWebMode
+                                        ? Color(red: 0.3, green: 0.85, blue: 0.45).opacity(0.1)
                                         : Color.clear)
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 6)
-                                    .stroke(nova.isDevMode
-                                        ? Color(red: 0.2, green: 0.6, blue: 1.0).opacity(0.4)
+                                    .stroke(nova.isWebMode
+                                        ? Color(red: 0.3, green: 0.85, blue: 0.45).opacity(0.4)
                                         : Color(hex: "1a1a2e").opacity(0.15), lineWidth: 1)
                             )
-                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: nova.isDevMode)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: nova.isWebMode)
+
+                        // Dev mode indikátor + click pro terminal
+                        Button(action: { showTerminal = true }) {
+                            Text("DEV")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .tracking(1)
+                                .foregroundColor(nova.isDevMode
+                                    ? Color(red: 0.2, green: 0.6, blue: 1.0)
+                                    : Color(hex: "1a1a2e").opacity(0.2))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(nova.isDevMode
+                                            ? Color(red: 0.2, green: 0.6, blue: 1.0).opacity(0.1)
+                                            : Color.clear)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(nova.isDevMode
+                                            ? Color(red: 0.2, green: 0.6, blue: 1.0).opacity(0.4)
+                                            : Color(hex: "1a1a2e").opacity(0.15), lineWidth: 1)
+                                )
+                                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: nova.isDevMode)
+                        }
+
+                        // Terminal tlačítko
+                        Button(action: { showTerminal = true }) {
+                            Image(systemName: "terminal")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(nova.devLogs.isEmpty
+                                    ? Color(hex: "1a1a2e").opacity(0.2)
+                                    : Color(red: 0.2, green: 0.6, blue: 1.0).opacity(0.7))
+                        }
 
                         Button(action: { nova.toggleTTS() }) {
                             Image(systemName: nova.ttsEnabled ? "speaker.wave.2" : "speaker.slash")
@@ -653,6 +688,10 @@ struct ChatView: View {
                 guard let image = image else { return }
                 Task { await nova.sendImage(image) }
             }
+        }
+        .sheet(isPresented: $showTerminal) {
+            TerminalView()
+                .environmentObject(nova)
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhoto, matching: .images)
         .onChange(of: selectedPhoto) { _, newItem in
