@@ -997,6 +997,29 @@ class NovaService: ObservableObject {
         print("[speech] conversation ended")
     }
 
+    /// Přeruš TTS a začni poslouchat (tap na orb během mluvení)
+    func interruptAndListen() {
+        print("[speech] INTERRUPT — stopping TTS, restarting whisper")
+        // Zastav TTS
+        audioPlayer?.stop()
+        audioPlayer = nil
+        // Zruš aktivní task (polling/TTS)
+        activeTask?.cancel()
+        isSending = false
+        isStreaming = false
+        streamingText = ""
+        thinkingStage = nil
+        // Restartuj poslouchání
+        currentUtterance = ""
+        interimText = ""
+        if useWhisper {
+            whisper.languageHint = nil
+            startWhisperListening()
+        } else {
+            state = .listening
+        }
+    }
+
     func continueConversation() {
         guard conversationActive && !isMuted else {
             state = .idle

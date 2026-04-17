@@ -35,8 +35,15 @@ struct VoiceConversationView: View {
                 Spacer()
 
                 // Orb — large, centered, reactive
+                // Tap = přeruš mluvení a začni poslouchat
                 OrbWebView(state: nova.state.rawValue, audioLevel: 0)
                     .frame(width: 280, height: 280)
+                    .onTapGesture {
+                        if nova.state == .speaking {
+                            HapticManager.shared.selectionChanged()
+                            nova.interruptAndListen()
+                        }
+                    }
 
                 // State label
                 Text(stateLabel)
