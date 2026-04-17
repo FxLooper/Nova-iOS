@@ -139,11 +139,19 @@ class WhisperService: ObservableObject {
         } else {
             let recommended = WhisperKit.recommendedModels()
             let rec = recommended.default
-            print("[whisper] device recommends: \(rec)")
-            // Preferuj small pro lepší češtinu → fallback na recommended → base → tiny
-            // iPhone 15 Pro+ (A17+) zvládne small bez problémů
-            modelsToTry = [ModelSize.small.rawValue, rec, ModelSize.base.rawValue, ModelSize.tiny.rawValue]
-                .reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+            let deviceRAM = ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024) // GB
+            print("[whisper] device recommends: \(rec), RAM: \(deviceRAM)GB")
+            // Smart model selection podle zařízení:
+            // 8GB+ RAM (Pro/Max): large-v3 → small → base (perfektní multilingual)
+            // 6GB RAM: small → base → tiny (dobrá kvalita)
+            // 4GB RAM: base → tiny (základní)
+            if deviceRAM >= 8 {
+                modelsToTry = [ModelSize.largeV3.rawValue, ModelSize.small.rawValue, ModelSize.base.rawValue]
+            } else if deviceRAM >= 6 {
+                modelsToTry = [ModelSize.small.rawValue, ModelSize.base.rawValue, ModelSize.tiny.rawValue]
+            } else {
+                modelsToTry = [rec, ModelSize.base.rawValue, ModelSize.tiny.rawValue]
+            }
         }
 
         for modelName in modelsToTry {
