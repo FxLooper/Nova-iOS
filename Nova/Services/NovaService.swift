@@ -554,10 +554,11 @@ class NovaService: ObservableObject {
         lastSendTime = now
         print("[chat] === SENDING: \(text.prefix(40)) ===")
 
-        // V konverzačním mode NEZASTAVUJ whisper — AEC (.voiceChat) filtruje echo
-        // Whisper ignoruje transcripty když state != .listening (guard v callbacku)
+        // Zastav whisper během zpracování + TTS (AEC nefiltruje echo dostatečně)
+        // Whisper se restartuje po TTS v continueConversation()
         if conversationActive {
-            print("[chat] conversation mode — whisper stays active (AEC echo cancellation)")
+            whisper.stopListening()
+            print("[chat] whisper paused (echo prevention)")
         }
 
         // Zastav TTS pokud Nova právě mluví
@@ -797,17 +798,7 @@ class NovaService: ObservableObject {
                     state = .idle
                     return
                 }
-                // Barge-in: pokud během TTS přišel nový text z WhisperKit → přeruš
-                if conversationActive && !currentUtterance.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    let text = currentUtterance.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                    let isEcho = text.count < 4 || text.contains("silence") || text.contains("blank") || text.hasPrefix("(")
-                    if !isEcho {
-                        print("[barge-in] TTS interrupted by user speech: \(text.prefix(40))")
-                        audioPlayer?.stop()
-                        audioPlayer = nil
-                        return
-                    }
-                }
+                // Barge-in přes tap na orb (voice barge-in nefunguje — AEC nefiltruje echo)
                 try await Task.sleep(nanoseconds: 100_000_000)
             }
             audioPlayer = nil
@@ -1010,6 +1001,15 @@ class NovaService: ObservableObject {
 
     func endConversation() {
         conversationActive = false
+        // Zastav TTS pokud Nova mluví
+        audioPlayer?.stop()
+        audioPlayer = nil
+        // Zruš aktivní úlohy
+        activeTask?.cancel()
+        isSending = false
+        isStreaming = false
+        streamingText = ""
+        thinkingStage = nil
         analyzerTask?.cancel()
         analyzerTask = nil
         analyzer = nil
@@ -1059,9 +1059,14 @@ class NovaService: ObservableObject {
         silenceTask?.cancel()
         silenceTask = nil
 
-        // WhisperKit běží nepřetržitě (AEC filtruje echo) — jen přepni state
-        state = .listening
-        print("[speech] ready for next turn")
+        // Restartuj WhisperKit po TTS
+        if useWhisper {
+            whisper.languageHint = nil
+            print("[speech] restarting whisper for next turn")
+            startWhisperListening()
+        } else {
+            state = .listening
+        }
     }
 
     private var dictationTranscriber: DictationTranscriber?
