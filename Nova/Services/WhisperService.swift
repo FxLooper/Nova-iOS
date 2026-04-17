@@ -176,7 +176,7 @@ class WhisperService: ObservableObject {
                 // Inicializuj WhisperKit s lokálním modelem (už nestahuje)
                 whisperKit = try await WhisperKit(
                     WhisperKitConfig(
-                        modelFolder: modelFolder.absoluteString,
+                        modelFolder: modelFolder.path,
                         verbose: false,
                         logLevel: .error,
                         prewarm: true,
