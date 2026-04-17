@@ -151,6 +151,49 @@ class NovaService: ObservableObject {
         devLogs = []  // smaž i live logy
     }
 
+    // MARK: - Memory (Nova si pamatuje fakta o uživateli)
+    @Published var memoryFacts: [String] = []
+    @Published var memoryLoading = false
+
+    func fetchMemory() async {
+        guard let url = URL(string: "\(serverURL)/api/memory") else { return }
+        var req = URLRequest(url: url)
+        req.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+        memoryLoading = true
+        defer { memoryLoading = false }
+        do {
+            let (data, _) = try await URLSession.shared.data(for: req)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let facts = json["facts"] as? [String] {
+                memoryFacts = facts
+            }
+        } catch { print("[memory] fetch error: \(error)") }
+    }
+
+    func deleteMemoryFact(at index: Int) async {
+        guard let url = URL(string: "\(serverURL)/api/memory/\(index)") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "DELETE"
+        req.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+        do {
+            let (_, resp) = try await URLSession.shared.data(for: req)
+            if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
+                await fetchMemory()
+            }
+        } catch { print("[memory] delete error: \(error)") }
+    }
+
+    func clearAllMemory() async {
+        guard let url = URL(string: "\(serverURL)/api/memory/clear") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+        do {
+            let (_, _) = try await URLSession.shared.data(for: req)
+            memoryFacts = []
+        } catch { print("[memory] clear error: \(error)") }
+    }
+
     // MARK: - Streaming chat
     @Published var streamingText: String = ""
     @Published var isStreaming: Bool = false

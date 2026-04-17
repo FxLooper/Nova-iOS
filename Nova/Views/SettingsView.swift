@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var showVoiceEnrollment = false
     @State private var voiceVerifyEnforced: Bool
     @State private var showClearHistoryAlert = false
+    @State private var showClearMemoryAlert = false
     @State private var selectedDevProject: String
     @State private var editableQuickActions: [QuickAction]
 
@@ -334,14 +335,15 @@ struct SettingsView: View {
 
                         SettingsSection(title: L10n.t("connection")) {
                             VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Circle()
-                                        .fill(nova.isConnected ? Color.green.opacity(0.6) : Color.red.opacity(0.4))
-                                        .frame(width: 8, height: 8)
-                                    Text(nova.isConnected ? L10n.t("connected") : L10n.t("disconnected"))
-                                        .font(.system(size: 14, weight: .light))
-                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
-                                }
+                                // WebSocket status row removed — app uses HTTP polling, not WS
+                                // HStack {
+                                //     Circle()
+                                //         .fill(nova.isConnected ? Color.green.opacity(0.6) : Color.red.opacity(0.4))
+                                //         .frame(width: 8, height: 8)
+                                //     Text(nova.isConnected ? L10n.t("connected") : L10n.t("disconnected"))
+                                //         .font(.system(size: 14, weight: .light))
+                                //         .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                // }
 
                                 // Server health detail
                                 serverHealthDetailRow
@@ -384,8 +386,78 @@ struct SettingsView: View {
                             }
                         }
 
-                        // Memory & History
-                        SettingsSection(title: "Paměť") {
+                        // Nova Memory — fakta co si Nova pamatuje
+                        SettingsSection(title: L10n.t("memory")) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Image(systemName: "brain.head.profile")
+                                        .font(.system(size: 14, weight: .light))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                    Text(L10n.t("memory_facts"))
+                                        .font(.system(size: 14, weight: .light))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                                    Spacer()
+                                    if nova.memoryLoading {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                    } else {
+                                        Text("\(nova.memoryFacts.count) \(L10n.t("memory_count"))")
+                                            .font(.system(size: 12, weight: .light))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                                    }
+                                }
+
+                                if nova.memoryFacts.isEmpty && !nova.memoryLoading {
+                                    Text(L10n.t("memory_empty"))
+                                        .font(.system(size: 13, weight: .light))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.35))
+                                        .padding(.vertical, 8)
+                                } else {
+                                    ForEach(Array(nova.memoryFacts.enumerated()), id: \.offset) { index, fact in
+                                        HStack(alignment: .top, spacing: 10) {
+                                            Text("\(index + 1).")
+                                                .font(.system(size: 12, weight: .light))
+                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
+                                                .frame(width: 20, alignment: .trailing)
+                                            Text(fact)
+                                                .font(.system(size: 13, weight: .light))
+                                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                                                .fixedSize(horizontal: false, vertical: true)
+                                            Spacer()
+                                            Button(action: {
+                                                HapticManager.shared.selectionChanged()
+                                                Task { await nova.deleteMemoryFact(at: index) }
+                                            }) {
+                                                Image(systemName: "xmark.circle")
+                                                    .font(.system(size: 14))
+                                                    .foregroundColor(.red.opacity(0.4))
+                                            }
+                                        }
+                                        .padding(.vertical, 4)
+                                        if index < nova.memoryFacts.count - 1 {
+                                            Divider().opacity(0.08)
+                                        }
+                                    }
+                                }
+
+                                if !nova.memoryFacts.isEmpty {
+                                    Button(action: { showClearMemoryAlert = true }) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "trash")
+                                                .font(.system(size: 11))
+                                            Text(L10n.t("memory_clear_all"))
+                                                .font(.system(size: 13, weight: .light))
+                                        }
+                                        .foregroundColor(.red.opacity(0.5))
+                                    }
+                                    .padding(.top, 4)
+                                }
+                            }
+                            .onAppear { Task { await nova.fetchMemory() } }
+                        }
+
+                        // Conversation History
+                        SettingsSection(title: L10n.t("delete_history")) {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack {
                                     Image(systemName: "bubble.left.and.bubble.right")
@@ -493,7 +565,7 @@ struct SettingsView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 aboutRow(label: L10n.t("version"), value: appVersionString)
                                 aboutRow(label: L10n.t("developer"), value: "FxLooper")
-                                aboutRow(label: "AI", value: "Claude Opus 4.6")
+                                aboutRow(label: "AI", value: "Claude Opus 4.7")
                                 aboutRow(label: "Voice ID", value: "ECAPA-TDNN")
                                 aboutRow(label: "STT", value: sttStatusString)
                                 aboutRow(label: "TTS", value: "Microsoft Edge TTS")
@@ -520,6 +592,13 @@ struct SettingsView: View {
             }
         } message: {
             Text(L10n.t("delete_history_msg"))
+        }
+        .alert(L10n.t("memory_clear_confirm"), isPresented: $showClearMemoryAlert) {
+            Button(L10n.t("cancel"), role: .cancel) {}
+            Button(L10n.t("delete"), role: .destructive) {
+                HapticManager.shared.errorOccurred()
+                Task { await nova.clearAllMemory() }
+            }
         }
         .fullScreenCover(isPresented: $showVoiceEnrollment) {
             VoiceEnrollmentView()
