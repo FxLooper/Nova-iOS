@@ -75,13 +75,22 @@ struct VoiceConversationView: View {
         }
         .onAppear {
             isInitializing = true
-            // Odlož start — počkej až OrbWebView dokončí GPU/WebContent launch
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                if !nova.conversationActive {
-                    nova.toggleConversation()
+            // Počkej až WhisperKit bude ready + OrbWebView se načte
+            Task {
+                // Počkej na whisper (max 30s)
+                for _ in 0..<60 {
+                    if nova.whisperState == .ready { break }
+                    try? await Task.sleep(nanoseconds: 500_000_000)
                 }
-                withAnimation(.easeOut(duration: 0.4)) {
-                    isInitializing = false
+                // Počkej na OrbWebView GPU launch
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await MainActor.run {
+                    if !nova.conversationActive {
+                        nova.toggleConversation()
+                    }
+                    withAnimation(.easeOut(duration: 0.4)) {
+                        isInitializing = false
+                    }
                 }
             }
         }
