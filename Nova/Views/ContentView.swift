@@ -376,6 +376,29 @@ struct ChatView: View {
                     .transition(.opacity)
                 }
 
+                // Server offline banner
+                if nova.serverHealth.status == .offline {
+                    HStack(spacing: 10) {
+                        Image(systemName: "wifi.slash")
+                            .font(.system(size: 14))
+                            .foregroundColor(.red.opacity(0.7))
+                        Text(L10n.t("server_offline"))
+                            .font(.system(size: 13, weight: .light))
+                            .foregroundColor(.red.opacity(0.6))
+                        Spacer()
+                        Button(action: { Task { await nova.serverHealth.pingNow() } }) {
+                            Text(L10n.t("retry"))
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .background(Color.red.opacity(0.06))
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.3), value: nova.serverHealth.status == .offline)
+                }
+
                 // Messages
                 ScrollViewReader { proxy in
                     ScrollView {
