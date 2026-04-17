@@ -140,8 +140,9 @@ class WhisperService: ObservableObject {
             let recommended = WhisperKit.recommendedModels()
             let rec = recommended.default
             print("[whisper] device recommends: \(rec)")
-            // Fallback chain: recommended → base → tiny
-            modelsToTry = [rec, ModelSize.base.rawValue, ModelSize.tiny.rawValue]
+            // Preferuj small pro lepší češtinu → fallback na recommended → base → tiny
+            // iPhone 15 Pro+ (A17+) zvládne small bez problémů
+            modelsToTry = [ModelSize.small.rawValue, rec, ModelSize.base.rawValue, ModelSize.tiny.rawValue]
                 .reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
         }
 
