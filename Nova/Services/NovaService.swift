@@ -953,10 +953,6 @@ class NovaService: ObservableObject {
                 }
                 // Spočítej RMS amplitude
                 let rms = sqrt(samples.map { $0 * $0 }.reduce(0, +) / Float(max(samples.count, 1)))
-                // Debug: loguj každých ~1s (16000 samples/s, chunk ~4096 = ~4x/s)
-                if Int.random(in: 0..<4) == 0 {
-                    print("[vad] RMS: \(String(format: "%.4f", rms)), threshold: \(self.bargeInAmplitudeThreshold), speaking: \(self.state == .speaking)")
-                }
                 if rms > self.bargeInAmplitudeThreshold {
                     if self.bargeInVoiceStart == nil {
                         self.bargeInVoiceStart = Date()
