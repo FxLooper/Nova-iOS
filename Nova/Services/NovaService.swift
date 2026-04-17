@@ -38,8 +38,12 @@ class NovaService: ObservableObject {
     private let audioEngine = AVAudioEngine()
     private let synthesizer = AVSpeechSynthesizer()
     private var audioPlayer: AVAudioPlayer?
-    /// Text co Nova právě říká přes TTS — pro barge-in echo filtraci
+    /// Text co Nova právě říká přes TTS
     var currentTTSText: String = ""
+    /// VAD barge-in — sleduje amplitude během TTS
+    private var bargeInVoiceStart: Date? = nil
+    private let bargeInAmplitudeThreshold: Float = 0.03  // RMS threshold (AEC ztiší echo pod tuto hodnotu)
+    private let bargeInDurationThreshold: TimeInterval = 0.3  // 300ms kontinuálního hlasu
 
     // MARK: - Whisper STT (experimentální)
     private let whisper = WhisperService()
@@ -556,13 +560,12 @@ class NovaService: ObservableObject {
         lastSendTime = now
         print("[chat] === SENDING: \(text.prefix(40)) ===")
 
-        // Zastav whisper během zpracování + TTS (echo filtr není spolehlivý)
-        // Tap na orb = přerušení. Whisper restart po TTS v continueConversation()
+        // Whisper běží ale transcripty se ignorují (guard state == .listening)
+        // VAD barge-in sleduje amplitude přes onRawAudio
         if conversationActive {
-            whisper.stopListening()
             currentUtterance = ""
             interimText = ""
-            print("[chat] whisper paused for TTS")
+            print("[chat] whisper stays on (VAD barge-in active)")
         }
 
         // Zastav TTS pokud Nova právě mluví
@@ -931,9 +934,33 @@ class NovaService: ObservableObject {
             }
         }
 
-        // Whisper raw audio → Voice ID ring buffer
+        // Whisper raw audio → Voice ID ring buffer + VAD barge-in
         whisper.onRawAudio = { [weak self] samples in
             self?.appendToAudioRing(samples)
+            // VAD barge-in: během TTS sleduj amplitude
+            Task { @MainActor [weak self] in
+                guard let self = self,
+                      self.state == .speaking,
+                      self.conversationActive,
+                      self.audioPlayer?.isPlaying == true else {
+                    self?.bargeInVoiceStart = nil
+                    return
+                }
+                // Spočítej RMS amplitude
+                let rms = sqrt(samples.map { $0 * $0 }.reduce(0, +) / Float(max(samples.count, 1)))
+                if rms > self.bargeInAmplitudeThreshold {
+                    if self.bargeInVoiceStart == nil {
+                        self.bargeInVoiceStart = Date()
+                    } else if Date().timeIntervalSince(self.bargeInVoiceStart!) >= self.bargeInDurationThreshold {
+                        // Uživatel mluví 300ms+ → barge-in
+                        print("[barge-in] VAD detected user voice (RMS: \(String(format: "%.4f", rms))) — stopping TTS")
+                        self.bargeInVoiceStart = nil
+                        self.interruptAndListen()
+                    }
+                } else {
+                    self.bargeInVoiceStart = nil
+                }
+            }
         }
 
         // Whisper transcript callback
@@ -1048,16 +1075,11 @@ class NovaService: ObservableObject {
         silenceTask?.cancel()
         silenceTask = nil
 
-        // Restartuj whisper po TTS (s delay pro echo clearance)
+        // Whisper běží — jen přepni state na listening
         currentUtterance = ""
         interimText = ""
-        if useWhisper {
-            whisper.languageHint = nil
-            print("[speech] restarting whisper for next turn")
-            startWhisperListening()
-        } else {
-            state = .listening
-        }
+        state = .listening
+        print("[speech] ready for next turn")
     }
 
     private var dictationTranscriber: DictationTranscriber?
