@@ -546,6 +546,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 10.4.8;
+tttttCODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fxlooper.nova;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -571,6 +572,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 10.4.8;
+tttttCODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fxlooper.nova;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
