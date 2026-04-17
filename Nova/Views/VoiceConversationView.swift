@@ -48,14 +48,25 @@ struct VoiceConversationView: View {
                         }
                     }
 
-                // State label
-                Text(isInitializing ? L10n.t("starting_conversation").uppercased() : stateLabel)
-                    .font(.system(size: 12, weight: .light))
-                    .tracking(4)
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(isInitializing ? 0.5 : stateOpacity))
-                    .padding(.top, 12)
-                    .animation(.easeInOut(duration: 0.3), value: nova.state)
-                    .animation(.easeInOut(duration: 0.3), value: isInitializing)
+                // State label + stage detail
+                VStack(spacing: 6) {
+                    Text(isInitializing ? L10n.t("starting_conversation").uppercased() : stateLabel)
+                        .font(.system(size: 12, weight: .light))
+                        .tracking(4)
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(isInitializing ? 0.5 : stateOpacity))
+
+                    // Stage detail — co Nova právě dělá (hledám na webu, čtu soubor...)
+                    if !isInitializing, let stage = nova.thinkingStage {
+                        Text(L10n.stage(stage.key, detail: stage.detail))
+                            .font(.system(size: 11, weight: .light))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.35))
+                            .transition(.opacity)
+                    }
+                }
+                .padding(.top, 12)
+                .animation(.easeInOut(duration: 0.3), value: nova.state)
+                .animation(.easeInOut(duration: 0.3), value: isInitializing)
+                .animation(.easeInOut(duration: 0.3), value: nova.thinkingStage)
 
                 Spacer()
 

@@ -688,8 +688,13 @@ class NovaService: ObservableObject {
                 return
             }
 
-            // Debounce po TTS — nech mikrofon "odechnout" od echa
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            // Debounce po TTS — nech WhisperKit vyprázdnit buffer od echa
+            // 1.5s = echo z reproduktoru dozní + WhisperKit zpracuje zbytky
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+
+            // Vyčisti echo zbytky před restart listening
+            currentUtterance = ""
+            interimText = ""
 
             // Po odpovědi → pokračuj v konverzaci
             isSending = false
