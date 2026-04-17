@@ -142,49 +142,43 @@ class WhisperService: ObservableObject {
             let deviceRAM = ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024) // GB
             print("[whisper] device recommends: \(rec), RAM: \(deviceRAM)GB")
             // Smart model selection podle zařízení:
-            // 6GB+ RAM (Pro/Max): large-v3 → small → base (perfektní multilingual)
-            // 4GB+ RAM: small → base → tiny (dobrá kvalita)
-            // <4GB RAM: base → tiny (základní)
-            // Pozn: iOS reportuje ~7GB na 8GB zařízeních (systém zabírá ~1GB)
+            // 6GB+ RAM (Pro/Max): small → base (nejlepší poměr kvalita/výkon)
+            // 4GB+ RAM: base → tiny
+            // <4GB RAM: tiny
+            // Pozn: large-v3 je na mobilech příliš velký na CoreML kompilaci
             if deviceRAM >= 6 {
-                modelsToTry = [ModelSize.largeV3.rawValue, ModelSize.small.rawValue, ModelSize.base.rawValue]
+                modelsToTry = [ModelSize.small.rawValue, ModelSize.base.rawValue]
             } else if deviceRAM >= 4 {
-                modelsToTry = [ModelSize.small.rawValue, ModelSize.base.rawValue, ModelSize.tiny.rawValue]
+                modelsToTry = [ModelSize.base.rawValue, ModelSize.tiny.rawValue]
             } else {
-                modelsToTry = [rec, ModelSize.base.rawValue, ModelSize.tiny.rawValue]
+                modelsToTry = [ModelSize.tiny.rawValue]
             }
         }
 
         for modelName in modelsToTry {
             print("[whisper] trying model: \(modelName)")
             do {
-                // Stáhni model s progress callbackem
-                let modelFolder = try await WhisperKit.download(
-                    variant: modelName,
-                    progressCallback: { [weak self] progress in
-                        let pct = progress.fractionCompleted
-                        Task { @MainActor in
-                            self?.loadProgress = pct
-                        }
-                        if Int(pct * 100) % 10 == 0 {
-                            print("[whisper] downloading \(modelName): \(Int(pct * 100))%")
-                        }
+                // Animovaný progress (simulovaný, WhisperKit neexponuje download progress v init)
+                let progressTask = Task { @MainActor [weak self] in
+                    var p = 0.0
+                    while p < 0.9 {
+                        try? await Task.sleep(nanoseconds: 500_000_000)
+                        p = min(p + 0.05, 0.9)
+                        self?.loadProgress = p
                     }
-                )
-                await MainActor.run { self.loadProgress = 0.9 }
-                print("[whisper] download done, loading model...")
+                }
 
-                // Inicializuj WhisperKit s lokálním modelem (už nestahuje)
                 whisperKit = try await WhisperKit(
                     WhisperKitConfig(
-                        modelFolder: modelFolder.path,
+                        model: modelName,
                         verbose: false,
                         logLevel: .error,
                         prewarm: true,
                         load: true,
-                        download: false
+                        download: true
                     )
                 )
+                progressTask.cancel()
                 await MainActor.run { self.loadProgress = 1.0 }
                 state = .ready
                 print("[whisper] model ready: \(modelName)")
