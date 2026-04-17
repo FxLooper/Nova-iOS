@@ -38,6 +38,8 @@ class NovaService: ObservableObject {
     private let audioEngine = AVAudioEngine()
     private let synthesizer = AVSpeechSynthesizer()
     private var audioPlayer: AVAudioPlayer?
+    /// Text co Nova právě říká přes TTS — pro barge-in echo filtraci
+    var currentTTSText: String = ""
 
     // MARK: - Whisper STT (experimentální)
     private let whisper = WhisperService()
@@ -554,11 +556,9 @@ class NovaService: ObservableObject {
         lastSendTime = now
         print("[chat] === SENDING: \(text.prefix(40)) ===")
 
-        // Zastav whisper během zpracování + TTS (AEC nefiltruje echo dostatečně)
-        // Whisper se restartuje po TTS v continueConversation()
+        // Whisper běží i během TTS — barge-in detekce porovná transcript s TTS textem
         if conversationActive {
-            whisper.stopListening()
-            print("[chat] whisper paused (echo prevention)")
+            print("[chat] whisper stays active for barge-in detection")
         }
 
         // Zastav TTS pokud Nova právě mluví
@@ -787,21 +787,22 @@ class NovaService: ObservableObject {
                 try session.setActive(true)
             }
 
+            currentTTSText = text.lowercased()
             audioPlayer = try AVAudioPlayer(data: data)
             audioPlayer?.play()
 
             while audioPlayer?.isPlaying == true {
-                // TTS toggle off → stop
                 if !ttsEnabled {
                     audioPlayer?.stop()
                     audioPlayer = nil
+                    currentTTSText = ""
                     state = .idle
                     return
                 }
-                // Barge-in přes tap na orb (voice barge-in nefunguje — AEC nefiltruje echo)
                 try await Task.sleep(nanoseconds: 100_000_000)
             }
             audioPlayer = nil
+            currentTTSText = ""
         } catch {
             print("[TTS] playback error: \(error.localizedDescription) — skipping voice")
             state = .idle
@@ -959,18 +960,26 @@ class NovaService: ObservableObject {
                     // Barge-in: pokud Nova mluví a uživatel ji přeruší hlasem
                     if self.state == .speaking && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                        // Ignoruj echo artefakty (krátké, ticho, blank)
-                        let isEcho = cleaned.count < 4
-                            || cleaned.contains("silence")
-                            || cleaned.contains("blank")
-                            || cleaned.hasPrefix("(") // WhisperKit wraps uncertain text in ()
-                        if !isEcho {
-                            print("[barge-in] user interrupted TTS: \(text.prefix(40))")
-                            self.interruptAndListen()
-                            self.currentUtterance = text
-                            self.interimText = text
-                            return
+                        // Ignoruj krátké artefakty
+                        guard cleaned.count >= 4,
+                              !cleaned.contains("silence"),
+                              !cleaned.contains("blank") else { return }
+                        // Echo filtr: pokud transcript je součástí TTS textu → echo Novy → ignoruj
+                        let tts = self.currentTTSText
+                        if !tts.isEmpty {
+                            // Vezmi posledních 60 znaků transcriptu a hledej v TTS textu
+                            let check = String(cleaned.suffix(60))
+                            if tts.contains(check) {
+                                // Echo — WhisperKit slyší Novu, ne uživatele
+                                return
+                            }
                         }
+                        // Není echo → uživatel mluví → přeruš TTS
+                        print("[barge-in] user interrupted: \(text.prefix(50))")
+                        self.interruptAndListen()
+                        self.currentUtterance = text
+                        self.interimText = text
+                        return
                     }
                     guard self.state == .listening else { return }
                     self.currentUtterance = text
@@ -1059,14 +1068,9 @@ class NovaService: ObservableObject {
         silenceTask?.cancel()
         silenceTask = nil
 
-        // Restartuj WhisperKit po TTS
-        if useWhisper {
-            whisper.languageHint = nil
-            print("[speech] restarting whisper for next turn")
-            startWhisperListening()
-        } else {
-            state = .listening
-        }
+        // Whisper běží nepřetržitě — jen přepni state
+        state = .listening
+        print("[speech] ready for next turn")
     }
 
     private var dictationTranscriber: DictationTranscriber?
