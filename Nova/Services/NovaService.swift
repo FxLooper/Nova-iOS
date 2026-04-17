@@ -554,6 +554,13 @@ class NovaService: ObservableObject {
         lastSendTime = now
         print("[chat] === SENDING: \(text.prefix(40)) ===")
 
+        // Zastav WhisperKit během zpracování (echo prevention)
+        // Whisper se restartuje v continueConversation() po TTS
+        if conversationActive {
+            whisper.stopListening()
+            print("[chat] whisper paused for processing")
+        }
+
         // Zastav TTS pokud Nova právě mluví
         audioPlayer?.stop()
         audioPlayer = nil
@@ -1001,8 +1008,14 @@ class NovaService: ObservableObject {
         silenceTask?.cancel()
         silenceTask = nil
 
-        // Analyzer běží nepřetržitě — jen nastav state zpět na listening
-        state = .listening
+        // Restartuj WhisperKit (byl zastaven při sendMessage pro echo prevention)
+        if useWhisper {
+            whisper.languageHint = nil
+            print("[speech] restarting whisper for next turn")
+            startWhisperListening()
+        } else {
+            state = .listening
+        }
     }
 
     private var dictationTranscriber: DictationTranscriber?
