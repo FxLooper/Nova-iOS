@@ -68,6 +68,45 @@ struct VoiceConversationView: View {
                 .animation(.easeInOut(duration: 0.3), value: isInitializing)
                 .animation(.easeInOut(duration: 0.3), value: nova.thinkingStage)
 
+                // Dev logs — live stream co Nova dělá (jen když běží dev mode)
+                if nova.isDevMode && !nova.devLogs.isEmpty {
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Header
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(Color.blue.opacity(0.7))
+                                .frame(width: 6, height: 6)
+                            Text("DEV")
+                                .font(.system(size: 10, weight: .medium))
+                                .tracking(2)
+                                .foregroundColor(.blue.opacity(0.6))
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+
+                        // Log lines — posledních 8 řádků
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 3) {
+                                ForEach(Array(nova.devLogs.suffix(8).enumerated()), id: \.offset) { _, log in
+                                    Text(log)
+                                        .font(.system(size: 11, design: .monospaced))
+                                        .foregroundColor(devLogColor(log))
+                                        .lineLimit(1)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 6)
+                        }
+                        .frame(maxHeight: 120)
+                    }
+                    .background(Color(hex: "1a1a2e").opacity(0.04))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 16)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
                 Spacer()
 
                 // Bottom: end call button
@@ -132,5 +171,16 @@ struct VoiceConversationView: View {
     private func endAndDismiss() {
         nova.endConversation()
         isPresented = false
+    }
+
+    private func devLogColor(_ log: String) -> Color {
+        if log.contains("📖") || log.contains("Read") { return .green.opacity(0.7) }
+        if log.contains("✏️") || log.contains("Edit") { return .orange.opacity(0.7) }
+        if log.contains("📝") || log.contains("Write") { return .yellow.opacity(0.7) }
+        if log.contains("$") || log.contains("Bash") { return .cyan.opacity(0.7) }
+        if log.contains("🔍") || log.contains("Glob") { return .purple.opacity(0.7) }
+        if log.contains("🔎") || log.contains("Grep") { return .indigo.opacity(0.7) }
+        if log.contains("🚀") { return .blue.opacity(0.7) }
+        return Color(hex: "1a1a2e").opacity(0.5)
     }
 }
