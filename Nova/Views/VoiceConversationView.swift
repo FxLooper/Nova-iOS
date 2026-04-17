@@ -33,6 +33,37 @@ struct VoiceConversationView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
 
+                // DEV / WEB banner — modrý/zelený když Nova pracuje
+                if nova.isDevMode || nova.isWebMode {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(nova.isDevMode ? Color.blue.opacity(0.8) : Color.green.opacity(0.8))
+                            .frame(width: 8, height: 8)
+                            .scaleEffect(1.2)
+                        Text(nova.isDevMode ? "DEV" : "WEB")
+                            .font(.system(size: 11, weight: .semibold))
+                            .tracking(3)
+                            .foregroundColor(nova.isDevMode ? .blue.opacity(0.7) : .green.opacity(0.7))
+                        if let stage = nova.thinkingStage {
+                            Text("·")
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.2))
+                            Text(L10n.stage(stage.key, detail: stage.detail))
+                                .font(.system(size: 11, weight: .light))
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                                .lineLimit(1)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .background((nova.isDevMode ? Color.blue : Color.green).opacity(0.06))
+                    .cornerRadius(10)
+                    .padding(.horizontal, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.3), value: nova.isDevMode)
+                    .animation(.easeInOut(duration: 0.3), value: nova.isWebMode)
+                }
+
                 Spacer()
 
                 // Orb — large, centered, reactive
