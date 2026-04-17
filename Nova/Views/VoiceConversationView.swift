@@ -5,6 +5,7 @@ struct VoiceConversationView: View {
     @EnvironmentObject var nova: NovaService
     @Binding var isPresented: Bool
     @State private var showCamera = false
+    @State private var isInitializing = true
 
     var body: some View {
         ZStack {
@@ -36,8 +37,10 @@ struct VoiceConversationView: View {
 
                 // Orb — large, centered, reactive
                 // Tap = přeruš mluvení a začni poslouchat
-                OrbWebView(state: nova.state.rawValue, audioLevel: 0)
+                OrbWebView(state: isInitializing ? "thinking" : nova.state.rawValue, audioLevel: 0)
                     .frame(width: 280, height: 280)
+                    .opacity(isInitializing ? 0.6 : 1.0)
+                    .animation(.easeInOut(duration: 0.5), value: isInitializing)
                     .onTapGesture {
                         if nova.state == .speaking {
                             HapticManager.shared.selectionChanged()
@@ -46,12 +49,13 @@ struct VoiceConversationView: View {
                     }
 
                 // State label
-                Text(stateLabel)
+                Text(isInitializing ? L10n.t("starting_conversation").uppercased() : stateLabel)
                     .font(.system(size: 12, weight: .light))
                     .tracking(4)
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(stateOpacity))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(isInitializing ? 0.5 : stateOpacity))
                     .padding(.top, 12)
                     .animation(.easeInOut(duration: 0.3), value: nova.state)
+                    .animation(.easeInOut(duration: 0.3), value: isInitializing)
 
                 Spacer()
 
@@ -70,11 +74,14 @@ struct VoiceConversationView: View {
             }
         }
         .onAppear {
+            isInitializing = true
             // Odlož start — počkej až OrbWebView dokončí GPU/WebContent launch
-            // (jinak WKWebView přepíše audio session a WhisperKit ztratí mikrofon)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                 if !nova.conversationActive {
                     nova.toggleConversation()
+                }
+                withAnimation(.easeOut(duration: 0.4)) {
+                    isInitializing = false
                 }
             }
         }
