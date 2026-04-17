@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var showClearMemoryAlert = false
     @State private var selectedDevProject: String
     @State private var editableQuickActions: [QuickAction]
+    @State private var ttsSpeed: Double
 
     init() {
         _selectedLang = State(initialValue: UserDefaults.standard.string(forKey: "nova_lang") ?? "cs")
@@ -26,6 +27,7 @@ struct SettingsView: View {
         _voiceVerifyEnforced = State(initialValue: UserDefaults.standard.bool(forKey: "nova_voice_verify_enforce"))
         _selectedDevProject = State(initialValue: UserDefaults.standard.string(forKey: "nova_dev_project") ?? "backend")
         _editableQuickActions = State(initialValue: QuickAction.load())
+        _ttsSpeed = State(initialValue: UserDefaults.standard.object(forKey: "nova_tts_speed") == nil ? 0.0 : UserDefaults.standard.double(forKey: "nova_tts_speed"))
     }
 
     static let devProjects: [(key: String, label: String, icon: String)] = [
@@ -171,6 +173,37 @@ struct SettingsView: View {
                                     action: { selectedVoiceGender = "male" }
                                 )
                             }
+
+                            // Rychlost mluvení
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text(L10n.t("speech_speed"))
+                                        .font(.system(size: 13, weight: .regular))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                                    Spacer()
+                                    Text(ttsSpeedLabel)
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                                        .monospacedDigit()
+                                }
+                                Slider(value: $ttsSpeed, in: -30...50, step: 10)
+                                    .tint(Color(hex: "1a1a2e").opacity(0.6))
+                                    .onChange(of: ttsSpeed) { _, newValue in
+                                        UserDefaults.standard.set(newValue, forKey: "nova_tts_speed")
+                                    }
+                                HStack {
+                                    Text(L10n.t("slower"))
+                                        .font(.system(size: 10, weight: .light))
+                                    Spacer()
+                                    Text(L10n.t("normal"))
+                                        .font(.system(size: 10, weight: .light))
+                                    Spacer()
+                                    Text(L10n.t("faster"))
+                                        .font(.system(size: 10, weight: .light))
+                                }
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                            }
+                            .padding(.top, 8)
                         }
 
                         // Speech Recognition Status
@@ -684,6 +717,12 @@ struct SettingsView: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
         return "\(version) (build \(build))"
+    }
+
+    private var ttsSpeedLabel: String {
+        let pct = Int(ttsSpeed)
+        if pct == 0 { return L10n.t("normal") }
+        return pct > 0 ? "+\(pct)%" : "\(pct)%"
     }
 
     private var whisperStatusColor: Color {

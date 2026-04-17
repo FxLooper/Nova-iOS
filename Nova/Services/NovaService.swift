@@ -780,7 +780,9 @@ class NovaService: ObservableObject {
             request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
             let selectedVoice = UserDefaults.standard.string(forKey: "nova_voice") ?? profile["voice"] ?? "cs-vlasta"
             print("[TTS] sending voice: \(selectedVoice)")
-            request.httpBody = try JSONSerialization.data(withJSONObject: ["text": text, "voice": selectedVoice])
+            let speedPct = Int(UserDefaults.standard.double(forKey: "nova_tts_speed"))
+            let rate = speedPct >= 0 ? "+\(speedPct)%" : "\(speedPct)%"
+            request.httpBody = try JSONSerialization.data(withJSONObject: ["text": text, "voice": selectedVoice, "rate": rate])
 
             let (data, response) = try await URLSession.shared.data(for: request)
 
