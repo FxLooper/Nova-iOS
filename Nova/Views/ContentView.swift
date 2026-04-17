@@ -364,6 +364,24 @@ struct ChatView: View {
                                     .padding(.horizontal, 32)
                             }
 
+                            // Recap — automatické připomenutí po neaktivitě
+                            if let recap = nova.recapText {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                        .font(.system(size: 12))
+                                    Text(recap)
+                                        .font(.system(size: 13, weight: .light))
+                                        .italic()
+                                }
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.35))
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 10)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .onTapGesture {
+                                    withAnimation(.easeOut(duration: 0.3)) { nova.recapText = nil }
+                                }
+                            }
+
                             ForEach(nova.messages) { msg in
                                 MessageBubble(
                                     message: msg,
@@ -372,17 +390,8 @@ struct ChatView: View {
                                 .id(msg.id)
                             }
 
-                            // Interim speech text (PTT dictation preview)
-                            if !nova.interimText.isEmpty && dictationState == .dictating {
-                                HStack {
-                                    Text(nova.interimText)
-                                        .font(.system(size: 14, weight: .light))
-                                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
-                                        .italic()
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 20)
-                            }
+                            // Interim speech text — jen při dictating, zobrazí se v bottom baru
+                            // Zde nezobrazovat — duplicita s dictating barem
 
                             // Confirm buttons
                             if nova.pendingConfirmation != nil {
@@ -506,35 +515,6 @@ struct ChatView: View {
 
                 // ─── Premium Input Bar ──────────────────────────────────
                 VStack(spacing: 0) {
-                    // Dictation live transcript bar (appears above input when dictating)
-                    if dictationState == .dictating && !nova.interimText.isEmpty {
-                        HStack(spacing: 8) {
-                            // Recording pulse indicator
-                            Circle()
-                                .fill(Color.red)
-                                .frame(width: 8, height: 8)
-                                .opacity(recordingPulse ? 1.0 : 0.3)
-                                .onAppear {
-                                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                                        recordingPulse = true
-                                    }
-                                }
-
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                Text(nova.interimText)
-                                    .font(.system(size: 14, weight: .light))
-                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
-                            }
-                            Spacer()
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .bottom).combined(with: .opacity),
-                            removal: .opacity
-                        ))
-                    }
-
                     // Main input bar — changes based on state
                     HStack(spacing: 12) {
                         switch dictationState {
@@ -600,45 +580,68 @@ struct ChatView: View {
                             }
 
                         case .dictating:
-                            // ── DICTATING: [Cancel] [Live text] [Stop] ──
-                            Button(action: { cancelDictation() }) {
-                                Image(systemName: "xmark.circle")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
-                            }
+                            // ── DICTATING: expandující live text ──
+                            VStack(spacing: 8) {
+                                // Live transcript — expanduje se podle obsahu
+                                ScrollView {
+                                    Text(nova.interimText.isEmpty ? L10n.t("speak_now") : nova.interimText)
+                                        .font(.system(size: 15, weight: .light))
+                                        .foregroundColor(nova.interimText.isEmpty
+                                            ? Color(hex: "1a1a2e").opacity(0.25)
+                                            : Color(hex: "1a1a2e").opacity(0.7))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .frame(minHeight: 40, maxHeight: 200)
 
-                            // Live transcript (scrollable, growing)
-                            Text(nova.interimText.isEmpty ? L10n.t("speak_now") : nova.interimText)
-                                .font(.system(size: 15, weight: .light))
-                                .foregroundColor(nova.interimText.isEmpty
-                                    ? Color(hex: "1a1a2e").opacity(0.25)
-                                    : Color(hex: "1a1a2e").opacity(0.7))
-                                .lineLimit(2)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                // Buttons row
+                                HStack {
+                                    Button(action: { cancelDictation() }) {
+                                        Image(systemName: "xmark.circle")
+                                            .font(.system(size: 22))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                                    }
 
-                            // Stop button (pulsing red)
-                            Button(action: { stopDictation() }) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.red.opacity(0.15))
-                                        .frame(width: 36, height: 36)
-                                    Circle()
-                                        .fill(Color.red.opacity(0.8))
-                                        .frame(width: 14, height: 14)
-                                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                                    Spacer()
+
+                                    // Pulsing recording indicator
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(Color.red.opacity(0.8))
+                                            .frame(width: 8, height: 8)
+                                            .scaleEffect(recordingPulse ? 1.3 : 0.8)
+                                            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: recordingPulse)
+                                            .onAppear { recordingPulse = true }
+                                        Text(L10n.t("listening"))
+                                            .font(.system(size: 12, weight: .light))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                                    }
+
+                                    Spacer()
+
+                                    // Stop button
+                                    Button(action: { stopDictation() }) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.red.opacity(0.15))
+                                                .frame(width: 36, height: 36)
+                                            Circle()
+                                                .fill(Color.red.opacity(0.8))
+                                                .frame(width: 14, height: 14)
+                                                .clipShape(RoundedRectangle(cornerRadius: 3))
+                                        }
+                                    }
                                 }
                             }
 
                         case .review:
-                            // ── REVIEW: [Cancel] [Editable text] [Send ▶] ──
-                            VStack(spacing: 8) {
-                                // Full text view — expanduje se podle obsahu (multi-line, never truncated)
+                            // ── REVIEW: plný text + editace + send ──
+                            VStack(spacing: 6) {
+                                // Scrollable text editor — plná výška, nikdy neoříznutý
                                 TextEditor(text: $dictatedText)
                                     .font(.system(size: 15, weight: .light))
                                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
                                     .scrollContentBackground(.hidden)
-                                    .frame(minHeight: 36, maxHeight: 120)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(minHeight: 60, maxHeight: 250)
                                     .focused($isInputFocused)
                                     .onAppear { isInputFocused = true }
 
@@ -688,6 +691,7 @@ struct ChatView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await nova.checkCronResults() }
+                Task { await nova.checkAndShowRecap() }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .openScheduledTasks)) { _ in

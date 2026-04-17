@@ -41,7 +41,13 @@ class NovaService: ObservableObject {
 
     // MARK: - Whisper STT (experimentální)
     private let whisper = WhisperService()
-    @Published var useWhisper: Bool = UserDefaults.standard.bool(forKey: "nova_use_whisper")
+    // WhisperKit default ON — výrazně lepší čeština než DictationTranscriber
+    @Published var useWhisper: Bool = {
+        if UserDefaults.standard.object(forKey: "nova_use_whisper") == nil {
+            return true  // Default ON pro nové instalace
+        }
+        return UserDefaults.standard.bool(forKey: "nova_use_whisper")
+    }()
     @Published var whisperState: WhisperService.WhisperState = .unloaded
     @Published var whisperLoadProgress: Double = 0.0
     private var whisperStateObserver: AnyCancellable?
@@ -192,6 +198,78 @@ class NovaService: ObservableObject {
             let (_, _) = try await URLSession.shared.data(for: req)
             memoryFacts = []
         } catch { print("[memory] clear error: \(error)") }
+    }
+
+    // MARK: - Recap (automatické připomenutí po neaktivitě)
+    @Published var recapText: String? = nil
+    private var lastActivityTime: Date = Date()
+    private let recapInactivityThreshold: TimeInterval = 30 * 60 // 30 minut
+
+    func checkAndShowRecap() async {
+        let now = Date()
+        let elapsed = now.timeIntervalSince(lastActivityTime)
+        lastActivityTime = now
+
+        // Jen pokud uplynulo 30+ minut a máme historii
+        guard elapsed > recapInactivityThreshold, messages.count >= 2 else { return }
+        // Nepokazuj recap pokud už jeden visí
+        guard recapText == nil else { return }
+
+        // Vezmi posledních pár zpráv pro kontext
+        let recentMessages = messages.suffix(6)
+        let summary = recentMessages.map { msg in
+            let role = msg.role == "user" ? "Ondřej" : "Nova"
+            return "\(role): \(msg.content.prefix(200))"
+        }.joined(separator: "\n")
+
+        // Vygeneruj recap přes Claude
+        guard let url = URL(string: "\(serverURL)/api/chat") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+        request.timeoutInterval = 15
+
+        let recapPrompt = "Napiš JEDNU krátkou českou větu (max 15 slov) shrnující na čem jsme naposledy pracovali. Bez markdown, bez emoji, jen prostý text. Kontext:\n\(summary)"
+        let payload: [String: Any] = [
+            "messages": [["user", recapPrompt]],
+            "profile": profile
+        ]
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+            let (data, _) = try await URLSession.shared.data(for: request)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let requestId = json["requestId"] as? String {
+                // Poll pro výsledek (max 10s)
+                for _ in 0..<20 {
+                    try await Task.sleep(nanoseconds: 500_000_000)
+                    guard let pollUrl = URL(string: "\(serverURL)/api/poll/\(requestId)") else { break }
+                    var pollReq = URLRequest(url: pollUrl)
+                    pollReq.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+                    let (pollData, _) = try await URLSession.shared.data(for: pollReq)
+                    if let pollJson = try? JSONSerialization.jsonObject(with: pollData) as? [String: Any],
+                       let status = pollJson["status"] as? String,
+                       status == "done",
+                       let text = pollJson["text"] as? String,
+                       !text.isEmpty {
+                        recapText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        print("[recap] \(recapText ?? "")")
+                        // Auto-hide po 15s
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 15_000_000_000)
+                            self.recapText = nil
+                        }
+                        return
+                    }
+                }
+            }
+        } catch {
+            print("[recap] error: \(error.localizedDescription)")
+        }
+    }
+
+    func markActivity() {
+        lastActivityTime = Date()
     }
 
     // MARK: - Streaming chat
@@ -459,6 +537,8 @@ class NovaService: ObservableObject {
 
     func sendMessage(_ text: String) async {
         guard !text.isEmpty else { return }
+        markActivity()
+        recapText = nil  // Skryj recap při nové zprávě
 
         // Vždy zastav předchozí práci
         activeTask?.cancel()
@@ -755,19 +835,23 @@ class NovaService: ObservableObject {
     // MARK: - Push-to-Talk
     // Drž mic tlačítko → spustí SR, uvolnění → pošle finální text
     func startPushToTalk() {
-        guard !isMuted else { return }
-        guard !conversationActive else { return } // Pokud je Live mode, PTT se nespustí
+        print("[ptt] startPushToTalk called — muted: \(isMuted), conversationActive: \(conversationActive), whisper: \(whisperState), useWhisper: \(useWhisper)")
+        guard !isMuted else { print("[ptt] BLOCKED: muted"); return }
+        guard !conversationActive else { print("[ptt] BLOCKED: conversation active"); return }
         HapticManager.shared.pushToTalkStart()
         pushToTalkActive = true
         currentUtterance = ""
         interimText = ""
         pttAccumulated = ""
+        state = .listening
         if useWhisper && whisperState == .ready {
             // PTT: nastav jazyk podle uživatelského nastavení (auto-detect na krátkých větách selhává)
             let lang = UserDefaults.standard.string(forKey: "nova_lang") ?? "cs"
             whisper.languageHint = lang
+            print("[ptt] using Whisper STT (lang: \(lang))")
             startWhisperListening()
         } else {
+            print("[ptt] using DictationTranscriber fallback")
             startDictation()
         }
     }
