@@ -157,14 +157,31 @@ class WhisperService: ObservableObject {
         for modelName in modelsToTry {
             print("[whisper] trying model: \(modelName)")
             do {
+                // Stáhni model s progress callbackem
+                let modelFolder = try await WhisperKit.download(
+                    variant: modelName,
+                    progressCallback: { [weak self] progress in
+                        let pct = progress.fractionCompleted
+                        Task { @MainActor in
+                            self?.loadProgress = pct
+                        }
+                        if Int(pct * 100) % 10 == 0 {
+                            print("[whisper] downloading \(modelName): \(Int(pct * 100))%")
+                        }
+                    }
+                )
+                await MainActor.run { self.loadProgress = 0.9 }
+                print("[whisper] download done, loading model...")
+
+                // Inicializuj WhisperKit s lokálním modelem (už nestahuje)
                 whisperKit = try await WhisperKit(
                     WhisperKitConfig(
-                        model: modelName,
+                        modelFolder: modelFolder.absoluteString,
                         verbose: false,
                         logLevel: .error,
                         prewarm: true,
                         load: true,
-                        download: true
+                        download: false
                     )
                 )
                 await MainActor.run { self.loadProgress = 1.0 }
