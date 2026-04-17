@@ -746,8 +746,13 @@ struct ChatView: View {
                     return
                 }
                 print("[file] loaded \(data.count) bytes from \(url.lastPathComponent)")
+                // Video soubory
+                let videoExtensions = ["mp4", "mov", "m4v", "avi", "mkv", "webm"]
+                if videoExtensions.contains(url.pathExtension.lowercased()) {
+                    Task { await nova.sendVideo(data, filename: url.lastPathComponent) }
+                }
                 // Zkus jako obrázek
-                if let image = UIImage(data: data) {
+                else if let image = UIImage(data: data) {
                     Task { await nova.sendImage(image) }
                 } else if url.pathExtension.lowercased() == "pdf" {
                     // PDF — extrahuj text přes PDFKit

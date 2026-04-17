@@ -405,6 +405,58 @@ class NovaService: ObservableObject {
         }
     }
 
+    // MARK: - Video analýza
+    func sendVideo(_ data: Data, filename: String) async {
+        // Validace: max 50 MB
+        guard data.count < 50_000_000 else {
+            let msg = Message(role: "ai", content: "Video je moc velké (\(data.count / 1_000_000) MB). Maximum je 50 MB.")
+            messages.append(msg)
+            saveMessages()
+            return
+        }
+        let base64 = data.base64EncodedString()
+
+        let userMsg = Message(role: "user", content: "[Video 🎬 \(filename)]")
+        messages.append(userMsg)
+        saveMessages()
+        state = .thinking
+        thinkingStage = ThinkingStage(key: "processing_video", detail: filename)
+
+        do {
+            guard let url = URL(string: "\(serverURL)/api/video") else { return }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+            request.timeoutInterval = 180
+
+            let payload: [String: Any] = [
+                "video": base64,
+                "filename": filename,
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+            let (responseData, _) = try await URLSession.shared.data(for: request)
+            if let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+               let content = json["content"] as? String {
+                thinkingStage = nil
+                let aiMsg = Message(role: "ai", content: content)
+                messages.append(aiMsg)
+                saveMessages()
+                HapticManager.shared.novaResponseChord()
+                state = .speaking
+                await playTTS(content)
+                state = .idle
+            }
+        } catch {
+            thinkingStage = nil
+            let errorMsg = Message(role: "ai", content: "Nepodařilo se zpracovat video: \(error.localizedDescription)")
+            messages.append(errorMsg)
+            saveMessages()
+            state = .idle
+        }
+    }
+
     func sendMessage(_ text: String) async {
         guard !text.isEmpty else { return }
 
