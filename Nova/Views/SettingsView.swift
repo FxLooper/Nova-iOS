@@ -610,7 +610,7 @@ struct SettingsView: View {
     // MARK: - Helper subviews
 
     private var serverHealthDetailRow: some View {
-        let status = nova.serverHealth.status
+        let _ = nova.serverHealth.status  // trigger SwiftUI update
         let latency = nova.serverHealth.lastPingLatency
         return HStack(spacing: 6) {
             Circle()
