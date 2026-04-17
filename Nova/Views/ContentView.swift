@@ -1128,7 +1128,7 @@ struct MessageBubble: View {
                 if !message.content.isEmpty {
                 Group {
                     let displayContent = MessageBubble.cleanContent(message.content, isUser: isUser)
-                    if !isUser, let md = try? AttributedString(markdown: displayContent, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                    if !isUser, let md = try? AttributedString(markdown: displayContent, options: .init(interpretedSyntax: .full)) {
                         Text(md)
                     } else {
                         Text(displayContent)
