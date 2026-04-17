@@ -823,15 +823,48 @@ struct ChatView: View {
 
     private var emptyWelcomeView: some View {
         VStack(spacing: 16) {
-            Text(personalizedGreeting)
-                .font(.system(size: 22, weight: .light))
-                .foregroundColor(Color(hex: "1a1a2e").opacity(0.75))
-                .multilineTextAlignment(.center)
+            if nova.whisperState != .ready && nova.useWhisper {
+                // První spuštění — WhisperKit se stahuje/loaduje
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                        .tint(Color(hex: "1a1a2e").opacity(0.4))
 
-            Text(L10n.t("what_today"))
-                .font(.system(size: 14, weight: .light))
-                .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                    Text(L10n.t("finishing_setup"))
+                        .font(.system(size: 16, weight: .light))
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
+
+                    if nova.whisperLoadProgress > 0 && nova.whisperLoadProgress < 1 {
+                        ProgressView(value: nova.whisperLoadProgress)
+                            .tint(Color(hex: "1a1a2e").opacity(0.5))
+                            .frame(width: 180)
+                        Text("\(Int(nova.whisperLoadProgress * 100))%")
+                            .font(.system(size: 12, weight: .light))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.35))
+                            .monospacedDigit()
+                    }
+                }
+                .padding(.bottom, 12)
+            } else {
+                Text(personalizedGreeting)
+                    .font(.system(size: 22, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.75))
+                    .multilineTextAlignment(.center)
+
+                if nova.whisperState == .ready && nova.useWhisper && nova.messages.isEmpty {
+                    // Právě se doloadovalo — krátký "ready" text
+                    Text(L10n.t("setup_complete"))
+                        .font(.system(size: 13, weight: .light))
+                        .foregroundColor(.green.opacity(0.6))
+                        .transition(.opacity)
+                }
+
+                Text(L10n.t("what_today"))
+                    .font(.system(size: 14, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+            }
         }
+        .animation(.easeInOut(duration: 0.5), value: nova.whisperState == .ready)
     }
 
     private func sendText() {
