@@ -790,11 +790,23 @@ class NovaService: ObservableObject {
             audioPlayer?.play()
 
             while audioPlayer?.isPlaying == true {
+                // TTS toggle off → stop
                 if !ttsEnabled {
                     audioPlayer?.stop()
                     audioPlayer = nil
                     state = .idle
                     return
+                }
+                // Barge-in: pokud během TTS přišel nový text z WhisperKit → přeruš
+                if conversationActive && !currentUtterance.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    let text = currentUtterance.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    let isEcho = text.count < 4 || text.contains("silence") || text.contains("blank") || text.hasPrefix("(")
+                    if !isEcho {
+                        print("[barge-in] TTS interrupted by user speech: \(text.prefix(40))")
+                        audioPlayer?.stop()
+                        audioPlayer = nil
+                        return
+                    }
                 }
                 try await Task.sleep(nanoseconds: 100_000_000)
             }
