@@ -63,8 +63,12 @@ struct VoiceConversationView: View {
             }
         }
         .onAppear {
-            if !nova.conversationActive {
-                nova.toggleConversation()
+            // Odlož start — počkej až OrbWebView dokončí GPU/WebContent launch
+            // (jinak WKWebView přepíše audio session a WhisperKit ztratí mikrofon)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                if !nova.conversationActive {
+                    nova.toggleConversation()
+                }
             }
         }
         .sheet(isPresented: $showCamera) {

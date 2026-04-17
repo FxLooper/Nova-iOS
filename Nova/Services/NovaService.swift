@@ -818,6 +818,7 @@ class NovaService: ObservableObject {
 
     func startConversation() {
         guard !isMuted else { return }
+        guard !conversationActive else { return } // Prevent double-start
         conversationActive = true
         updateLiveActivityForState()  // Start Dynamic Island
         if useWhisper && whisperState == .ready {
