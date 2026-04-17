@@ -142,12 +142,13 @@ class WhisperService: ObservableObject {
             let deviceRAM = ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024) // GB
             print("[whisper] device recommends: \(rec), RAM: \(deviceRAM)GB")
             // Smart model selection podle zařízení:
-            // 8GB+ RAM (Pro/Max): large-v3 → small → base (perfektní multilingual)
-            // 6GB RAM: small → base → tiny (dobrá kvalita)
-            // 4GB RAM: base → tiny (základní)
-            if deviceRAM >= 8 {
+            // 6GB+ RAM (Pro/Max): large-v3 → small → base (perfektní multilingual)
+            // 4GB+ RAM: small → base → tiny (dobrá kvalita)
+            // <4GB RAM: base → tiny (základní)
+            // Pozn: iOS reportuje ~7GB na 8GB zařízeních (systém zabírá ~1GB)
+            if deviceRAM >= 6 {
                 modelsToTry = [ModelSize.largeV3.rawValue, ModelSize.small.rawValue, ModelSize.base.rawValue]
-            } else if deviceRAM >= 6 {
+            } else if deviceRAM >= 4 {
                 modelsToTry = [ModelSize.small.rawValue, ModelSize.base.rawValue, ModelSize.tiny.rawValue]
             } else {
                 modelsToTry = [rec, ModelSize.base.rawValue, ModelSize.tiny.rawValue]
