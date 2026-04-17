@@ -688,9 +688,9 @@ class NovaService: ObservableObject {
                 return
             }
 
-            // Debounce po TTS — nech WhisperKit vyprázdnit buffer od echa
-            // 1.5s = echo z reproduktoru dozní + WhisperKit zpracuje zbytky
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            // Debounce po TTS — zastav whisper, počkej až echo dozní, restartuj
+            whisper.stopListening()
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
 
             // Vyčisti echo zbytky před restart listening
             currentUtterance = ""
@@ -1092,10 +1092,15 @@ class NovaService: ObservableObject {
         silenceTask?.cancel()
         silenceTask = nil
 
-        // Whisper běží — jen přepni state na listening
+        // Restartuj whisper (byl zastaven po TTS pro echo prevention)
         currentUtterance = ""
         interimText = ""
-        state = .listening
+        if useWhisper {
+            whisper.languageHint = nil
+            startWhisperListening()
+        } else {
+            state = .listening
+        }
         print("[speech] ready for next turn")
     }
 
