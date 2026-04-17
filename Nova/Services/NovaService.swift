@@ -146,6 +146,8 @@ class NovaService: ObservableObject {
                 let msg = Message(role: "ai", content: "📅 \(taskName)\n\n\(resultText)")
                 if !messages.contains(where: { $0.content == msg.content }) {
                     messages.append(msg)
+                    // Banner notifikace
+                    showBanner(.cron, title: taskName, detail: resultText.prefix(80) + "...", autoDismiss: 10)
                 }
             }
             saveMessages()
@@ -208,6 +210,26 @@ class NovaService: ObservableObject {
 
     // MARK: - Recap (automatické připomenutí po neaktivitě)
     @Published var recapText: String? = nil
+    @Published var activeBanners: [BannerItem] = []
+
+    func showBanner(_ type: BannerItem.BannerType, title: String, detail: String? = nil, autoDismiss: TimeInterval? = 5.0) {
+        let banner = BannerItem(type: type, title: title, detail: detail, autoDismiss: autoDismiss)
+        activeBanners.append(banner)
+        // Max 3 bannery najednou
+        if activeBanners.count > 3 { activeBanners.removeFirst() }
+        // Auto-dismiss
+        if let delay = autoDismiss {
+            let bannerId = banner.id
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                activeBanners.removeAll { $0.id == bannerId }
+            }
+        }
+    }
+
+    func dismissBanner(_ banner: BannerItem) {
+        activeBanners.removeAll { $0.id == banner.id }
+    }
     private var lastActivityTime: Date = Date()
     private let recapInactivityThreshold: TimeInterval = 30 * 60 // 30 minut
 

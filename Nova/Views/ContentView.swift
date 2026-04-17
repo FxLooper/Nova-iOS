@@ -378,26 +378,11 @@ struct ChatView: View {
 
                 // Server offline banner
                 if nova.serverHealth.status == .offline {
-                    HStack(spacing: 10) {
-                        Image(systemName: "wifi.slash")
-                            .font(.system(size: 14))
-                            .foregroundColor(.red.opacity(0.7))
-                        Text(L10n.t("server_offline"))
-                            .font(.system(size: 13, weight: .light))
-                            .foregroundColor(.red.opacity(0.6))
-                        Spacer()
-                        Button(action: { Task { await nova.serverHealth.pingNow() } }) {
-                            Text(L10n.t("retry"))
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
-                    .background(Color.red.opacity(0.06))
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.3), value: nova.serverHealth.status == .offline)
+                    offlineBanner
                 }
+
+                // Univerzální notification bannery
+                bannersList
 
                 // Messages
                 ScrollViewReader { proxy in
@@ -824,6 +809,88 @@ struct ChatView: View {
             case .failure(let error):
                 print("[file] error: \(error.localizedDescription)")
             }
+        }
+    }
+
+    private var offlineBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 14))
+                .foregroundColor(.red.opacity(0.7))
+            Text(L10n.t("server_offline"))
+                .font(.system(size: 13, weight: .light))
+                .foregroundColor(.red.opacity(0.6))
+            Spacer()
+            Button(action: { Task { await nova.serverHealth.pingNow() } }) {
+                Text(L10n.t("retry"))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .background(Color.red.opacity(0.06))
+        .cornerRadius(10)
+        .padding(.horizontal, 16)
+    }
+
+    private var bannersList: some View {
+        ForEach(nova.activeBanners) { banner in
+            HStack(spacing: 10) {
+                Image(systemName: bannerIcon(banner.type))
+                    .font(.system(size: 14))
+                    .foregroundColor(bannerColor(banner.type))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(banner.title)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                    if let detail = banner.detail {
+                        Text(detail)
+                            .font(.system(size: 11, weight: .light))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                            .lineLimit(2)
+                    }
+                }
+                Spacer()
+                Button(action: { withAnimation { nova.dismissBanner(banner) } }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(bannerColor(banner.type).opacity(0.06))
+            .overlay(Rectangle().fill(bannerColor(banner.type).opacity(0.3)).frame(width: 3), alignment: .leading)
+            .cornerRadius(10)
+            .padding(.horizontal, 16)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
+    private func bannerIcon(_ type: BannerItem.BannerType) -> String {
+        switch type {
+        case .info: return "info.circle"
+        case .success: return "checkmark.circle"
+        case .warning: return "exclamationmark.triangle"
+        case .error: return "wifi.slash"
+        case .dev: return "chevron.left.forwardslash.chevron.right"
+        case .web: return "globe"
+        case .cron: return "clock.arrow.circlepath"
+        case .reminder: return "bell"
+        }
+    }
+
+    private func bannerColor(_ type: BannerItem.BannerType) -> Color {
+        switch type {
+        case .info: return Color(hex: "1a1a2e")
+        case .success: return .green
+        case .warning: return .orange
+        case .error: return .red
+        case .dev: return .blue
+        case .web: return .green
+        case .cron: return .purple
+        case .reminder: return .yellow
         }
     }
 

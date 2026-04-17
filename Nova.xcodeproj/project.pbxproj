@@ -14,16 +14,18 @@
 		A1000003 /* NovaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003 /* NovaService.swift */; };
 		A1000004 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004 /* KeychainHelper.swift */; };
 		A1000005 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000005 /* Message.swift */; };
+		A1000050 /* BannerItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000050 /* BannerItem.swift */; };
+		A1000051 /* NotificationBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000051 /* NotificationBanner.swift */; };
 		A1000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB5926452F87BECD00A68034 /* Assets.xcassets */; };
 		A1000007 /* OrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000007 /* OrbView.swift */; };
 		A1000008 /* ConfirmButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000008 /* ConfirmButtons.swift */; };
 		A1000009 /* OrbWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000009 /* OrbWebView.swift */; };
 		A1000010 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000010 /* SettingsView.swift */; };
-		A1000030 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000030 /* TerminalView.swift */; };
-		A1000031 /* ScheduledTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000031 /* ScheduledTasksView.swift */; };
 		A1000011 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000011 /* Localization.swift */; };
 		A1000012 /* ThinkingBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000012 /* ThinkingBubbleView.swift */; };
 		A1000020 /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020 /* CameraCaptureView.swift */; };
+		A1000030 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000030 /* TerminalView.swift */; };
+		A1000031 /* ScheduledTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000031 /* ScheduledTasksView.swift */; };
 		BB59264A2F8972B000A68034 /* WhisperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926492F8972B000A68034 /* WhisperService.swift */; };
 		BB59264D2F89753F00A68034 /* SpeakerKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB59264C2F89753F00A68034 /* SpeakerKit */; };
 		BB59264F2F89753F00A68034 /* TTSKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB59264E2F89753F00A68034 /* TTSKit */; };
@@ -34,10 +36,10 @@
 		BB5926592F89B05000A68034 /* AudioLivenessDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926582F89B05000A68034 /* AudioLivenessDetector.swift */; };
 		BB59265B2F89B0A000A68034 /* ServerHealthMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB59265A2F89B0A000A68034 /* ServerHealthMonitor.swift */; };
 		BB59265D2F89B0F000A68034 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB59265C2F89B0F000A68034 /* NetworkMonitor.swift */; };
-		BB5926812F8BF10000A68034 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926802F8BF10000A68034 /* LocationService.swift */; };
 		BB59265D2F8AC79000A68034 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB59265C2F8AC79000A68034 /* WidgetKit.framework */; };
 		BB59265F2F8AC79000A68034 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB59265E2F8AC79000A68034 /* SwiftUI.framework */; };
 		BB5926702F8AC79100A68034 /* NovaWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB59265A2F8AC79000A68034 /* NovaWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BB5926812F8BF10000A68034 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926802F8BF10000A68034 /* LocationService.swift */; };
 		C7E988545A0BE51007A0A104 /* NovaActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A96B3E306013AEBBF048A70D /* NovaActivityAttributes.swift */; };
 		E4F40B93ACE31CA32FC21494 /* VoiceConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821C6E9AC660CB24563D6197 /* VoiceConversationView.swift */; };
 		FEC05D9A3E4DEBDDFB50F58F /* NovaBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3A1892705B12EAC8698D5AD /* NovaBackground.swift */; };
@@ -76,16 +78,18 @@
 		B1000003 /* NovaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaService.swift; sourceTree = "<group>"; };
 		B1000004 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		B1000005 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
+		B1000050 /* BannerItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BannerItem.swift; sourceTree = "<group>"; };
+		B1000051 /* NotificationBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationBanner.swift; sourceTree = "<group>"; };
 		B1000006 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1000007 /* OrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbView.swift; sourceTree = "<group>"; };
 		B1000008 /* ConfirmButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmButtons.swift; sourceTree = "<group>"; };
 		B1000009 /* OrbWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbWebView.swift; sourceTree = "<group>"; };
 		B1000010 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		B1000030 /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
-		B1000031 /* ScheduledTasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledTasksView.swift; sourceTree = "<group>"; };
 		B1000011 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		B1000012 /* ThinkingBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThinkingBubbleView.swift; sourceTree = "<group>"; };
 		B1000020 /* CameraCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
+		B1000030 /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
+		B1000031 /* ScheduledTasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledTasksView.swift; sourceTree = "<group>"; };
 		BB5926452F87BECD00A68034 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BB5926492F8972B000A68034 /* WhisperService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperService.swift; sourceTree = "<group>"; };
 		BB5926522F89A94F00A68034 /* VoiceProfileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceProfileService.swift; sourceTree = "<group>"; };
@@ -95,15 +99,16 @@
 		BB59265A2F89B0A000A68034 /* ServerHealthMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerHealthMonitor.swift; sourceTree = "<group>"; };
 		BB59265A2F8AC79000A68034 /* NovaWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NovaWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB59265C2F89B0F000A68034 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
-		BB5926802F8BF10000A68034 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		BB59265C2F8AC79000A68034 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		BB59265E2F8AC79000A68034 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		BB5926802F8BF10000A68034 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		BB9381AB2F92E72D000E7E5F /* Nova.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Nova.entitlements; sourceTree = "<group>"; };
 		C1000001 /* Nova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nova.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C3A1892705B12EAC8698D5AD /* NovaBackground.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaBackground.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		BB5926742F8AC79100A68034 /* Exceptions for "NovaWidgets" folder in "NovaWidgetsExtension" target */ = {
+		BB5926742F8AC79100A68034 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -113,18 +118,7 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		BB5926602F8AC79000A68034 /* NovaWidgets */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				BB5926742F8AC79100A68034 /* Exceptions for "NovaWidgets" folder in "NovaWidgetsExtension" target */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = NovaWidgets;
-			sourceTree = "<group>";
-		};
+		BB5926602F8AC79000A68034 /* NovaWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (BB5926742F8AC79100A68034 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = NovaWidgets; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -173,6 +167,7 @@
 		D1000002 /* Nova */ = {
 			isa = PBXGroup;
 			children = (
+				BB9381AB2F92E72D000E7E5F /* Nova.entitlements */,
 				B1000001 /* NovaApp.swift */,
 				B1000006 /* Info.plist */,
 				D1000004 /* Views */,
@@ -231,6 +226,7 @@
 			isa = PBXGroup;
 			children = (
 				B1000005 /* Message.swift */,
+				B1000050 /* BannerItem.swift */,
 				B1000011 /* Localization.swift */,
 				A96B3E306013AEBBF048A70D /* NovaActivityAttributes.swift */,
 			);
@@ -361,6 +357,7 @@
 				A1000003 /* NovaService.swift in Sources */,
 				A1000004 /* KeychainHelper.swift in Sources */,
 				A1000005 /* Message.swift in Sources */,
+				A1000050 /* BannerItem.swift in Sources */,
 				A1000007 /* OrbView.swift in Sources */,
 				A1000008 /* ConfirmButtons.swift in Sources */,
 				BB5926552F89A98C00A68034 /* VoiceEnrollmentView.swift in Sources */,
@@ -535,6 +532,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = WDSRL83RUZ;
@@ -546,11 +544,11 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 10.4.8;
-tttttCODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fxlooper.nova;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+				tttttCODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 			};
 			name = Debug;
 		};
@@ -561,6 +559,7 @@ tttttCODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = WDSRL83RUZ;
@@ -572,11 +571,11 @@ tttttCODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 10.4.8;
-tttttCODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fxlooper.nova;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+				tttttCODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 			};
 			name = Release;
 		};
