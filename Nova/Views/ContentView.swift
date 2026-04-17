@@ -353,6 +353,29 @@ struct ChatView: View {
                     }
                 }
 
+                // Setup banner — zobrazí se vždy když WhisperKit loaduje
+                if nova.useWhisper && nova.whisperState != .ready {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .tint(Color(hex: "1a1a2e").opacity(0.5))
+                        Text(L10n.t("finishing_setup"))
+                            .font(.system(size: 13, weight: .light))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                        Spacer()
+                        if nova.whisperLoadProgress > 0 && nova.whisperLoadProgress < 1 {
+                            Text("\(Int(nova.whisperLoadProgress * 100))%")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                                .monospacedDigit()
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .background(Color(hex: "1a1a2e").opacity(0.04))
+                    .transition(.opacity)
+                }
+
                 // Messages
                 ScrollViewReader { proxy in
                     ScrollView {
