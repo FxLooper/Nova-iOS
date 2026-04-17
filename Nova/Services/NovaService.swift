@@ -554,11 +554,10 @@ class NovaService: ObservableObject {
         lastSendTime = now
         print("[chat] === SENDING: \(text.prefix(40)) ===")
 
-        // Zastav WhisperKit během zpracování (echo prevention)
-        // Whisper se restartuje v continueConversation() po TTS
+        // V konverzačním mode NEZASTAVUJ whisper — AEC (.voiceChat) filtruje echo
+        // Whisper ignoruje transcripty když state != .listening (guard v callbacku)
         if conversationActive {
-            whisper.stopListening()
-            print("[chat] whisper paused for processing")
+            print("[chat] conversation mode — whisper stays active (AEC echo cancellation)")
         }
 
         // Zastav TTS pokud Nova právě mluví
@@ -953,7 +952,24 @@ class NovaService: ObservableObject {
                         self.interimText = preview
                     }
                 } else {
-                    // Live konverzace: původní chování
+                    // Live konverzace
+                    // Barge-in: pokud Nova mluví a uživatel ji přeruší hlasem
+                    if self.state == .speaking && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                        // Ignoruj echo artefakty (krátké, ticho, blank)
+                        let isEcho = cleaned.count < 4
+                            || cleaned.contains("silence")
+                            || cleaned.contains("blank")
+                            || cleaned.hasPrefix("(") // WhisperKit wraps uncertain text in ()
+                        if !isEcho {
+                            print("[barge-in] user interrupted TTS: \(text.prefix(40))")
+                            self.interruptAndListen()
+                            self.currentUtterance = text
+                            self.interimText = text
+                            return
+                        }
+                    }
+                    guard self.state == .listening else { return }
                     self.currentUtterance = text
                     self.interimText = text
                     if isFinal {
@@ -1031,14 +1047,9 @@ class NovaService: ObservableObject {
         silenceTask?.cancel()
         silenceTask = nil
 
-        // Restartuj WhisperKit (byl zastaven při sendMessage pro echo prevention)
-        if useWhisper {
-            whisper.languageHint = nil
-            print("[speech] restarting whisper for next turn")
-            startWhisperListening()
-        } else {
-            state = .listening
-        }
+        // WhisperKit běží nepřetržitě (AEC filtruje echo) — jen přepni state
+        state = .listening
+        print("[speech] ready for next turn")
     }
 
     private var dictationTranscriber: DictationTranscriber?
