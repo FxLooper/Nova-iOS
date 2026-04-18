@@ -376,6 +376,30 @@ struct ChatView: View {
                     .transition(.opacity)
                 }
 
+                // Project Session banner
+                if let session = nova.activeSession {
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(Color.blue.opacity(0.8))
+                            .frame(width: 8, height: 8)
+                        Text("DEV")
+                            .font(.system(size: 11, weight: .semibold))
+                            .tracking(2)
+                            .foregroundColor(.blue.opacity(0.7))
+                        Text("·")
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.2))
+                        Text(session)
+                            .font(.system(size: 13, weight: .light))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .background(Color.blue.opacity(0.06))
+                    .cornerRadius(10)
+                    .padding(.horizontal, 16)
+                }
+
                 // Server offline banner
                 if nova.serverHealth.status == .offline {
                     offlineBanner
@@ -718,11 +742,13 @@ struct ChatView: View {
         .onAppear {
             nova.connectWebSocket()
             Task { await nova.checkCronResults() }
+            Task { await nova.checkSession() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await nova.checkCronResults() }
                 Task { await nova.checkAndShowRecap() }
+                Task { await nova.checkSession() }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .openScheduledTasks)) { _ in

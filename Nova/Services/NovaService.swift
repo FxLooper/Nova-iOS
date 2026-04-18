@@ -128,6 +128,22 @@ class NovaService: ObservableObject {
 
     // Načti nové cron výsledky a přidej do chatu jako Nova zprávy
     private var lastCronCheck: Date = Date()
+    // MARK: - Project Session
+    @Published var activeSession: String? = nil  // název aktivního projektu
+
+    func checkSession() async {
+        guard let url = URL(string: "\(serverURL)/api/session") else { return }
+        var req = URLRequest(url: url)
+        req.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+        do {
+            let (data, _) = try await URLSession.shared.data(for: req)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                let active = json["active"] as? Bool ?? false
+                activeSession = active ? (json["project"] as? String) : nil
+            }
+        } catch {}
+    }
+
     func checkCronResults() async {
         guard let url = URL(string: "\(serverURL)/api/scheduled/results") else { return }
         var req = URLRequest(url: url)
@@ -569,6 +585,8 @@ class NovaService: ObservableObject {
         guard !text.isEmpty else { return }
         markActivity()
         recapText = nil  // Skryj recap při nové zprávě
+        // Refresh session po každé zprávě (async)
+        Task { await checkSession() }
 
         // Vždy zastav předchozí práci
         activeTask?.cancel()
