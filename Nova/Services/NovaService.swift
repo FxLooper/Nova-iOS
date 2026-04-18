@@ -231,6 +231,8 @@ class NovaService: ObservableObject {
         activeBanners.removeAll { $0.id == banner.id }
     }
     private var lastActivityTime: Date = Date()
+    /// Čas kdy se whisper naposledy restartoval — ignoruj transcripty prvních 1.5s (echo)
+    private var listeningResumeTime: Date = .distantPast
     private let recapInactivityThreshold: TimeInterval = 30 * 60 // 30 minut
 
     func checkAndShowRecap() async {
@@ -1018,6 +1020,8 @@ class NovaService: ObservableObject {
                 } else {
                     // Live konverzace — ignoruj transcripty když Nova přemýšlí/mluví
                     guard self.state == .listening else { return }
+                    // Echo guard — ignoruj prvních 1.5s po restartu whisperu (residuální echo)
+                    guard Date().timeIntervalSince(self.listeningResumeTime) > 1.5 else { return }
                     self.currentUtterance = text
                     self.interimText = text
                     if isFinal {
@@ -1117,6 +1121,7 @@ class NovaService: ObservableObject {
         // Restartuj whisper (byl zastaven po TTS pro echo prevention)
         currentUtterance = ""
         interimText = ""
+        listeningResumeTime = Date() // Ignoruj echo 1.5s po restartu
         if useWhisper {
             whisper.languageHint = nil
             startWhisperListening()
