@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 import PhotosUI
 import PDFKit
 
@@ -200,7 +201,10 @@ struct SetupView: View {
         }
     }
 
-    // ── Step 3: Connection ──
+    @State private var showQRScanner = false
+    @State private var qrConnected = false
+
+    // ── Step 3: Connection (QR + ruční) ──
     private var connectionStep: some View {
         VStack(spacing: 32) {
             Spacer()
@@ -210,46 +214,50 @@ struct SetupView: View {
                 Text("Připojení k Macu")
                     .font(.system(size: 24, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-                Text("Nova běží na tvém Mac serveru")
-                    .font(.system(size: 14, weight: .light))
+                Text("Otevři na Macu v prohlížeči adresu serveru/setup")
+                    .font(.system(size: 13, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
             }
-            VStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("SERVER URL")
-                        .font(.system(size: 11, weight: .medium))
-                        .tracking(1)
-                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
-                    TextField("http://100.105.26.7:3000", text: $server)
-                        .textFieldStyle(NovaTextFieldStyle())
-                        .autocapitalization(.none)
-                        .keyboardType(.URL)
+
+            // QR scan button — hlavní akce
+            Button(action: { showQRScanner = true }) {
+                HStack(spacing: 12) {
+                    Image(systemName: "qrcode.viewfinder")
+                        .font(.system(size: 24))
+                    Text("Naskenovat QR kód")
+                        .font(.system(size: 16, weight: .medium))
                 }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("BEZPEČNOSTNÍ TOKEN")
-                        .font(.system(size: 11, weight: .medium))
-                        .tracking(1)
-                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
-                    SecureField(L10n.t("token_label"), text: $token)
-                        .textFieldStyle(NovaTextFieldStyle())
-                }
+                .foregroundColor(Color(hex: "f5f0e8"))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(Color(hex: "1a1a2e").opacity(0.85))
+                .cornerRadius(999)
             }
             .padding(.horizontal, 40)
+
+            // Ruční zadání — fallback
+            VStack(spacing: 4) {
+                Text("nebo zadej ručně")
+                    .font(.system(size: 12, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
+            }
+
+            VStack(spacing: 16) {
+                TextField("http://100.105.26.7:3000", text: $server)
+                    .textFieldStyle(NovaTextFieldStyle())
+                    .autocapitalization(.none)
+                    .keyboardType(.URL)
+                SecureField(L10n.t("token_label"), text: $token)
+                    .textFieldStyle(NovaTextFieldStyle())
+            }
+            .padding(.horizontal, 40)
+
             Spacer()
+
             VStack(spacing: 12) {
-                Button(action: {
-                    HapticManager.shared.selectionChanged()
-                    // Ulož profil
-                    UserDefaults.standard.set(userName, forKey: "nova_user_name")
-                    UserDefaults.standard.set(userCity, forKey: "nova_city")
-                    UserDefaults.standard.set(selectedLang, forKey: "nova_lang")
-                    UserDefaults.standard.set(selectedGender, forKey: "nova_voice_gender")
-                    let voices = SettingsView.voiceMap[selectedLang] ?? ("cs-vlasta", "cs-antonin")
-                    let voice = selectedGender == "female" ? voices.female : voices.male
-                    UserDefaults.standard.set(voice, forKey: "nova_voice")
-                    // Připoj
-                    nova.configure(server: server, token: token)
-                }) {
+                Button(action: { connectAndFinish() }) {
                     Text("Připojit")
                         .font(.system(size: 16, weight: .medium))
                         .tracking(2)
@@ -266,6 +274,31 @@ struct SetupView: View {
             .padding(.horizontal, 40)
             .padding(.bottom, 40)
         }
+        .sheet(isPresented: $showQRScanner) {
+            QRScannerView { result in
+                showQRScanner = false
+                if let data = result.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+                   let s = json["server"], let t = json["token"] {
+                    server = s
+                    token = t
+                    HapticManager.shared.novaResponseChord()
+                    connectAndFinish()
+                }
+            }
+        }
+    }
+
+    private func connectAndFinish() {
+        HapticManager.shared.selectionChanged()
+        UserDefaults.standard.set(userName, forKey: "nova_user_name")
+        UserDefaults.standard.set(userCity, forKey: "nova_city")
+        UserDefaults.standard.set(selectedLang, forKey: "nova_lang")
+        UserDefaults.standard.set(selectedGender, forKey: "nova_voice_gender")
+        let voices = SettingsView.voiceMap[selectedLang] ?? ("cs-vlasta", "cs-antonin")
+        let voice = selectedGender == "female" ? voices.female : voices.male
+        UserDefaults.standard.set(voice, forKey: "nova_voice")
+        nova.configure(server: server, token: token)
     }
 
     // ── Step 4: Ready ──
@@ -1886,5 +1919,54 @@ extension Color {
         g = Double((int >> 8) & 0xFF) / 255
         b = Double(int & 0xFF) / 255
         self.init(red: r, green: g, blue: b)
+    }
+}
+
+// MARK: - QR Scanner
+struct QRScannerView: UIViewControllerRepresentable {
+    let onScan: (String) -> Void
+    func makeUIViewController(context: Context) -> QRScannerController {
+        let c = QRScannerController(); c.onScan = onScan; return c
+    }
+    func updateUIViewController(_ vc: QRScannerController, context: Context) {}
+}
+
+class QRScannerController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
+    var onScan: ((String) -> Void)?
+    private var session: AVCaptureSession?
+    private var scanned = false
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+        let s = AVCaptureSession()
+        guard let dev = AVCaptureDevice.default(for: .video),
+              let input = try? AVCaptureDeviceInput(device: dev) else { return }
+        if s.canAddInput(input) { s.addInput(input) }
+        let output = AVCaptureMetadataOutput()
+        if s.canAddOutput(output) { s.addOutput(output); output.setMetadataObjectsDelegate(self, queue: .main); output.metadataObjectTypes = [.qr] }
+        let preview = AVCaptureVideoPreviewLayer(session: s)
+        preview.frame = view.bounds; preview.videoGravity = .resizeAspectFill
+        view.layer.addSublayer(preview)
+        // Overlay
+        let box = UIView(frame: CGRect(x: 0, y: 0, width: 250, height: 250))
+        box.center = view.center; box.layer.borderColor = UIColor.white.withAlphaComponent(0.6).cgColor
+        box.layer.borderWidth = 2; box.layer.cornerRadius = 16; box.backgroundColor = .clear
+        view.addSubview(box)
+        // Label
+        let lbl = UILabel(); lbl.text = "Naskenuj QR kód z Mac obrazovky"
+        lbl.textColor = .white.withAlphaComponent(0.7); lbl.font = .systemFont(ofSize: 14, weight: .light)
+        lbl.textAlignment = .center; lbl.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(lbl)
+        NSLayoutConstraint.activate([lbl.centerXAnchor.constraint(equalTo: view.centerXAnchor), lbl.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -60)])
+        session = s
+        DispatchQueue.global().async { s.startRunning() }
+    }
+
+    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput objects: [AVMetadataObject], from connection: AVCaptureConnection) {
+        guard !scanned, let obj = objects.first as? AVMetadataMachineReadableCodeObject, let val = obj.stringValue else { return }
+        scanned = true; session?.stopRunning()
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        dismiss(animated: true) { self.onScan?(val) }
     }
 }
