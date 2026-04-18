@@ -17,33 +17,54 @@ struct ContentView: View {
 // MARK: - Setup View (first launch — premium welcome)
 struct SetupView: View {
     @EnvironmentObject var nova: NovaService
-    @State private var server = "http://100.105.26.7:3000"
-    // Token pre-fill pro dev
-    // Pro produkci odstranit
+    @State private var server = ""
     @State private var token = ""
-    @State private var step: Int = 0  // 0=welcome, 1=connection
+    @State private var step: Int = 0  // 0=welcome, 1=profil, 2=hlas, 3=connection, 4=ready
     @State private var orbScale: CGFloat = 0.8
     @State private var orbOpacity: Double = 0
+    @State private var userName = ""
+    @State private var userCity = ""
+    @State private var selectedLang = "cs"
+    @State private var selectedGender = "female"
+
+    private let languages = SettingsView.languages
+    private let totalSteps = 5
 
     var body: some View {
         ZStack {
             NovaBackground()
 
-            if step == 0 {
-                welcomeStep
-            } else {
-                connectionStep
+            VStack(spacing: 0) {
+                // Progress dots (kromě welcome)
+                if step > 0 && step < 4 {
+                    HStack(spacing: 8) {
+                        ForEach(1..<4, id: \.self) { i in
+                            Circle()
+                                .fill(Color(hex: "1a1a2e").opacity(i <= step ? 0.6 : 0.12))
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                    .padding(.top, 60)
+                }
+
+                Group {
+                    switch step {
+                    case 0: welcomeStep
+                    case 1: profileStep
+                    case 2: voiceStep
+                    case 3: connectionStep
+                    default: readyStep
+                    }
+                }
             }
         }
         .animation(.easeInOut(duration: 0.5), value: step)
     }
 
-    // Krok 1: Welcome screen — premium first impression
+    // ── Step 0: Welcome ──
     private var welcomeStep: some View {
         VStack(spacing: 0) {
             Spacer()
-
-            // Animated orb logo — same orb as in main app
             OrbView(state: .idle, audioLevel: 0)
                 .frame(width: 200, height: 200)
                 .scaleEffect(orbScale)
@@ -54,114 +75,179 @@ struct SetupView: View {
                         orbOpacity = 1.0
                     }
                 }
-
             Spacer().frame(height: 40)
-
             VStack(spacing: 12) {
                 Text("nova")
                     .font(.system(size: 48, weight: .light))
                     .tracking(14)
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
-
                 Text(L10n.t("personal_ai"))
                     .font(.system(size: 15, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
             }
-
             Spacer()
-
-            // Feature highlights
             VStack(alignment: .leading, spacing: 16) {
                 welcomeFeature(icon: "waveform.circle", text: "Hlasová konverzace v 16 jazycích")
-                welcomeFeature(icon: "lock.shield.fill", text: "Voice ID — Nova pozná tvůj hlas")
-                welcomeFeature(icon: "lock.icloud", text: "100% privátní, žádný cloud")
-                welcomeFeature(icon: "bolt.heart", text: "Premium UX s haptic feedback")
+                welcomeFeature(icon: "brain.head.profile", text: "AI asistent co si pamatuje a učí se")
+                welcomeFeature(icon: "chevron.left.forwardslash.chevron.right", text: "Programuj hlasem — Dev mode")
+                welcomeFeature(icon: "lock.icloud", text: "100% privátní, tvoje data zůstávají u tebe")
             }
             .padding(.horizontal, 40)
-
             Spacer()
-
-            Button(action: {
-                HapticManager.shared.selectionChanged()
-                withAnimation { step = 1 }
-            }) {
-                Text("Začít")
-                    .font(.system(size: 16, weight: .medium))
-                    .tracking(2)
-                    .foregroundColor(Color(hex: "f5f0e8"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color(hex: "1a1a2e").opacity(0.85))
-                    .cornerRadius(999)
-            }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 60)
+            nextButton("Začít") { step = 1 }
         }
     }
 
-    private func welcomeFeature(icon: String, text: String) -> some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .light))
-                .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
-                .frame(width: 28)
-            Text(text)
-                .font(.system(size: 14, weight: .light))
-                .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+    // ── Step 1: Profil ──
+    private var profileStep: some View {
+        VStack(spacing: 0) {
             Spacer()
+            VStack(spacing: 8) {
+                Text("👋")
+                    .font(.system(size: 48))
+                Text("Jak ti říkáš?")
+                    .font(.system(size: 24, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+            }
+            Spacer().frame(height: 40)
+            VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("JMÉNO")
+                        .font(.system(size: 11, weight: .medium))
+                        .tracking(2)
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                    TextField("Tvoje jméno", text: $userName)
+                        .textFieldStyle(NovaTextFieldStyle())
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("MĚSTO")
+                        .font(.system(size: 11, weight: .medium))
+                        .tracking(2)
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                    TextField("Kde bydlíš?", text: $userCity)
+                        .textFieldStyle(NovaTextFieldStyle())
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("JAZYK")
+                        .font(.system(size: 11, weight: .medium))
+                        .tracking(2)
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(languages, id: \.code) { lang in
+                                Button(action: { selectedLang = lang.code }) {
+                                    Text("\(lang.flag) \(lang.name)")
+                                        .font(.system(size: 13, weight: selectedLang == lang.code ? .medium : .light))
+                                        .foregroundColor(Color(hex: "1a1a2e").opacity(selectedLang == lang.code ? 0.9 : 0.4))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(Color(hex: "1a1a2e").opacity(selectedLang == lang.code ? 0.08 : 0.02))
+                                        .cornerRadius(20)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 40)
+            Spacer()
+            nextButton("Pokračovat") { step = 2 }
         }
     }
 
-    // Krok 2: Connection setup
+    // ── Step 2: Hlas ──
+    private var voiceStep: some View {
+        VStack(spacing: 0) {
+            Spacer()
+            VStack(spacing: 8) {
+                Text("🎙")
+                    .font(.system(size: 48))
+                Text("Jaký hlas preferuješ?")
+                    .font(.system(size: 24, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                Text("Hlas kterým Nova mluví")
+                    .font(.system(size: 14, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+            }
+            Spacer().frame(height: 40)
+            HStack(spacing: 20) {
+                voiceOption(label: "Ženský", icon: "person.fill", gender: "female")
+                voiceOption(label: "Mužský", icon: "person.fill", gender: "male")
+            }
+            .padding(.horizontal, 40)
+            Spacer()
+            nextButton("Pokračovat") { step = 3 }
+        }
+    }
+
+    private func voiceOption(label: String, icon: String, gender: String) -> some View {
+        Button(action: { selectedGender = gender }) {
+            VStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 32, weight: .light))
+                Text(label)
+                    .font(.system(size: 15, weight: selectedGender == gender ? .medium : .light))
+            }
+            .foregroundColor(Color(hex: "1a1a2e").opacity(selectedGender == gender ? 0.8 : 0.3))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 28)
+            .background(Color(hex: "1a1a2e").opacity(selectedGender == gender ? 0.06 : 0.02))
+            .cornerRadius(20)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(Color(hex: "1a1a2e").opacity(selectedGender == gender ? 0.2 : 0.06), lineWidth: 1)
+            )
+        }
+    }
+
+    // ── Step 3: Connection ──
     private var connectionStep: some View {
         VStack(spacing: 32) {
             Spacer()
-
-            Text("nova")
-                .font(.system(size: 36, weight: .light))
-                .tracking(10)
-                .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
-
             VStack(spacing: 8) {
-                Text("Připojení k Mac serveru")
-                    .font(.system(size: 18, weight: .light))
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
-
-                Text(L10n.t("mac_server_info"))
-                    .font(.system(size: 13, weight: .light))
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
+                Text("🔗")
+                    .font(.system(size: 48))
+                Text("Připojení k Macu")
+                    .font(.system(size: 24, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                Text("Nova běží na tvém Mac serveru")
+                    .font(.system(size: 14, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
             }
-
             VStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Server URL")
+                    Text("SERVER URL")
                         .font(.system(size: 11, weight: .medium))
                         .tracking(1)
-                        .textCase(.uppercase)
                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
                     TextField("http://100.105.26.7:3000", text: $server)
                         .textFieldStyle(NovaTextFieldStyle())
                         .autocapitalization(.none)
                         .keyboardType(.URL)
                 }
-
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("API Token")
+                    Text("BEZPEČNOSTNÍ TOKEN")
                         .font(.system(size: 11, weight: .medium))
                         .tracking(1)
-                        .textCase(.uppercase)
                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
-                    SecureField("z keychain: NOVA_API_TOKEN", text: $token)
+                    SecureField(L10n.t("token_label"), text: $token)
                         .textFieldStyle(NovaTextFieldStyle())
                 }
             }
             .padding(.horizontal, 40)
-
             Spacer()
-
             VStack(spacing: 12) {
                 Button(action: {
                     HapticManager.shared.selectionChanged()
+                    // Ulož profil
+                    UserDefaults.standard.set(userName, forKey: "nova_user_name")
+                    UserDefaults.standard.set(userCity, forKey: "nova_city")
+                    UserDefaults.standard.set(selectedLang, forKey: "nova_lang")
+                    UserDefaults.standard.set(selectedGender, forKey: "nova_voice_gender")
+                    let voices = SettingsView.voiceMap[selectedLang] ?? ("cs-vlasta", "cs-antonin")
+                    let voice = selectedGender == "female" ? voices.female : voices.male
+                    UserDefaults.standard.set(voice, forKey: "nova_voice")
+                    // Připoj
                     nova.configure(server: server, token: token)
                 }) {
                     Text("Připojit")
@@ -175,17 +261,71 @@ struct SetupView: View {
                 }
                 .disabled(server.isEmpty || token.isEmpty)
                 .opacity(server.isEmpty || token.isEmpty ? 0.4 : 1)
-
-                Button(action: {
-                    withAnimation { step = 0 }
-                }) {
-                    Text("Zpět")
-                        .font(.system(size: 13, weight: .light))
-                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
-                }
+                backButton { step = 2 }
             }
             .padding(.horizontal, 40)
             .padding(.bottom, 40)
+        }
+    }
+
+    // ── Step 4: Ready ──
+    private var readyStep: some View {
+        VStack(spacing: 0) {
+            Spacer()
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 64))
+                .foregroundColor(.green.opacity(0.7))
+            Spacer().frame(height: 24)
+            Text("Nova je připravena")
+                .font(.system(size: 24, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+            Text("Řekni \"Ahoj Novo\" a začni")
+                .font(.system(size: 14, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                .padding(.top, 8)
+            Spacer()
+        }
+    }
+
+    // ── Helpers ──
+    private func welcomeFeature(icon: String, text: String) -> some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
+                .frame(width: 28)
+            Text(text)
+                .font(.system(size: 14, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+            Spacer()
+        }
+    }
+
+    private func nextButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            HapticManager.shared.selectionChanged()
+            withAnimation { action() }
+        }) {
+            Text(title)
+                .font(.system(size: 16, weight: .medium))
+                .tracking(2)
+                .foregroundColor(Color(hex: "f5f0e8"))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Color(hex: "1a1a2e").opacity(0.85))
+                .cornerRadius(999)
+        }
+        .padding(.horizontal, 40)
+        .padding(.bottom, 60)
+    }
+
+    private func backButton(action: @escaping () -> Void) -> some View {
+        Button(action: {
+            withAnimation { action() }
+        }) {
+            Text("Zpět")
+                .font(.system(size: 13, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
         }
     }
 }
