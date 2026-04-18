@@ -1128,7 +1128,7 @@ struct MessageBubble: View {
                 if !message.content.isEmpty {
                 Group {
                     let displayContent = MessageBubble.cleanContent(message.content, isUser: isUser)
-                    if !isUser, let md = try? AttributedString(markdown: displayContent, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                    if !isUser, let md = try? AttributedString(markdown: displayContent, options: .init(interpretedSyntax: .full)) {
                         Text(md)
                     } else {
                         Text(displayContent)
@@ -1136,7 +1136,6 @@ struct MessageBubble: View {
                 }
                 .font(.system(size: 15, weight: .light))
                 .foregroundColor(Color(hex: "1a1a2e").opacity(isUser ? 0.85 : 0.75))
-                .lineSpacing(isUser ? 2 : 5)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(bubbleBackground)
@@ -1199,44 +1198,6 @@ struct MessageBubble: View {
     }
 
     /// For AI messages: if content is raw JSON with "speech" key, extract the speech text
-    /// Post-processing Novy textu — přidá vizuální formátování
-    static func formatNovaText(_ text: String) -> String {
-        var result = text
-
-        // 1. Rozděl na odstavce (2+ věty za sebou → přidej mezeru)
-        // Najdi místa kde končí věta a začíná nová (. + velké písmeno)
-        let pattern = try? NSRegularExpression(pattern: "([.!?])\\s+([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ])", options: [])
-        if let pattern = pattern {
-            let nsStr = result as NSString
-            var offset = 0
-            let matches = pattern.matches(in: result, range: NSRange(location: 0, length: nsStr.length))
-            // Každou 2.-3. větu oddělíme novým řádkem
-            var sentenceCount = 0
-            for match in matches {
-                sentenceCount += 1
-                if sentenceCount % 3 == 0 { // Každé 3 věty → odstavec
-                    let insertPos = match.range(at: 1).location + match.range(at: 1).length + offset
-                    let idx = result.index(result.startIndex, offsetBy: insertPos)
-                    result.insert(contentsOf: "\n\n", at: idx)
-                    offset += 2
-                }
-            }
-        }
-
-        // 2. Tučné pro čísla s jednotkami (91 dolarů, 3 lidé, 15 procent)
-        result = result.replacingOccurrences(
-            of: "(\\d+[.,]?\\d*)\\s+(dolar|korun|procent|stupň|kilometr|hodin|minut|lid|osob|mili[oó]n|miliard|tisíc|rok|let|měsíc|dní|dnů|dne)",
-            with: "**$1 $2",
-            options: .regularExpression
-        )
-        // Uzavři tučné na konci slova
-        if let endPattern = try? NSRegularExpression(pattern: "\\*\\*([^*]+?)(\\s|[,.]|$)", options: []) {
-            result = endPattern.stringByReplacingMatches(in: result, range: NSRange(location: 0, length: (result as NSString).length), withTemplate: "**$1**$2")
-        }
-
-        return result
-    }
-
     static func cleanContent(_ content: String, isUser: Bool) -> String {
         guard !isUser else { return content }
         let trimmed = content.trimmingCharacters(in: .whitespaces)
@@ -1261,7 +1222,7 @@ struct StreamingTextView: View {
         HStack(alignment: .lastTextBaseline, spacing: 0) {
             // Typewriter: zobraz jen displayedCount znaků
             let shown = String(text.prefix(displayedCount))
-            if let md = try? AttributedString(markdown: shown, options: .init(interpretedSyntax: .full)) {
+            if let md = try? AttributedString(markdown: shown, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
                 Text(md)
                     .font(.system(size: 15, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.75))
