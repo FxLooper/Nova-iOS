@@ -1222,7 +1222,7 @@ struct StreamingTextView: View {
         HStack(alignment: .lastTextBaseline, spacing: 0) {
             // Typewriter: zobraz jen displayedCount znaků
             let shown = String(text.prefix(displayedCount))
-            if let md = try? AttributedString(markdown: shown, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+            if let md = try? AttributedString(markdown: shown, options: .init(interpretedSyntax: .full)) {
                 Text(md)
                     .font(.system(size: 15, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.75))
