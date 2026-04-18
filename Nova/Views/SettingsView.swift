@@ -195,10 +195,6 @@ struct SettingsView: View {
                                     Text(L10n.t("slower"))
                                         .font(.system(size: 10, weight: .light))
                                     Spacer()
-                                    Circle()
-                                        .fill(Color(hex: "1a1a2e").opacity(0.25))
-                                        .frame(width: 4, height: 4)
-                                    Spacer()
                                     Text(L10n.t("faster"))
                                         .font(.system(size: 10, weight: .light))
                                 }
