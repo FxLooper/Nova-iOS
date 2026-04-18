@@ -186,7 +186,7 @@ struct SettingsView: View {
                                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
                                         .monospacedDigit()
                                 }
-                                Slider(value: $ttsSpeed, in: -30...50, step: 10)
+                                Slider(value: $ttsSpeed, in: -15...80, step: 5)
                                     .tint(Color(hex: "1a1a2e").opacity(0.6))
                                     .onChange(of: ttsSpeed) { _, newValue in
                                         UserDefaults.standard.set(newValue, forKey: "nova_tts_speed")
