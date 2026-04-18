@@ -1128,14 +1128,8 @@ struct MessageBubble: View {
                 if !message.content.isEmpty {
                 Group {
                     let displayContent = MessageBubble.cleanContent(message.content, isUser: isUser)
-                    if !isUser {
-                        // Nova zprávy: formátovaný text s odstavci
-                        let formatted = MessageBubble.formatNovaText(displayContent)
-                        if let md = try? AttributedString(markdown: formatted, options: .init(interpretedSyntax: .full)) {
-                            Text(md)
-                        } else {
-                            Text(formatted)
-                        }
+                    if !isUser, let md = try? AttributedString(markdown: displayContent, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                        Text(md)
                     } else {
                         Text(displayContent)
                     }
