@@ -53,7 +53,10 @@ final class WakeWordService: ObservableObject {
         }
 
         do {
-            let mlModel = try MLModel(contentsOf: modelURL)
+            // CPU only — GPU není povoleno na pozadí
+            let config = MLModelConfiguration()
+            config.computeUnits = .cpuOnly
+            let mlModel = try MLModel(contentsOf: modelURL, configuration: config)
             request = try SNClassifySoundRequest(mlModel: mlModel)
             request?.windowDuration = CMTime(seconds: 1.5, preferredTimescale: 16000)
             request?.overlapFactor = 0.5
