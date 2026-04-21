@@ -1338,6 +1338,10 @@ struct ChatView: View {
     // MARK: - Dictation Controls
 
     private func startDictation() {
+        // Přeruš TTS pokud Nova mluví
+        if nova.state == .speaking {
+            nova.interruptAndListen()
+        }
         dictationState = .dictating
         dictatedText = ""
         recordingPulse = false
