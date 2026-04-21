@@ -108,7 +108,7 @@
 		BB59265C2F8AC79000A68034 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		BB59265E2F8AC79000A68034 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		BB5926802F8BF10000A68034 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
-		B1000060 /* NovaIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaIntents.swift; sourceTree = "<group>"; };
+		B1000060 /* NovaIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NovaIntents.swift; path = ../Services/NovaIntents.swift; sourceTree = "<group>"; };
 		B1000061 /* WakeWordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeWordService.swift; sourceTree = "<group>"; };
 		BB9381AB2F92E72D000E7E5F /* Nova.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Nova.entitlements; sourceTree = "<group>"; };
 		C1000001 /* Nova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nova.app; sourceTree = BUILT_PRODUCTS_DIR; };
