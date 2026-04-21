@@ -1065,6 +1065,9 @@ struct ChatView: View {
         .onReceive(NotificationCenter.default.publisher(for: .openScheduledTasks)) { _ in
             showSchedule = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openLiveConversation)) { _ in
+            showVoiceConversation = true
+        }
         .onReceive(NotificationCenter.default.publisher(for: .siriAskNova)) { note in
             // Siri/Shortcuts předal Nově dotaz — pošli ho rovnou do chatu
             if let query = note.userInfo?["query"] as? String, !query.isEmpty {
