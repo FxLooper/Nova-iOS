@@ -14,6 +14,7 @@
 		A1000003 /* NovaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003 /* NovaService.swift */; };
 		A1000004 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004 /* KeychainHelper.swift */; };
 		A1000005 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000005 /* Message.swift */; };
+		A1000060 /* HeyNovaClassifier.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = B1000060 /* HeyNovaClassifier.mlmodel */; };
 		A1000050 /* BannerItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000050 /* BannerItem.swift */; };
 		A1000052 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000052 /* QRScannerView.swift */; };
 		A1000051 /* NotificationBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000051 /* NotificationBanner.swift */; };
@@ -81,6 +82,7 @@
 		B1000003 /* NovaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaService.swift; sourceTree = "<group>"; };
 		B1000004 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		B1000005 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
+		B1000060 /* HeyNovaClassifier.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = HeyNovaClassifier.mlmodel; sourceTree = "<group>"; };
 		B1000050 /* BannerItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BannerItem.swift; sourceTree = "<group>"; };
 		B1000052 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		B1000051 /* NotificationBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationBanner.swift; sourceTree = "<group>"; };
@@ -234,6 +236,7 @@
 			isa = PBXGroup;
 			children = (
 				B1000005 /* Message.swift */,
+				B1000060 /* HeyNovaClassifier.mlmodel */,
 				B1000050 /* BannerItem.swift */,
 				B1000011 /* Localization.swift */,
 				A96B3E306013AEBBF048A70D /* NovaActivityAttributes.swift */,
@@ -365,6 +368,7 @@
 				A1000003 /* NovaService.swift in Sources */,
 				A1000004 /* KeychainHelper.swift in Sources */,
 				A1000005 /* Message.swift in Sources */,
+				A1000060 /* HeyNovaClassifier.mlmodel in Sources */,
 				A1000050 /* BannerItem.swift in Sources */,
 				A1000007 /* OrbView.swift in Sources */,
 				A1000008 /* ConfirmButtons.swift in Sources */,
