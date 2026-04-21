@@ -18,6 +18,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -52,7 +54,7 @@
 		<string>_http._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Nova connects to your Nova backend server on your local network or VPN.</string>
+	<string>Nova connects to your personal Nova backend server on your local network or Tailscale VPN to process voice commands and run speaker recognition.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Nova saves generated images to your Photos when you ask.</string>
 	<key>NSCameraUsageDescription</key>
@@ -60,9 +62,9 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Nova uses your location to find nearby places, weather, and local information.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Nova needs microphone access for voice conversation with your AI assistant.</string>
+	<string>Nova uses the microphone to capture your voice for conversation with the AI assistant and to recognize who is speaking.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Nova uses speech recognition to understand your voice commands and enable natural conversation.</string>
+	<string>Nova uses on-device and server speech recognition to transcribe your voice into text so the AI can respond naturally.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
