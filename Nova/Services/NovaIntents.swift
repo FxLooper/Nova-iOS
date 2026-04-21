@@ -7,7 +7,7 @@ import UIKit
 @available(iOS 16.0, *)
 struct AskNovaIntent: AppIntent {
     static var title: LocalizedStringResource = "Zeptat se Novy"
-    static var description = IntentDescription("Pošli Nově dotaz nebo příkaz hlasem přes Siri.")
+    static var description = IntentDescription("Pošli Nově dotaz nebo příkaz hlasem.")
 
     // Když se spustí přes Siri, otevře appku na popředí (potřebujeme app pro audio + network)
     static var openAppWhenRun: Bool = true
