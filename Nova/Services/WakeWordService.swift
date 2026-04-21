@@ -53,9 +53,9 @@ final class WakeWordService: ObservableObject {
         }
 
         do {
-            // CPU only — GPU není povoleno na pozadí
+            // CPU + Neural Engine — GPU není povoleno na pozadí
             let config = MLModelConfiguration()
-            config.computeUnits = .cpuOnly
+            config.computeUnits = .cpuAndNeuralEngine
             let mlModel = try MLModel(contentsOf: modelURL, configuration: config)
             request = try SNClassifySoundRequest(mlModel: mlModel)
             request?.windowDuration = CMTime(seconds: 1.5, preferredTimescale: 16000)
