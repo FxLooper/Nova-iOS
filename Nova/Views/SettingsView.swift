@@ -231,6 +231,43 @@ struct SettingsView: View {
                             }
                         }
 
+                        // Wake Word ("Hi Nova")
+                        SettingsSection(title: "Wake word „Hi Nova“") {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Toggle(isOn: Binding(
+                                    get: { nova.wakeWordEnabled },
+                                    set: { nova.wakeWordEnabled = $0 }
+                                )) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Poslouchat „Hi Nova“")
+                                            .font(.system(size: 15, weight: .regular))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                                        Text(nova.wakeWordEnabled
+                                             ? "Nova naslouchá, když je appka otevřená."
+                                             : "Zapni, ať Nova reaguje na „Hi Nova“ nebo „Ahoj Nova“.")
+                                            .font(.system(size: 12, weight: .light))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                    }
+                                }
+                                .tint(Color(hex: "1a1a2e").opacity(0.7))
+
+                                if nova.wakeWordEnabled {
+                                    HStack(spacing: 8) {
+                                        Circle()
+                                            .fill(nova.wakeWord.isRunning ? Color.green.opacity(0.7) : Color.orange.opacity(0.7))
+                                            .frame(width: 8, height: 8)
+                                        Text(nova.wakeWord.isRunning ? "Naslouchám" : "Čekám na oprávnění / spuštění")
+                                            .font(.system(size: 12, weight: .light))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                    }
+                                }
+
+                                Text("Tip: mimo aplikaci řekni „Hey Siri, Hi Nova“ — Siri otevře Novu do konverzace.")
+                                    .font(.system(size: 11, weight: .light))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                            }
+                        }
+
                         // Voice ID (Voice Biometrics)
                         SettingsSection(title: L10n.t("voice_id")) {
                             VStack(alignment: .leading, spacing: 12) {

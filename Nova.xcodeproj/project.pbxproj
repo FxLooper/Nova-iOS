@@ -41,6 +41,8 @@
 		BB59265F2F8AC79000A68034 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB59265E2F8AC79000A68034 /* SwiftUI.framework */; };
 		BB5926702F8AC79100A68034 /* NovaWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB59265A2F8AC79000A68034 /* NovaWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BB5926812F8BF10000A68034 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926802F8BF10000A68034 /* LocationService.swift */; };
+		A1000060 /* NovaIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000060 /* NovaIntents.swift */; };
+		A1000061 /* WakeWordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000061 /* WakeWordService.swift */; };
 		C7E988545A0BE51007A0A104 /* NovaActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A96B3E306013AEBBF048A70D /* NovaActivityAttributes.swift */; };
 		E4F40B93ACE31CA32FC21494 /* VoiceConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821C6E9AC660CB24563D6197 /* VoiceConversationView.swift */; };
 		FEC05D9A3E4DEBDDFB50F58F /* NovaBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3A1892705B12EAC8698D5AD /* NovaBackground.swift */; };
@@ -104,6 +106,8 @@
 		BB59265C2F8AC79000A68034 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		BB59265E2F8AC79000A68034 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		BB5926802F8BF10000A68034 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		B1000060 /* NovaIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaIntents.swift; sourceTree = "<group>"; };
+		B1000061 /* WakeWordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeWordService.swift; sourceTree = "<group>"; };
 		BB9381AB2F92E72D000E7E5F /* Nova.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Nova.entitlements; sourceTree = "<group>"; };
 		C1000001 /* Nova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nova.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C3A1892705B12EAC8698D5AD /* NovaBackground.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaBackground.swift; sourceTree = "<group>"; };
@@ -220,6 +224,8 @@
 				B1000003 /* NovaService.swift */,
 				B1000004 /* KeychainHelper.swift */,
 				43046AE88E9A830AE6C06A5E /* LiveActivityManager.swift */,
+				B1000060 /* NovaIntents.swift */,
+				B1000061 /* WakeWordService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -372,6 +378,8 @@
 				A1000020 /* CameraCaptureView.swift in Sources */,
 				C7E988545A0BE51007A0A104 /* NovaActivityAttributes.swift in Sources */,
 				81444B0B44D70FB2A0FAF578 /* LiveActivityManager.swift in Sources */,
+				A1000060 /* NovaIntents.swift in Sources */,
+				A1000061 /* WakeWordService.swift in Sources */,
 				FEC05D9A3E4DEBDDFB50F58F /* NovaBackground.swift in Sources */,
 				E4F40B93ACE31CA32FC21494 /* VoiceConversationView.swift in Sources */,
 			);
@@ -416,7 +424,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 35;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = WDSRL83RUZ;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -488,7 +496,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 35;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = WDSRL83RUZ;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -536,7 +544,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 35;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = WDSRL83RUZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Nova/Info.plist;
@@ -563,7 +571,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 35;
+				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = WDSRL83RUZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Nova/Info.plist;

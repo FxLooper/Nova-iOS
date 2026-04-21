@@ -66,6 +66,19 @@ class NovaService: ObservableObject {
     @Published var voiceVerificationEnforced: Bool = UserDefaults.standard.bool(forKey: "nova_voice_verify_enforce")
     @Published var lastVerificationFailed: Bool = false  // UI indicator
 
+    // MARK: - Wake Word ("Hi Nova" / "Ahoj Nova")
+    let wakeWord = WakeWordService()
+    @Published var wakeWordEnabled: Bool = UserDefaults.standard.bool(forKey: "nova_wake_word_enabled") {
+        didSet {
+            UserDefaults.standard.set(wakeWordEnabled, forKey: "nova_wake_word_enabled")
+            if wakeWordEnabled {
+                Task { await self.startWakeWordIfAllowed() }
+            } else {
+                wakeWord.stop()
+            }
+        }
+    }
+
     // MARK: - Thinking stage (granular progress shown in chat bubble)
     struct ThinkingStage: Equatable {
         let key: String
@@ -361,6 +374,28 @@ class NovaService: ObservableObject {
                 }
             }
         }
+        // Wake word: když zachytí "Hi Nova" / "Ahoj Nova", rovnou startuj konverzaci.
+        wakeWord.onWakeDetected = { [weak self] in
+            guard let self = self else { return }
+            print("[wake] ▶️ triggering startConversation")
+            HapticManager.shared.conversationToggle()
+            self.startConversation()
+        }
+        if wakeWordEnabled {
+            Task { await self.startWakeWordIfAllowed() }
+        }
+    }
+
+    /// Request Speech auth (one-time) a nastart wake word listener. Bezpečně ignoruje chyby.
+    func startWakeWordIfAllowed() async {
+        guard wakeWordEnabled else { return }
+        // Demo mode bez serveru: wake word může klidně běžet, jen startConversation zobrazí banner.
+        let ok = await wakeWord.requestAuthorization()
+        guard ok else {
+            print("[wake] speech auth denied — wake word disabled")
+            return
+        }
+        wakeWord.start()
     }
 
     // MARK: - Config (Keychain)
@@ -375,11 +410,29 @@ class NovaService: ObservableObject {
 
     @Published var needsSetup = false
 
+    // Demo režim — appka funguje bez Mac serveru pro prohlížení UI a seznámení.
+    // Zprávy se lokálně odpoví tipem, že je potřeba připojit server pro plný provoz.
+    @Published var demoMode: Bool = UserDefaults.standard.bool(forKey: "nova_demo_mode")
+
     func resetConfig() {
         serverURL = ""
         token = ""
         KeychainHelper.delete(key: "nova_server")
         KeychainHelper.delete(key: "nova_token")
+        demoMode = false
+        UserDefaults.standard.set(false, forKey: "nova_demo_mode")
+        needsSetup = true
+    }
+
+    func enterDemoMode() {
+        demoMode = true
+        needsSetup = false
+        UserDefaults.standard.set(true, forKey: "nova_demo_mode")
+    }
+
+    func exitDemoMode() {
+        demoMode = false
+        UserDefaults.standard.set(false, forKey: "nova_demo_mode")
         needsSetup = true
     }
 
@@ -387,6 +440,8 @@ class NovaService: ObservableObject {
         self.serverURL = server
         self.token = token
         self.needsSetup = false
+        self.demoMode = false
+        UserDefaults.standard.set(false, forKey: "nova_demo_mode")
         KeychainHelper.save(key: "nova_server", value: server)
         KeychainHelper.save(key: "nova_token", value: token)
         connectWebSocket()
@@ -583,6 +638,22 @@ class NovaService: ObservableObject {
 
     func sendMessage(_ text: String) async {
         guard !text.isEmpty else { return }
+
+        // Demo režim — bez serveru. Ukaž uživateli vzornou odpověď, ne error.
+        if demoMode {
+            let userMsg = Message(role: "user", content: text)
+            messages.append(userMsg)
+            saveMessages()
+            let reply = Message(
+                role: "ai",
+                content: "Jsem v ukázkovém režimu 🌙 Zobrazuje se ti rozhraní Novy, ale pro plnou AI odpověď potřebuju připojení k tvému Nova serveru na Macu. V nastavení můžeš připojit server a začít konverzaci doopravdy."
+            )
+            messages.append(reply)
+            saveMessages()
+            HapticManager.shared.novaResponseChord()
+            return
+        }
+
         markActivity()
         recapText = nil  // Skryj recap při nové zprávě
         // Refresh session po každé zprávě (async)
@@ -885,6 +956,23 @@ class NovaService: ObservableObject {
     func startConversation() {
         guard !isMuted else { return }
         guard !conversationActive else { return } // Prevent double-start
+        // Demo režim — bez serveru nelze poslouchat ani odpovídat. Místo crashe ukaž jasnou hlášku.
+        if demoMode {
+            let info = Message(
+                role: "ai",
+                content: "Hlasová konverzace vyžaduje připojení k Nova serveru na Macu. V ukázkovém režimu si můžeš prohlédnout rozhraní, ale poslech a AI odpovědi se zapnou až po připojení."
+            )
+            messages.append(info)
+            saveMessages()
+            HapticManager.shared.novaResponseChord()
+            return
+        }
+        // Wake word posluchač má vlastní AVAudioEngine + tap na input. Živá konverzace potřebuje
+        // exkluzivní přístup k mikrofonu, takže wake word na chvíli pauzneme a po ukončení
+        // konverzace (v endConversation) ho obnovíme.
+        if wakeWord.isRunning {
+            wakeWord.stop()
+        }
         conversationActive = true
         updateLiveActivityForState()  // Start Dynamic Island
         if useWhisper && whisperState == .ready {
@@ -1090,6 +1178,10 @@ class NovaService: ObservableObject {
         interimText = ""
         state = .idle
         print("[speech] conversation ended")
+        // Obnov wake word posluchače — aby mohl Ondřej hned říct "Hi Nova" znovu.
+        if wakeWordEnabled && !wakeWord.isRunning {
+            Task { await self.startWakeWordIfAllowed() }
+        }
     }
 
     /// Přeruš TTS a začni poslouchat (VAD barge-in nebo tap na orb)

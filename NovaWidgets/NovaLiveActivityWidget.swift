@@ -10,13 +10,12 @@ struct NovaLiveActivityWidget: Widget {
             LockScreenView(state: context.state)
                 .activityBackgroundTint(Color.black.opacity(0.9))
                 .activitySystemActionForegroundColor(.white)
+                .widgetURL(URL(string: "nova://conversation"))
         } dynamicIsland: { context in
             DynamicIsland {
                 // ── EXPANDED ──
                 DynamicIslandExpandedRegion(.leading) {
-                    Image(systemName: stateIcon(context.state.novaState))
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundColor(stateColor(context.state.novaState))
+                    StateIcon(state: context.state.novaState, size: 22)
                         .padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.center) {
@@ -26,7 +25,8 @@ struct NovaLiveActivityWidget: Widget {
                             .foregroundColor(.white.opacity(0.9))
                         Text(context.state.stageLabel)
                             .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundColor(stateColor(context.state.novaState))
+                            .foregroundColor(Self.stateColor(context.state.novaState))
+                            .contentTransition(.opacity)
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
@@ -38,13 +38,14 @@ struct NovaLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(spacing: 8) {
-                        // State bar
+                        // State progress — tři sekce podle fáze (listening → thinking → speaking)
                         ForEach(0..<3, id: \.self) { i in
                             RoundedRectangle(cornerRadius: 2)
-                                .fill(i == stateIndex(context.state.novaState)
-                                    ? stateColor(context.state.novaState)
+                                .fill(i <= Self.stateIndex(context.state.novaState)
+                                    ? Self.stateColor(context.state.novaState)
                                     : Color.white.opacity(0.1))
                                 .frame(height: 3)
+                                .animation(.easeInOut(duration: 0.3), value: context.state.novaState)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -52,23 +53,23 @@ struct NovaLiveActivityWidget: Widget {
                 }
             } compactLeading: {
                 // ── COMPACT (pill) ──
-                Image(systemName: stateIcon(context.state.novaState))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(stateColor(context.state.novaState))
+                StateIcon(state: context.state.novaState, size: 14)
             } compactTrailing: {
-                Text(shortLabel(context.state.novaState))
+                // Brand "Nova" text místo matoucích "..."
+                Text("Nova")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(stateColor(context.state.novaState))
+                    .foregroundColor(Self.stateColor(context.state.novaState))
+                    .contentTransition(.opacity)
             } minimal: {
-                Image(systemName: stateIcon(context.state.novaState))
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(stateColor(context.state.novaState))
+                StateIcon(state: context.state.novaState, size: 12)
             }
-            .keylineTint(stateColor(context.state.novaState).opacity(0.5))
+            .keylineTint(Self.stateColor(context.state.novaState).opacity(0.5))
+            .widgetURL(URL(string: "nova://conversation"))
         }
     }
 
-    private func stateColor(_ state: String) -> Color {
+    // MARK: - State helpers
+    static func stateColor(_ state: String) -> Color {
         switch state {
         case "listening": return .orange
         case "thinking": return .cyan
@@ -77,7 +78,7 @@ struct NovaLiveActivityWidget: Widget {
         }
     }
 
-    private func stateIcon(_ state: String) -> String {
+    static func stateIcon(_ state: String) -> String {
         switch state {
         case "listening": return "waveform"
         case "thinking": return "brain"
@@ -86,7 +87,7 @@ struct NovaLiveActivityWidget: Widget {
         }
     }
 
-    private func stateIndex(_ state: String) -> Int {
+    static func stateIndex(_ state: String) -> Int {
         switch state {
         case "listening": return 0
         case "thinking": return 1
@@ -94,13 +95,33 @@ struct NovaLiveActivityWidget: Widget {
         default: return -1
         }
     }
+}
 
-    private func shortLabel(_ state: String) -> String {
-        switch state {
-        case "listening": return "..."
-        case "thinking": return "AI"
-        case "speaking": return "Nova"
-        default: return ""
+// MARK: - Animated state icon
+@available(iOS 16.2, *)
+private struct StateIcon: View {
+    let state: String
+    let size: CGFloat
+
+    var body: some View {
+        let icon = Image(systemName: NovaLiveActivityWidget.stateIcon(state))
+            .font(.system(size: size, weight: .semibold))
+            .foregroundColor(NovaLiveActivityWidget.stateColor(state))
+            .contentTransition(.symbolEffect(.replace))
+
+        if #available(iOS 17.0, *) {
+            switch state {
+            case "listening":
+                icon.symbolEffect(.variableColor.iterative, options: .repeating)
+            case "thinking":
+                icon.symbolEffect(.pulse, options: .repeating)
+            case "speaking":
+                icon.symbolEffect(.variableColor.cumulative, options: .repeating)
+            default:
+                icon
+            }
+        } else {
+            icon
         }
     }
 }
@@ -112,9 +133,7 @@ private struct LockScreenView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: stateIcon)
-                .font(.system(size: 22, weight: .medium))
-                .foregroundColor(stateColor)
+            StateIcon(state: state.novaState, size: 22)
                 .frame(width: 32, height: 32)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -137,6 +156,7 @@ private struct LockScreenView: View {
                         .font(.system(size: 16, weight: .medium, design: .rounded))
                         .foregroundColor(.white)
                         .lineLimit(1)
+                        .contentTransition(.opacity)
                 }
             }
             Spacer(minLength: 0)
@@ -146,20 +166,6 @@ private struct LockScreenView: View {
     }
 
     private var stateColor: Color {
-        switch state.novaState {
-        case "listening": return .orange
-        case "thinking": return .cyan
-        case "speaking": return .green
-        default: return .gray
-        }
-    }
-
-    private var stateIcon: String {
-        switch state.novaState {
-        case "listening": return "waveform"
-        case "thinking": return "brain"
-        case "speaking": return "speaker.wave.2.fill"
-        default: return "circle.fill"
-        }
+        NovaLiveActivityWidget.stateColor(state.novaState)
     }
 }

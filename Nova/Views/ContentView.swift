@@ -7,7 +7,7 @@ struct ContentView: View {
     @EnvironmentObject var nova: NovaService
 
     var body: some View {
-        if nova.isConfigured && !nova.needsSetup {
+        if (nova.isConfigured && !nova.needsSetup) || nova.demoMode {
             ChatView()
         } else {
             SetupView()
@@ -203,6 +203,7 @@ struct SetupView: View {
 
     @State private var showQRScanner = false
     @State private var qrConnected = false
+    @State private var showNoServerInfo = false
 
     // ── Step 3: Connection (QR + ruční) ──
     private var connectionStep: some View {
@@ -269,6 +270,16 @@ struct SetupView: View {
                 }
                 .disabled(server.isEmpty || token.isEmpty)
                 .opacity(server.isEmpty || token.isEmpty ? 0.4 : 1)
+
+                // "Ještě nemám server" — guest/demo cesta pro uživatele bez Mac serveru
+                Button(action: { showNoServerInfo = true }) {
+                    Text("Ještě nemám Nova server")
+                        .font(.system(size: 13, weight: .light))
+                        .underline()
+                        .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
+                }
+                .padding(.top, 4)
+
                 backButton { step = 2 }
             }
             .padding(.horizontal, 40)
@@ -286,6 +297,20 @@ struct SetupView: View {
                     connectAndFinish()
                 }
             }
+        }
+        .sheet(isPresented: $showNoServerInfo) {
+            NoServerInfoSheet(
+                onDemo: {
+                    showNoServerInfo = false
+                    // Uložíme zatím zadaný profil, ať má Nova jméno/jazyk i v demo režimu
+                    UserDefaults.standard.set(userName, forKey: "nova_user_name")
+                    UserDefaults.standard.set(userCity, forKey: "nova_city")
+                    UserDefaults.standard.set(selectedLang, forKey: "nova_lang")
+                    UserDefaults.standard.set(selectedGender, forKey: "nova_voice_gender")
+                    HapticManager.shared.selectionChanged()
+                    nova.enterDemoMode()
+                }
+            )
         }
     }
 
@@ -359,6 +384,87 @@ struct SetupView: View {
             Text("Zpět")
                 .font(.system(size: 13, weight: .light))
                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+        }
+    }
+}
+
+// MARK: - No Server Info Sheet (demo / BYOS vysvětlení)
+struct NoServerInfoSheet: View {
+    let onDemo: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            NovaBackground()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("🖥")
+                            .font(.system(size: 48))
+                        Text("Jak Nova funguje")
+                            .font(.system(size: 24, weight: .light))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
+                        Text("Nova je tvůj soukromý AI asistent — běží na tvém Macu, tvoje data zůstávají u tebe.")
+                            .font(.system(size: 14, weight: .light))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
+                    }
+                    .padding(.top, 30)
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        infoRow(icon: "1.circle", title: "Stáhni Nova server", text: "Otevři na svém Macu nova.fxlooper.com a stáhni instalátor. Stačí jedno kliknutí.")
+                        infoRow(icon: "2.circle", title: "Spusť ho", text: "Server běží jen na tvém Macu. Bez cloudu, bez tracking, bez cizích serverů.")
+                        infoRow(icon: "3.circle", title: "Naskenuj QR", text: "Na Macu se ti zobrazí QR kód. Naskenuješ ho tady v appce a hotovo.")
+                    }
+
+                    Divider().padding(.vertical, 4)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Zatím jen zkouším")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                        Text("Můžeš si projít appku v režimu ukázky. Uvidíš rozhraní a funkce, ale AI odpovědi vyžadují připojení k Nova serveru.")
+                            .font(.system(size: 13, weight: .light))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.55))
+                    }
+
+                    VStack(spacing: 12) {
+                        Button(action: onDemo) {
+                            Text("Prozkoumat v režimu ukázky")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(Color(hex: "f5f0e8"))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(Color(hex: "1a1a2e").opacity(0.85))
+                                .cornerRadius(999)
+                        }
+                        Button(action: { dismiss() }) {
+                            Text("Zpět na připojení")
+                                .font(.system(size: 14, weight: .light))
+                                .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+                .padding(.horizontal, 30)
+                .padding(.bottom, 40)
+            }
+        }
+    }
+
+    private func infoRow(icon: String, title: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .light))
+                .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
+                Text(text)
+                    .font(.system(size: 13, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.55))
+            }
         }
     }
 }
@@ -495,6 +601,38 @@ struct ChatView: View {
                 .background(.ultraThinMaterial)
 
                 Divider().opacity(0.15)
+
+                // Demo režim banner — decentní pruh s CTA na připojení serveru
+                if nova.demoMode {
+                    HStack(spacing: 10) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.55))
+                        Text("Ukázkový režim — AI odpovědi vyžadují Nova server")
+                            .font(.system(size: 12, weight: .light))
+                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                        Spacer(minLength: 8)
+                        Button(action: {
+                            HapticManager.shared.selectionChanged()
+                            nova.exitDemoMode()
+                        }) {
+                            Text("Připojit")
+                                .font(.system(size: 12, weight: .medium))
+                                .tracking(1)
+                                .foregroundColor(Color(hex: "f5f0e8"))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 5)
+                                .background(Color(hex: "1a1a2e").opacity(0.85))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color(hex: "1a1a2e").opacity(0.04))
+                    Divider().opacity(0.1)
+                }
 
                 // Quick Actions strip — vždy viditelný
                 if !quickActions.isEmpty {
@@ -926,6 +1064,12 @@ struct ChatView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .openScheduledTasks)) { _ in
             showSchedule = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .siriAskNova)) { note in
+            // Siri/Shortcuts předal Nově dotaz — pošli ho rovnou do chatu
+            if let query = note.userInfo?["query"] as? String, !query.isEmpty {
+                Task { await nova.sendMessage(query) }
+            }
         }
         .fullScreenCover(isPresented: $showVoiceConversation) {
             VoiceConversationView(isPresented: $showVoiceConversation)

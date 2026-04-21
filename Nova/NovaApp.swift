@@ -12,6 +12,33 @@ struct NovaApp: App {
                 .environmentObject(novaService)
                 .environmentObject(novaService.voiceProfile)
                 .preferredColorScheme(.light)
+                .onOpenURL { url in
+                    handleDeepLink(url)
+                }
+        }
+    }
+
+    private func handleDeepLink(_ url: URL) {
+        guard url.scheme == "nova" else { return }
+        let host = url.host ?? ""
+        print("[deeplink] received \(url.absoluteString)")
+        switch host {
+        case "conversation", "open":
+            // Tap na Dynamic Island / Live Activity / Siri Open → otevři konverzaci
+            NotificationCenter.default.post(name: .openLiveConversation, object: nil)
+        case "ask":
+            // Siri AskNovaIntent → vytáhni query a pošli do chatu
+            let comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            let query = comps?.queryItems?.first(where: { $0.name == "q" })?.value ?? ""
+            if !query.isEmpty {
+                NotificationCenter.default.post(
+                    name: .siriAskNova,
+                    object: nil,
+                    userInfo: ["query": query]
+                )
+            }
+        default:
+            break
         }
     }
 }
@@ -72,4 +99,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
 extension Notification.Name {
     static let openScheduledTasks = Notification.Name("openScheduledTasks")
+    static let openLiveConversation = Notification.Name("openLiveConversation")
+    static let siriAskNova = Notification.Name("siriAskNova")
 }
