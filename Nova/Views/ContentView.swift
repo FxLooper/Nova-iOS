@@ -1102,10 +1102,21 @@ struct ChatView: View {
             ScheduledTasksView()
                 .environmentObject(nova)
         }
-        .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhoto, matching: .images)
+        .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhoto, matching: .any(of: [.images, .videos]))
         .onChange(of: selectedPhoto) { _, newItem in
             guard let item = newItem else { return }
             Task {
+                // Video
+                if let movie = try? await item.loadTransferable(type: VideoTransferable.self) {
+                    let data = try? Data(contentsOf: movie.url)
+                    if let data = data {
+                        let filename = movie.url.lastPathComponent
+                        await nova.sendVideo(data, filename: filename)
+                        selectedPhoto = nil
+                        return
+                    }
+                }
+                // Fotka
                 if let data = try? await item.loadTransferable(type: Data.self),
                    let image = UIImage(data: data) {
                     await nova.sendImage(image)
@@ -1476,12 +1487,20 @@ struct MessageBubble: View {
 
                 // Bubble — extract speech from JSON if needed (fallback for missed stream-replace)
                 if !message.content.isEmpty {
-                Group {
+                VStack(alignment: isUser ? .trailing : .leading, spacing: 8) {
                     let displayContent = MessageBubble.cleanContent(message.content, isUser: isUser)
-                    if !isUser, let md = try? AttributedString(markdown: displayContent, options: .init(interpretedSyntax: .full)) {
-                        Text(md)
-                    } else {
-                        Text(displayContent)
+                    let highlighted = isUser ? displayContent : MessageBubble.highlightKeywords(displayContent)
+                    let paragraphs = MessageBubble.splitParagraphs(highlighted)
+                    ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, paragraph in
+                        if !isUser, let md = try? AttributedString(markdown: paragraph, options: .init(interpretedSyntax: .full)) {
+                            Text(md)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
+                        } else {
+                            Text(paragraph)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
+                        }
                     }
                 }
                 .font(.system(size: 15, weight: .light))
@@ -1558,6 +1577,95 @@ struct MessageBubble: View {
             return content
         }
         return speech
+    }
+
+    /// Splits content into paragraphs on blank lines so SwiftUI can render
+    /// visible vertical spacing between them (single-Text markdown collapses blanks).
+    static func splitParagraphs(_ content: String) -> [String] {
+        // Normalize line endings, then split on two-or-more newlines.
+        let normalized = content.replacingOccurrences(of: "\r\n", with: "\n")
+        let blocks = normalized.components(separatedBy: "\n\n")
+        let trimmed = blocks
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return trimmed.isEmpty ? [content] : trimmed
+    }
+
+    /// Automatically bolds important tokens in Nova's replies so names, places,
+    /// acronyms, years and versions pop out without relying on the model.
+    /// Skips code blocks, JSON payloads and segments that are already bold.
+    static func highlightKeywords(_ content: String) -> String {
+        guard !content.isEmpty else { return content }
+        // Skip JSON-like or fenced code payloads — we never want to munge those.
+        let trimmed = content.trimmingCharacters(in: .whitespaces)
+        if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") { return content }
+        if content.contains("```") { return content }
+
+        // Split on existing bold markers and only transform the outside parts.
+        let parts = content.components(separatedBy: "**")
+        var out = ""
+        for (idx, part) in parts.enumerated() {
+            if idx % 2 == 1 {
+                // Already inside ** ... ** — keep as is.
+                out += "**" + part + "**"
+            } else {
+                out += applyHighlightPatterns(to: part)
+            }
+        }
+        return out
+    }
+
+    private static let highlightPatterns: [String] = [
+        // 1) Multi-word proper names (2+ consecutive Capitalized words, Czech-aware).
+        //    Catches "Andrej Babiš", "Petr Pavel", "Donald Trump", "Wall Street".
+        #"[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ][a-záčďéěíňóřšťúůýž]{2,}(?:\s+[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ][a-záčďéěíňóřšťúůýž]{2,}){1,3}"#,
+        // 2) All-caps abbreviations of 2–6 chars — NATO, USA, FBI, ČR, HDP.
+        #"(?<![A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ])[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]{2,6}(?![A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽa-záčďéěíňóřšťúůýž])"#,
+        // 3) Version-style numbers: 10.4.8, 13.4.7, 2.0.
+        #"(?<!\d)\d+\.\d+(?:\.\d+)+"#,
+        // 4) Four-digit years (1900–2199).
+        #"(?<!\d)(?:19|20|21)\d{2}(?!\d)"#
+    ]
+
+    private static func applyHighlightPatterns(to text: String) -> String {
+        var current = text
+        for pattern in highlightPatterns {
+            current = wrapMatches(in: current, pattern: pattern, with: "**")
+        }
+        return current
+    }
+
+    private static func wrapMatches(in text: String, pattern: String, with marker: String) -> String {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return text }
+        let ns = text as NSString
+        let full = NSRange(location: 0, length: ns.length)
+        let matches = regex.matches(in: text, options: [], range: full)
+        guard !matches.isEmpty else { return text }
+
+        var result = ""
+        var cursor = 0
+        for m in matches {
+            let r = m.range
+            guard r.location >= cursor else { continue } // skip overlaps
+            if r.location > cursor {
+                result += ns.substring(with: NSRange(location: cursor, length: r.location - cursor))
+            }
+            let match = ns.substring(with: r)
+            // Don't double-wrap if the neighbors already look like markdown emphasis.
+            let before = r.location > 0 ? ns.substring(with: NSRange(location: r.location - 1, length: 1)) : ""
+            let afterIdx = r.location + r.length
+            let after = afterIdx < ns.length ? ns.substring(with: NSRange(location: afterIdx, length: 1)) : ""
+            if before == "*" || after == "*" {
+                result += match
+            } else {
+                result += marker + match + marker
+            }
+            cursor = r.location + r.length
+        }
+        if cursor < ns.length {
+            result += ns.substring(with: NSRange(location: cursor, length: ns.length - cursor))
+        }
+        return result
     }
 }
 
@@ -2070,6 +2178,20 @@ extension Color {
         g = Double((int >> 8) & 0xFF) / 255
         b = Double(int & 0xFF) / 255
         self.init(red: r, green: g, blue: b)
+    }
+}
+
+// MARK: - Video Transferable
+struct VideoTransferable: Transferable {
+    let url: URL
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(contentType: .movie) { video in
+            SentTransferredFile(video.url)
+        } importing: { received in
+            let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
+            try FileManager.default.copyItem(at: received.file, to: tmp)
+            return Self(url: tmp)
+        }
     }
 }
 
