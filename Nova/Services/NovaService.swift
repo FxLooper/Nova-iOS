@@ -808,7 +808,7 @@ class NovaService: ObservableObject {
 
             // Debounce po TTS — zastav whisper, počkej až echo dozní, restartuj
             whisper.stopListening()
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3s — echo z reproduktoru
 
             // Vyčisti echo zbytky před restart listening
             currentUtterance = ""
@@ -1132,7 +1132,7 @@ class NovaService: ObservableObject {
                     // Live konverzace — ignoruj transcripty když Nova přemýšlí/mluví
                     guard self.state == .listening else { return }
                     // Echo guard — ignoruj prvních 1.5s po restartu whisperu (residuální echo)
-                    guard Date().timeIntervalSince(self.listeningResumeTime) > 1.5 else { return }
+                    guard Date().timeIntervalSince(self.listeningResumeTime) > 2.0 else { return }
                     self.currentUtterance = text
                     self.interimText = text
                     if isFinal {
