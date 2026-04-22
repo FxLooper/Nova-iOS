@@ -586,19 +586,24 @@ class NovaService: ObservableObject {
 
     // MARK: - Video analýza
     func sendVideo(_ data: Data, filename: String) async {
-        // Validace: max 50 MB
+        // Validace: max 200 MB
         guard data.count < 200_000_000 else {
             let msg = Message(role: "ai", content: "Video je moc velké (\(data.count / 1_000_000) MB). Maximum je 200 MB.")
             messages.append(msg)
             saveMessages()
             return
         }
-        let base64 = data.base64EncodedString()
 
-        let userMsg = Message(role: "user", content: "[Video 🎬 \(filename)]")
+        // Okamžitý feedback — uživatel vidí že Nova pracuje
+        let userMsg = Message(role: "user", content: "[Video 🎬 \(filename) — \(data.count / 1_000_000) MB]")
         messages.append(userMsg)
         saveMessages()
         state = .thinking
+        thinkingStage = ThinkingStage(key: "processing_video", detail: "Nahrávám \(data.count / 1_000_000) MB...")
+        HapticManager.shared.selectionChanged()
+
+        // Base64 encoding (může trvat u velkých videí)
+        let base64 = data.base64EncodedString()
         thinkingStage = ThinkingStage(key: "processing_video", detail: filename)
 
         do {
