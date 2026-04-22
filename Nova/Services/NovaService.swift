@@ -587,8 +587,8 @@ class NovaService: ObservableObject {
     // MARK: - Video analýza
     func sendVideo(_ data: Data, filename: String) async {
         // Validace: max 50 MB
-        guard data.count < 50_000_000 else {
-            let msg = Message(role: "ai", content: "Video je moc velké (\(data.count / 1_000_000) MB). Maximum je 50 MB.")
+        guard data.count < 200_000_000 else {
+            let msg = Message(role: "ai", content: "Video je moc velké (\(data.count / 1_000_000) MB). Maximum je 200 MB.")
             messages.append(msg)
             saveMessages()
             return
