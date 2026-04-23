@@ -2,7 +2,6 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
-@available(iOS 16.2, *)
 struct NovaLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: NovaActivityAttributes.self) { context in
@@ -98,7 +97,6 @@ struct NovaLiveActivityWidget: Widget {
 }
 
 // MARK: - Animated state icon
-@available(iOS 16.2, *)
 private struct StateIcon: View {
     let state: String
     let size: CGFloat
@@ -127,7 +125,6 @@ private struct StateIcon: View {
 }
 
 // MARK: - Lock Screen View
-@available(iOS 16.2, *)
 private struct LockScreenView: View {
     let state: NovaActivityAttributes.ContentState
 

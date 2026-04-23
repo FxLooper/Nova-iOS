@@ -10,7 +10,6 @@ import WidgetKit
 import SwiftUI
 
 @main
-@available(iOS 16.2, *)
 struct NovaWidgetsBundle: WidgetBundle {
     var body: some Widget {
         NovaLiveActivityWidget()
