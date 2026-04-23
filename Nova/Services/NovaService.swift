@@ -679,11 +679,12 @@ class NovaService: ObservableObject {
         print("[chat] === SENDING: \(text.prefix(40)) ===")
 
         // Whisper běží ale transcripty se ignorují (guard state == .listening)
-        // VAD barge-in sleduje amplitude přes onRawAudio
+        // Zastav whisper během zpracování + TTS (echo prevention)
         if conversationActive {
+            whisper.stopListening()
             currentUtterance = ""
             interimText = ""
-            print("[chat] whisper stays on (VAD barge-in active)")
+            print("[chat] whisper stopped for processing")
         }
 
         // Zastav TTS pokud Nova právě mluví
