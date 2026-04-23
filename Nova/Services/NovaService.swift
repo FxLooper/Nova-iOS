@@ -42,7 +42,7 @@ class NovaService: ObservableObject {
     var currentTTSText: String = ""
     /// VAD barge-in — sleduje amplitude během TTS
     private var bargeInVoiceStart: Date? = nil
-    private let bargeInAmplitudeThreshold: Float = 0.04  // RMS threshold — echo je ~0.005, hlas je 0.04+
+    private let bargeInAmplitudeThreshold: Float = 0.06  // RMS threshold — echo ~0.005, hlas 0.06+ (vyšší = méně false triggers)
     private let bargeInDurationThreshold: TimeInterval = 0.0  // okamžitý trigger — jeden spike stačí
 
     // MARK: - Whisper STT (experimentální)
@@ -679,12 +679,11 @@ class NovaService: ObservableObject {
         print("[chat] === SENDING: \(text.prefix(40)) ===")
 
         // Whisper běží ale transcripty se ignorují (guard state == .listening)
-        // Zastav whisper během zpracování + TTS (echo prevention)
+        // Whisper běží pro VAD barge-in, ale transcripty se ignorují (guard state == .listening)
         if conversationActive {
-            whisper.stopListening()
             currentUtterance = ""
             interimText = ""
-            print("[chat] whisper stopped for processing")
+            print("[chat] whisper on (VAD barge-in, threshold 0.06)")
         }
 
         // Zastav TTS pokud Nova právě mluví
