@@ -1238,10 +1238,20 @@ class NovaService: ObservableObject {
         silenceTask?.cancel()
         silenceTask = nil
 
+        // Reset audio session — TTS mohl nechat session v špatném stavu
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setActive(false, options: .notifyOthersOnDeactivation)
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
+            try session.setActive(true)
+        } catch {
+            print("[speech] audio session reset error: \(error)")
+        }
+
         // Restartuj whisper (byl zastaven po TTS pro echo prevention)
         currentUtterance = ""
         interimText = ""
-        listeningResumeTime = Date() // Ignoruj echo 1.5s po restartu
+        listeningResumeTime = Date() // Ignoruj echo 2s po restartu
         if useWhisper {
             whisper.languageHint = nil
             startWhisperListening()
