@@ -711,10 +711,15 @@ class NovaService: ObservableObject {
             } else {
                 print("[GPS] no location available")
             }
-            let payload: [String: Any] = [
+            var payload: [String: Any] = [
                 "messages": messages.suffix(50).map { ["role": $0.role == "user" ? "user" : "assistant", "content": $0.content] },
                 "profile": profileDict
             ]
+            // Vynucený routing z nastavení — backend to může respektovat (auto/web/dev)
+            let forceRouting = UserDefaults.standard.string(forKey: "nova_force_routing") ?? "auto"
+            if forceRouting != "auto" {
+                payload["forceMode"] = forceRouting
+            }
             let jsonData = try JSONSerialization.data(withJSONObject: payload)
 
             guard let chatURL = URL(string: "\(serverURL)/api/chat") else {

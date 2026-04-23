@@ -116,7 +116,29 @@ struct ScheduledTasksView: View {
         }
         .onAppear {
             requestNotificationPermission()
-            Task { await loadTasks() }
+            Task {
+                await loadTasks()
+                openPendingTaskResultIfNeeded()
+            }
+        }
+    }
+
+    /// Když uživatel klepl na push notifikaci cronu/briefingu, AppDelegate uložil
+    /// `pendingCronTaskId` do UserDefaults. Po načtení seznamu najdeme odpovídající
+    /// poslední výsledek a otevřeme rovnou jeho detail.
+    private func openPendingTaskResultIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard let taskId = defaults.string(forKey: "pendingCronTaskId"), !taskId.isEmpty else { return }
+        defaults.removeObject(forKey: "pendingCronTaskId")
+
+        // Najdi match nejdřív přímo podle taskId v recentResults, pak fallback na jméno úkolu
+        if let byId = recentResults.first(where: { ($0["taskId"] as? String) == taskId }) {
+            selectedResult = byId
+            return
+        }
+        if let task = tasks.first(where: { $0.id == taskId }),
+           let byName = recentResults.first(where: { ($0["taskName"] as? String) == task.name }) {
+            selectedResult = byName
         }
     }
 

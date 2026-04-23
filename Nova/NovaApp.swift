@@ -90,9 +90,19 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         completionHandler([.banner, .sound, .badge])
     }
 
-    // Klepnutí na notifikaci → otevři ScheduledTasksView
+    // Klepnutí na notifikaci → otevři ScheduledTasksView a rovnou detail daného úkolu
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        NotificationCenter.default.post(name: .openScheduledTasks, object: nil)
+        let userInfo = response.notification.request.content.userInfo
+        if let taskId = userInfo["taskId"] as? String, !taskId.isEmpty {
+            // Ulož pending taskId — ScheduledTasksView ho po načtení otevře jako detail
+            UserDefaults.standard.set(taskId, forKey: "pendingCronTaskId")
+            print("[push] tap on notification, pending taskId=\(taskId)")
+        }
+        NotificationCenter.default.post(
+            name: .openScheduledTasks,
+            object: nil,
+            userInfo: userInfo
+        )
         completionHandler()
     }
 }

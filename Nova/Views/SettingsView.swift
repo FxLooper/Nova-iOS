@@ -17,6 +17,7 @@ struct SettingsView: View {
     @State private var selectedDevProject: String
     @State private var editableQuickActions: [QuickAction]
     @State private var ttsSpeed: Double
+    @State private var forceRouting: String
 
     init() {
         _selectedLang = State(initialValue: UserDefaults.standard.string(forKey: "nova_lang") ?? "cs")
@@ -28,6 +29,7 @@ struct SettingsView: View {
         _selectedDevProject = State(initialValue: UserDefaults.standard.string(forKey: "nova_dev_project") ?? "backend")
         _editableQuickActions = State(initialValue: QuickAction.load())
         _ttsSpeed = State(initialValue: UserDefaults.standard.object(forKey: "nova_tts_speed") == nil ? 0.0 : UserDefaults.standard.double(forKey: "nova_tts_speed"))
+        _forceRouting = State(initialValue: UserDefaults.standard.string(forKey: "nova_force_routing") ?? "auto")
     }
 
     static let devProjects: [(key: String, label: String, icon: String)] = [
@@ -450,6 +452,27 @@ struct SettingsView: View {
                                     .padding(.vertical, 6)
                                     .padding(.horizontal, 14)
                                 }
+                            }
+                        }
+
+                        // Vynutit routing — override automatické klasifikace
+                        SettingsSection(title: "Vynutit routing") {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Běžně Nova sama pozná jestli jde o kód, web nebo chat. Tady to můžeš přepsat ručně.")
+                                    .font(.system(size: 12, weight: .light))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+
+                                Picker("Routing", selection: $forceRouting) {
+                                    Text("Auto").tag("auto")
+                                    Text("Chat / Web").tag("web")
+                                    Text("Dev").tag("dev")
+                                }
+                                .pickerStyle(.segmented)
+                                .onChange(of: forceRouting) { _, newValue in
+                                    UserDefaults.standard.set(newValue, forKey: "nova_force_routing")
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 4)
                             }
                         }
 

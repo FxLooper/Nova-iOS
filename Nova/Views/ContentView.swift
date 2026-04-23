@@ -895,11 +895,21 @@ struct ChatView: View {
                                     .frame(width: 36, height: 36)
                             }
 
-                            // Text input
-                            TextField(L10n.t("write_nova"), text: $inputText)
+                            // Text input — multi-line, láme se pod sebe do max 6 řádků
+                            TextField(L10n.t("write_nova"), text: $inputText, axis: .vertical)
                                 .font(.system(size: 15, weight: .light))
+                                .lineLimit(1...6)
                                 .focused($isInputFocused)
-                                .onSubmit { sendText() }
+                                .submitLabel(.send)
+                                .onChange(of: inputText) { _, newValue in
+                                    // Enter na konci = odeslání; nový řádek necháme přes Shift+Enter nebo když zpráva není ukončena
+                                    if newValue.hasSuffix("\n") {
+                                        inputText = String(newValue.dropLast())
+                                        if !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                            sendText()
+                                        }
+                                    }
+                                }
 
                             if inputText.isEmpty {
                                 // Plus menu — kamera, fotky, soubory
