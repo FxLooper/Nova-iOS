@@ -1246,8 +1246,9 @@ class NovaService: ObservableObject {
                 } else {
                     // Live konverzace — ignoruj transcripty když Nova přemýšlí/mluví
                     guard self.state == .listening else { return }
-                    // Echo guard — ignoruj prvních 1.5s po restartu whisperu (residuální echo)
-                    guard Date().timeIntervalSince(self.listeningResumeTime) > 2.0 else { return }
+                    // Echo guard — krátké okno po restartu whisperu (rezidua echa).
+                    // 0.8s stačí, protože před tím byla 1.2s pauza v sendMessage = celkem 2s mute.
+                    guard Date().timeIntervalSince(self.listeningResumeTime) > 0.8 else { return }
                     self.currentUtterance = text
                     self.interimText = text
                     if isFinal {
@@ -1262,8 +1263,15 @@ class NovaService: ObservableObject {
     private func startWhisperListening() {
         do {
             try whisper.startListening()
-            state = .listening
-            dlog("[whisper] listening started")
+            // WhisperService.startListening může tichounce returnnout (guard case .ready)
+            // pokud state visí v .transcribing nebo .listening. Verifikuj, že fakticky běží.
+            if whisper.state == .listening {
+                state = .listening
+                dlog("[whisper] listening started ✅")
+            } else {
+                dlog("[whisper] start was no-op (state: \(whisper.state)) — fallback na DictationTranscriber")
+                startDictation()
+            }
         } catch {
             dlog("[whisper] start error: \(error) — fallback na DictationTranscriber")
             startDictation()
@@ -1348,6 +1356,11 @@ class NovaService: ObservableObject {
         silenceTask?.cancel()
         silenceTask = nil
 
+        // Hard reset whisperu — idempotentně srovná state na .ready, kdyby ještě
+        // visel v .transcribing po canceled tasku. Bez tohohle by startListening
+        // tichounce returnoval (guard case .ready) a Nova by neslyšela další turn.
+        whisper.stopListening()
+
         // Reset audio session — TTS mohl nechat session v špatném stavu
         do {
             let session = AVAudioSession.sharedInstance()
@@ -1361,14 +1374,14 @@ class NovaService: ObservableObject {
         // Restartuj whisper (byl zastaven po TTS pro echo prevention)
         currentUtterance = ""
         interimText = ""
-        listeningResumeTime = Date() // Ignoruj echo 2s po restartu
+        listeningResumeTime = Date() // Ignoruj echo 0.8s po restartu (zkráceno z 2.0s, AEC + 1.2s post-TTS pauza stačí)
         if useWhisper {
             whisper.languageHint = nil
             startWhisperListening()
         } else {
             state = .listening
         }
-        dlog("[speech] ready for next turn")
+        dlog("[speech] 🎤 listening resumed for next turn (whisper: \(whisper.state))")
     }
 
     private var dictationTranscriber: DictationTranscriber?
