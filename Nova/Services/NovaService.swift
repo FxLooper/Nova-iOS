@@ -815,7 +815,7 @@ class NovaService: ObservableObject {
 
             // Debounce po TTS — zastav whisper, počkej až echo dozní, restartuj
             whisper.stopListening()
-            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3s — echo z reproduktoru
+            try? await Task.sleep(nanoseconds: 1_200_000_000) // 1.2s — echo z reproduktoru (zkráceno z 3s, AEC to zvládne)
 
             // Vyčisti echo zbytky před restart listening
             currentUtterance = ""
@@ -849,9 +849,20 @@ class NovaService: ObservableObject {
         // Nastav výchozí stage hned
         thinkingStage = ThinkingStage(key: "understanding", detail: nil)
 
-        for i in 0..<600 { // max 5 minut (600 × 500ms) — dev mode může trvat déle
+        // Adaptivní backoff: rychlé první dotazy ušetří ~700ms u rychlých odpovědí,
+        // pomalý polling u dlouhých zachová server-friendly chování.
+        // Limit 620 iterací pokrývá 5+ minut: 5×150 + 15×300 + 600×500 = ~305s.
+        for i in 0..<620 {
             try Task.checkCancellation()
-            try await Task.sleep(nanoseconds: 500_000_000)
+            let delayNs: UInt64
+            if i < 5 {
+                delayNs = 150_000_000  // 150ms — rychlé odpovědi
+            } else if i < 20 {
+                delayNs = 300_000_000  // 300ms — střední
+            } else {
+                delayNs = 500_000_000  // 500ms — pomalá generace / dev mode
+            }
+            try await Task.sleep(nanoseconds: delayNs)
             let (data, _) = try await URLSession.shared.data(for: request)
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let status = json["status"] as? String {
