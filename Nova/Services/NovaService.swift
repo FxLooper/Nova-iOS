@@ -901,62 +901,159 @@ class NovaService: ObservableObject {
     }
 
     // MARK: - TTS
-    func playTTS(_ text: String) async {
-        guard ttsEnabled else {
-            // TTS vypnutý — přeskoč mluvení, rovnou pokračuj
-            state = .idle
-            return
-        }
-        guard let url = URL(string: "\(serverURL)/api/tts") else { return }
 
+    /// Rozseká text na věty pro streamované TTS. Bezpečné na desetinná čísla a krátké zkratky.
+    private func splitIntoSentences(_ text: String) -> [String] {
+        var sentences: [String] = []
+        var current = ""
+        let chars = Array(text)
+        var i = 0
+        while i < chars.count {
+            let c = chars[i]
+            current.append(c)
+            if c == "." || c == "!" || c == "?" {
+                let prev = i > 0 ? chars[i - 1] : " "
+                let next = i + 1 < chars.count ? chars[i + 1] : " "
+                // Desetinné číslo: cifra . cifra → nerozdělovat
+                if c == "." && prev.isNumber && next.isNumber {
+                    i += 1
+                    continue
+                }
+                // Rozdělit jen pokud následuje whitespace nebo konec textu
+                if next.isWhitespace || i == chars.count - 1 {
+                    let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty {
+                        sentences.append(trimmed)
+                    }
+                    current = ""
+                }
+            }
+            i += 1
+        }
+        let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { sentences.append(trimmed) }
+        return sentences
+    }
+
+    /// Stáhne TTS audio pro jeden text chunk. Vrací nil při chybě.
+    private func fetchTTSAudio(_ text: String) async -> Data? {
+        guard let url = URL(string: "\(serverURL)/api/tts") else { return nil }
         do {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
             let selectedVoice = UserDefaults.standard.string(forKey: "nova_voice") ?? profile["voice"] ?? "cs-vlasta"
-            dlog("[TTS] sending voice: \(selectedVoice)")
             let speedPct = Int(UserDefaults.standard.double(forKey: "nova_tts_speed"))
             let rate = speedPct >= 0 ? "+\(speedPct)%" : "\(speedPct)%"
             request.httpBody = try JSONSerialization.data(withJSONObject: ["text": text, "voice": selectedVoice, "rate": rate])
 
             let (data, response) = try await URLSession.shared.data(for: request)
-
-            // Ověř že server vrátil audio, ne error JSON
             let httpResponse = response as? HTTPURLResponse
             let contentType = httpResponse?.value(forHTTPHeaderField: "Content-Type") ?? ""
             guard httpResponse?.statusCode == 200, contentType.contains("audio"), data.count > 200 else {
-                dlog("[TTS] server error: HTTP \(httpResponse?.statusCode ?? 0), type=\(contentType), size=\(data.count)")
-                state = .idle
-                return
+                dlog("[TTS] chunk fetch error: HTTP \(httpResponse?.statusCode ?? 0), type=\(contentType), size=\(data.count)")
+                return nil
             }
+            return data
+        } catch {
+            dlog("[TTS] chunk fetch exception: \(error.localizedDescription)")
+            return nil
+        }
+    }
 
+    /// Přehraje jeden audio buffer. Vrací true pokud doběhl normálně, false při přerušení nebo chybě.
+    private func playTTSChunk(_ data: Data) async -> Bool {
+        do {
+            audioPlayer = try AVAudioPlayer(data: data)
+            audioPlayer?.play()
+            while audioPlayer?.isPlaying == true {
+                if !ttsEnabled {
+                    audioPlayer?.stop()
+                    audioPlayer = nil
+                    return false
+                }
+                try await Task.sleep(nanoseconds: 50_000_000)
+            }
+            return true
+        } catch {
+            dlog("[TTS] chunk playback error: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    func playTTS(_ text: String) async {
+        guard ttsEnabled else {
+            // TTS vypnutý — přeskoč mluvení, rovnou pokračuj
+            state = .idle
+            return
+        }
+
+        let sentences = splitIntoSentences(text)
+        guard !sentences.isEmpty else {
+            state = .idle
+            return
+        }
+
+        // Audio session setup jednou pro celé streamování
+        do {
             let session = AVAudioSession.sharedInstance()
             if session.category != .playAndRecord {
                 try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
                 try session.setActive(true)
             }
+        } catch {
+            dlog("[TTS] session setup error: \(error.localizedDescription)")
+        }
 
-            currentTTSText = text.lowercased()
-            audioPlayer = try AVAudioPlayer(data: data)
-            audioPlayer?.play()
+        let selectedVoice = UserDefaults.standard.string(forKey: "nova_voice") ?? profile["voice"] ?? "cs-vlasta"
+        dlog("[TTS] streaming \(sentences.count) sentence(s), voice: \(selectedVoice)")
+        currentTTSText = text.lowercased()
 
-            while audioPlayer?.isPlaying == true {
-                if !ttsEnabled {
-                    audioPlayer?.stop()
-                    audioPlayer = nil
-                    currentTTSText = ""
-                    state = .idle
-                    return
-                }
-                try await Task.sleep(nanoseconds: 100_000_000)
+        // Jediná věta → bez paralelizace, jeden fetch a play
+        if sentences.count == 1 {
+            if let data = await fetchTTSAudio(sentences[0]) {
+                _ = await playTTSChunk(data)
             }
             audioPlayer = nil
             currentTTSText = ""
-        } catch {
-            dlog("[TTS] playback error: \(error.localizedDescription) — skipping voice")
-            state = .idle
+            return
         }
+
+        // Streaming: paralelní fetch všech vět, sekvenční přehrávání
+        var fetchTasks: [Task<Data?, Never>] = []
+        for sentence in sentences {
+            let task = Task<Data?, Never> { [weak self] in
+                await self?.fetchTTSAudio(sentence)
+            }
+            fetchTasks.append(task)
+        }
+
+        for (idx, task) in fetchTasks.enumerated() {
+            // Přerušení (toggle TTS off) → zruš zbytek a skonči
+            if !ttsEnabled {
+                for t in fetchTasks[idx...] { t.cancel() }
+                audioPlayer = nil
+                currentTTSText = ""
+                state = .idle
+                return
+            }
+            guard let data = await task.value else {
+                dlog("[TTS] sentence \(idx + 1)/\(sentences.count) failed — skipping")
+                continue
+            }
+            let played = await playTTSChunk(data)
+            if !played && !ttsEnabled {
+                for t in fetchTasks[(idx + 1)...] { t.cancel() }
+                audioPlayer = nil
+                currentTTSText = ""
+                state = .idle
+                return
+            }
+        }
+
+        audioPlayer = nil
+        currentTTSText = ""
     }
 
     // MARK: - Conversation Mode (SpeechAnalyzer — iOS 26)
