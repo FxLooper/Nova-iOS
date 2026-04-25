@@ -48,7 +48,7 @@ final class WakeWordService: ObservableObject {
         guard let modelURL = Bundle.main.url(forResource: "HeyNovaClassifier", withExtension: "mlmodelc")
                 ?? Bundle.main.url(forResource: "HeyNovaClassifier", withExtension: "mlmodel") else {
             lastError = "Model HeyNovaClassifier nenalezen"
-            print("[wake] model not found in bundle")
+            dlog("[wake] model not found in bundle")
             return
         }
 
@@ -62,7 +62,7 @@ final class WakeWordService: ObservableObject {
             request?.overlapFactor = 0.5
         } catch {
             lastError = "Model load failed: \(error.localizedDescription)"
-            print("[wake] model load failed: \(error)")
+            dlog("[wake] model load failed: \(error)")
             return
         }
 
@@ -74,7 +74,7 @@ final class WakeWordService: ObservableObject {
             try session.setActive(true)
         } catch {
             lastError = "Audio session: \(error.localizedDescription)"
-            print("[wake] audio session error: \(error)")
+            dlog("[wake] audio session error: \(error)")
             return
         }
 
@@ -97,7 +97,7 @@ final class WakeWordService: ObservableObject {
             try analyzer.add(request, withObserver: observer)
         } catch {
             lastError = "Analyzer setup failed: \(error.localizedDescription)"
-            print("[wake] analyzer add failed: \(error)")
+            dlog("[wake] analyzer add failed: \(error)")
             return
         }
 
@@ -112,10 +112,10 @@ final class WakeWordService: ObservableObject {
             try engine.start()
             isRunning = true
             lastError = nil
-            print("[wake] ✅ started — CoreML SoundAnalysis, threshold: \(confidenceThreshold)")
+            dlog("[wake] ✅ started — CoreML SoundAnalysis, threshold: \(confidenceThreshold)")
         } catch {
             lastError = "Engine start: \(error.localizedDescription)"
-            print("[wake] engine start failed: \(error)")
+            dlog("[wake] engine start failed: \(error)")
         }
     }
 
@@ -126,7 +126,7 @@ final class WakeWordService: ObservableObject {
         audioEngine = nil
         analyzer = nil
         isRunning = false
-        print("[wake] stopped")
+        dlog("[wake] stopped")
     }
 
     // MARK: - Detection
@@ -138,7 +138,7 @@ final class WakeWordService: ObservableObject {
         lastTriggerAt = now
 
         lastHeardText = "Hey Nova (\(Int(confidence * 100))%)"
-        print("[wake] 🔥 HEY NOVA detected! confidence: \(Int(confidence * 100))%")
+        dlog("[wake] 🔥 HEY NOVA detected! confidence: \(Int(confidence * 100))%")
 
         HapticManager.shared.conversationToggle()
         onWakeDetected?()
@@ -160,6 +160,6 @@ private class WakeWordObserver: NSObject, SNResultsObserving {
     }
 
     func request(_ request: SNRequest, didFailWithError error: Error) {
-        print("[wake] analysis error: \(error.localizedDescription)")
+        dlog("[wake] analysis error: \(error.localizedDescription)")
     }
 }

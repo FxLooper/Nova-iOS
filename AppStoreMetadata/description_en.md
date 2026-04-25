@@ -7,10 +7,10 @@ Nova — Voice Assistant
 Your personal AI companion
 
 ## Keywords (100 chars max, comma-separated)
-AI,assistant,voice,GPT,Claude,Whisper,dictation,chat,translate,weather,calendar,reminders
+AI,assistant,voice,GPT,Claude,Whisper,wake,word,dictation,translate,weather,calendar
 
 ## Promotional text (170 chars max) — editable without review
-Talk to Nova naturally. Ask anything, dictate messages, manage your calendar, translate, find places. Privacy first — your voice stays with you.
+Say "Hey Nova" and go. Hands-free voice AI with wake word, Dynamic Island, and your own server. Privacy first — your voice stays with you.
 
 ## Description (4000 chars max)
 
@@ -18,11 +18,15 @@ Nova is your personal voice assistant you control with natural language — Engl
 
 WHAT NOVA DOES
 
+• Wake word "Hey Nova" — start a conversation hands-free
 • Voice conversations with AI — fluid speech, no typing required
+• VAD barge-in — interrupt Nova mid-sentence, like a real conversation
 • Instant dictation and accurate voice-to-text
+• Scheduled tasks — Nova calls or reminds you at the time you set
 • Live weather, news, exchange rates, Wikipedia lookups
 • Calendar and reminders — plan your day by speaking
 • Send messages, emails, start FaceTime calls
+• Photo and video upload up to 200 MB — Nova analyzes visual content
 • Find restaurants, cinemas, places, get directions
 • Image generation from a description
 • Translations across 16 languages
@@ -31,7 +35,7 @@ WHY NOVA
 
 — Sounds natural. Understands nuance, humor, sarcasm, and context.
 — Dynamic Island keeps you in the loop even when the app is backgrounded.
-— Recognizes who is speaking. Your personal voice profile keeps answers relevant.
+— Knows your voice. Voice ID with anti-spoofing keeps commands secure.
 — Works with your own backend. Connect to your Nova server over Tailscale VPN for maximum privacy.
 — No trackers. No ads. Your voice stays between you and your server.
 
@@ -55,13 +59,15 @@ Nova is for people who want more than copy-paste from a web chat. It's a fast, n
 
 ## What's New in This Version (4000 chars max)
 
-Version 10.4.8
+Version 13.4.7
 
+• Wake word "Hey Nova" — start a conversation without touching the screen
+• VAD barge-in — interrupt Nova mid-sentence, just like a real conversation
+• Voice ID with anti-spoofing — Nova tells your live voice from a recording
+• Video upload up to 200 MB — share a clip and let Nova help
+• Scheduled tasks — Nova calls or reminds you at the time you set
 • Enhanced Dynamic Island — animated states, faster response
-• New localizations and small UI text fixes
 • Improved voice recognition in noisy environments
-• Faster conversation start (lower end-to-end latency)
-• Export Compliance settled — no more per-build questionnaires
 • Minor bug fixes and performance tuning
 
 Thanks for the feedback. Keep talking.

@@ -21,7 +21,7 @@ struct NovaApp: App {
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == "nova" else { return }
         let host = url.host ?? ""
-        print("[deeplink] received \(url.absoluteString)")
+        dlog("[deeplink] received \(url.absoluteString)")
         switch host {
         case "conversation", "open":
             // Tap na Dynamic Island / Live Activity / Siri Open → otevři konverzaci
@@ -60,7 +60,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     // Device token received — send to server
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-        print("[push] device token: \(token)")
+        dlog("[push] device token: \(token)")
         // Store and send to server
         UserDefaults.standard.set(token, forKey: "nova_push_token")
         Task {
@@ -69,7 +69,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("[push] registration failed: \(error.localizedDescription)")
+        dlog("[push] registration failed: \(error.localizedDescription)")
     }
 
     private func sendPushTokenToServer(_ pushToken: String) async {
@@ -82,7 +82,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         request.setValue(novaToken, forHTTPHeaderField: "X-Nova-Token")
         request.httpBody = try? JSONSerialization.data(withJSONObject: ["deviceToken": pushToken])
         _ = try? await URLSession.shared.data(for: request)
-        print("[push] token sent to server")
+        dlog("[push] token sent to server")
     }
 
     // Notifikace přišla když je app v popředí — zobraz banner i tak
@@ -96,7 +96,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         if let taskId = userInfo["taskId"] as? String, !taskId.isEmpty {
             // Ulož pending taskId — ScheduledTasksView ho po načtení otevře jako detail
             UserDefaults.standard.set(taskId, forKey: "pendingCronTaskId")
-            print("[push] tap on notification, pending taskId=\(taskId)")
+            dlog("[push] tap on notification, pending taskId=\(taskId)")
         }
         NotificationCenter.default.post(
             name: .openScheduledTasks,

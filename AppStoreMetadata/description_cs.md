@@ -7,10 +7,10 @@ Nova — Hlasový asistent
 Tvůj osobní AI parťák
 
 ## Klíčová slova (100 znaků max, oddělené čárkou)
-AI,asistent,hlas,GPT,Claude,Whisper,diktát,chat,překlad,počasí,kalendář,připomínky,česky
+AI,asistent,hlas,GPT,Claude,Whisper,wake,word,diktát,překlad,počasí,kalendář,česky
 
 ## Propagační text (170 znaků max) — lze měnit bez review
-Mluv s Novou česky. Zeptej se na cokoli, diktuj zprávy, řiď kalendář, překládej, hledej místa. Soukromí na prvním místě — tvůj hlas zůstává u tebe.
+Řekni „Hey Nova" a jedeš. Hlasový AI parťák s wake wordem, Dynamic Island a vlastním serverem. Tvůj hlas zůstává u tebe.
 
 ## Popis aplikace (4000 znaků max)
 
@@ -18,11 +18,15 @@ Nova je tvůj osobní hlasový asistent, kterého ovládáš přirozeným jazyke
 
 CO NOVA UMÍ
 
+• Wake word „Hey Nova" — spustíš konverzaci hlasem bez doteku
 • Hlasové konverzace s AI — plynulá řeč bez nutnosti psát
+• Barge-in přes VAD — můžeš Novu přerušit kdykoli, jako v reálném rozhovoru
 • Rychlý diktát a okamžitý přepis tvého hlasu do textu
+• Naplánované úkoly — Nova ti zavolá nebo připomene v čase, který si určíš
 • Aktuální počasí, zprávy, kurzy měn a vyhledávání na Wikipedii
 • Kalendář a připomínky — naplánuj si den slovem
 • Odesílání zpráv, emailů a FaceTime hovorů
+• Foto a video upload do 200 MB — Nova analyzuje vizuální obsah
 • Hledání restaurací, kin, míst a navigace
 • Generování obrázků podle popisu
 • Překlady mezi 16 jazyky
@@ -31,7 +35,7 @@ PROČ NOVA
 
 — Mluví česky bez kostrbatosti. Rozumí nuancím, žertu, sarkasmu i kontextu.
 — Dynamic Island ti ukáže stav konverzace, i když appku schováš.
-— Rozpozná, kdo mluví. Tvůj vlastní hlasový profil udrží odpovědi relevantní.
+— Pozná tvůj hlas. Voice ID profil s anti-spoofing ochranou udrží příkazy bezpečné.
 — Funguje s tvým backendem. Připoj se vlastním Nova serverem přes Tailscale VPN pro maximální soukromí.
 — Žádné trackery. Žádná reklama. Tvůj hlas zůstává mezi tebou a tvým serverem.
 
@@ -55,13 +59,15 @@ Nova je pro lidi, kteří chtějí víc než copy-paste z webového rozhraní. J
 
 ## Co je nového v této verzi (4000 znaků max)
 
-Verze 10.4.8
+Verze 13.4.7
 
+• Wake word „Hey Nova" — spustíš konverzaci hlasem bez doteku obrazovky
+• Barge-in přes VAD — můžeš Novu přerušit uprostřed věty
+• Voice ID s anti-spoofing ochranou — Nova rozezná tvůj hlas od nahrávky
+• Video upload do 200 MB — pošli krátký klip a nech Novu poradit
+• Naplánované úkoly — Nova ti připomene nebo zavolá v daný čas
 • Vylepšené Dynamic Island — animované stavy, rychlejší odezva
-• Nové lokalizace a drobné opravy UI textů
 • Stabilizace hlasového rozpoznání v hlučném prostředí
-• Rychlejší start konverzace (latence snížená na minimum)
-• Export Compliance — žádné další dotazníky při každém buildu
 • Drobné opravy chyb a optimalizace výkonu
 
 Děkujeme za zpětnou vazbu. Pokračuj v mluvení.

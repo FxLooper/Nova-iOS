@@ -107,7 +107,7 @@ class WhisperService: ObservableObject {
 
         switch type {
         case .began:
-            print("[whisper] audio interrupted (phone call, Siri, etc.)")
+            dlog("[whisper] audio interrupted (phone call, Siri, etc.)")
             if case .listening = state {
                 stopListening()
             }
@@ -115,7 +115,7 @@ class WhisperService: ObservableObject {
             let shouldResume = (info[AVAudioSessionInterruptionOptionKey] as? UInt)
                 .flatMap { AVAudioSession.InterruptionOptions(rawValue: $0) }
                 .map { $0.contains(.shouldResume) } ?? false
-            print("[whisper] interruption ended, shouldResume: \(shouldResume)")
+            dlog("[whisper] interruption ended, shouldResume: \(shouldResume)")
             if shouldResume && state == .ready {
                 try? startListening()
             }
@@ -140,7 +140,7 @@ class WhisperService: ObservableObject {
             let recommended = WhisperKit.recommendedModels()
             let rec = recommended.default
             let deviceRAM = ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024) // GB
-            print("[whisper] device recommends: \(rec), RAM: \(deviceRAM)GB")
+            dlog("[whisper] device recommends: \(rec), RAM: \(deviceRAM)GB")
             // Smart model selection podle zařízení:
             // 6GB+ RAM (Pro/Max): medium → small → base (nejlepší co ANE zvládne)
             // 4GB+ RAM: small → base → tiny
@@ -156,7 +156,7 @@ class WhisperService: ObservableObject {
         }
 
         for modelName in modelsToTry {
-            print("[whisper] trying model: \(modelName)")
+            dlog("[whisper] trying model: \(modelName)")
             do {
                 // Animovaný progress (simulovaný, WhisperKit neexponuje download progress v init)
                 let progressTask = Task { @MainActor [weak self] in
@@ -181,16 +181,16 @@ class WhisperService: ObservableObject {
                 progressTask.cancel()
                 await MainActor.run { self.loadProgress = 1.0 }
                 state = .ready
-                print("[whisper] model ready: \(modelName)")
+                dlog("[whisper] model ready: \(modelName)")
                 return
             } catch {
-                print("[whisper] model \(modelName) failed: \(error.localizedDescription)")
+                dlog("[whisper] model \(modelName) failed: \(error.localizedDescription)")
                 continue
             }
         }
 
         state = .error("Whisper nelze načíst")
-        print("[whisper] all models failed")
+        dlog("[whisper] all models failed")
     }
 
     // MARK: - Listening control
@@ -198,11 +198,11 @@ class WhisperService: ObservableObject {
     /// Spustí kontinuální poslech mikrofonu s VAD a streaming transcription.
     func startListening() throws {
         guard case .ready = state else {
-            print("[whisper] not ready, state: \(state)")
+            dlog("[whisper] not ready, state: \(state)")
             return
         }
         guard whisperKit != nil else {
-            print("[whisper] no model loaded")
+            dlog("[whisper] no model loaded")
             return
         }
 
@@ -244,7 +244,7 @@ class WhisperService: ObservableObject {
 
         state = .listening
         startSilenceMonitor()
-        print("[whisper] listening started")
+        dlog("[whisper] listening started")
     }
 
     /// Zastaví poslech a uvolní audio session.
@@ -265,7 +265,7 @@ class WhisperService: ObservableObject {
 
         if case .listening = state { state = .ready }
         if case .transcribing = state { state = .ready }
-        print("[whisper] listening stopped")
+        dlog("[whisper] listening stopped")
     }
 
     // MARK: - Audio processing
@@ -285,7 +285,7 @@ class WhisperService: ObservableObject {
         }
 
         if let error = error {
-            print("[whisper] audio conversion error: \(error)")
+            dlog("[whisper] audio conversion error: \(error)")
         }
         guard error == nil, let channelData = convertedBuffer.floatChannelData?[0] else { return }
         let frameLength = Int(convertedBuffer.frameLength)
@@ -395,14 +395,14 @@ class WhisperService: ObservableObject {
                             self.detectedLanguage = lang
                         }
                         self.onTranscript?(trimmed, isFinal, language)
-                        print("[whisper] transcript (\(language ?? "?"), final: \(isFinal)): \(trimmed)")
+                        dlog("[whisper] transcript (\(language ?? "?"), final: \(isFinal)): \(trimmed)")
                     }
                 }
             } catch {
                 await MainActor.run {
                     self.isProcessing = false
                     if case .transcribing = self.state { self.state = .listening }
-                    print("[whisper] transcription error: \(error)")
+                    dlog("[whisper] transcription error: \(error)")
                 }
             }
         }

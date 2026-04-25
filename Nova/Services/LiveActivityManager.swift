@@ -20,7 +20,7 @@ final class LiveActivityManager {
 
     func startVoiceConversation(state: String, label: String) {
         guard isAuthorized else {
-            print("[live-activity] not authorized")
+            dlog("[live-activity] not authorized")
             return
         }
         if activity != nil {
@@ -41,9 +41,9 @@ final class LiveActivityManager {
                 content: .init(state: content, staleDate: nil),
                 pushType: nil
             )
-            print("[live-activity] started voice conversation")
+            dlog("[live-activity] started voice conversation")
         } catch {
-            print("[live-activity] start failed: \(error)")
+            dlog("[live-activity] start failed: \(error)")
         }
     }
 
@@ -67,7 +67,7 @@ final class LiveActivityManager {
             await activity.end(.init(state: final, staleDate: nil), dismissalPolicy: .immediate)
         }
         self.activity = nil
-        print("[live-activity] ended")
+        dlog("[live-activity] ended")
     }
 }
 #endif

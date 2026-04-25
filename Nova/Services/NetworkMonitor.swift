@@ -80,7 +80,7 @@ class NetworkMonitor: ObservableObject {
             connectionType = .none
         }
 
-        print("[network] status=\(nowConnected ? "ONLINE" : "OFFLINE") type=\(connectionType) expensive=\(isExpensive)")
+        dlog("[network] status=\(nowConnected ? "ONLINE" : "OFFLINE") type=\(connectionType) expensive=\(isExpensive)")
 
         // Notify callback if status flipped OR connection type changed (e.g. WiFi → Cellular)
         if wasConnected != nowConnected || (nowConnected && oldType != connectionType) {

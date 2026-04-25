@@ -201,7 +201,7 @@ class VoiceProfileService: ObservableObject {
             }
 
             saveEnrolledEmbedding(averaged)
-            print("[voice-id] ✅ enrolled with \(embeddings.count) samples, \(dim)-dim averaged embedding")
+            dlog("[voice-id] ✅ enrolled with \(embeddings.count) samples, \(dim)-dim averaged embedding")
 
             // Track enrollment stats
             enrollmentDate = Date()
@@ -219,7 +219,7 @@ class VoiceProfileService: ObservableObject {
             HapticManager.shared.voiceEnrollmentSuccess()
         } catch {
             state = .error("Enrollment failed: \(error.localizedDescription)")
-            print("[voice-id] enrollment error: \(error)")
+            dlog("[voice-id] enrollment error: \(error)")
             HapticManager.shared.voiceEnrollmentFailed()
         }
     }
@@ -251,10 +251,10 @@ class VoiceProfileService: ObservableObject {
                 self.saveStats()
             }
 
-            print("[voice-id] verify: similarity=\(String(format: "%.3f", similarity)) threshold=\(threshold) → \(verified ? "✅ match" : "❌ no match")")
+            dlog("[voice-id] verify: similarity=\(String(format: "%.3f", similarity)) threshold=\(threshold) → \(verified ? "✅ match" : "❌ no match")")
             return (verified, similarity)
         } catch {
-            print("[voice-id] verify error: \(error)")
+            dlog("[voice-id] verify error: \(error)")
             return (false, 0.0)
         }
     }

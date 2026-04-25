@@ -246,7 +246,7 @@ struct SetupView: View {
             }
 
             VStack(spacing: 16) {
-                TextField("http://100.105.26.7:3000", text: $server)
+                TextField("http://server.local:3000", text: $server)
                     .textFieldStyle(NovaTextFieldStyle())
                     .autocapitalization(.none)
                     .keyboardType(.URL)
@@ -1139,15 +1139,15 @@ struct ChatView: View {
             case .success(let urls):
                 guard let url = urls.first else { return }
                 guard url.startAccessingSecurityScopedResource() else {
-                    print("[file] cannot access: \(url)")
+                    dlog("[file] cannot access: \(url)")
                     return
                 }
                 defer { url.stopAccessingSecurityScopedResource() }
                 guard let data = try? Data(contentsOf: url) else {
-                    print("[file] cannot read: \(url)")
+                    dlog("[file] cannot read: \(url)")
                     return
                 }
-                print("[file] loaded \(data.count) bytes from \(url.lastPathComponent)")
+                dlog("[file] loaded \(data.count) bytes from \(url.lastPathComponent)")
                 // Video soubory
                 let videoExtensions = ["mp4", "mov", "m4v", "avi", "mkv", "webm"]
                 if videoExtensions.contains(url.pathExtension.lowercased()) {
@@ -1174,7 +1174,7 @@ struct ChatView: View {
                     Task { await nova.sendMessage("[Soubor \(url.lastPathComponent) — \(data.count) B, neumím ho přečíst]") }
                 }
             case .failure(let error):
-                print("[file] error: \(error.localizedDescription)")
+                dlog("[file] error: \(error.localizedDescription)")
             }
         }
     }
@@ -1913,7 +1913,7 @@ struct ImageSaver {
                 HapticManager.shared.novaResponseChord()
             }
         } catch {
-            print("[save] error: \(error.localizedDescription)")
+            dlog("[save] error: \(error.localizedDescription)")
         }
     }
 }

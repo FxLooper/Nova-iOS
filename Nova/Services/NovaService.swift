@@ -117,7 +117,7 @@ class NovaService: ObservableObject {
         if webStages.contains(key) {
             webModeTimer?.invalidate()
             if !isWebMode {
-                print("[mode] WEB ON (stage: \(key))")
+                dlog("[mode] WEB ON (stage: \(key))")
                 isWebMode = true
             }
         }
@@ -135,7 +135,7 @@ class NovaService: ObservableObject {
                 devHistory = logs
             }
         } catch {
-            print("[devHistory] error: \(error.localizedDescription)")
+            dlog("[devHistory] error: \(error.localizedDescription)")
         }
     }
 
@@ -154,7 +154,9 @@ class NovaService: ObservableObject {
                 let active = json["active"] as? Bool ?? false
                 activeSession = active ? (json["project"] as? String) : nil
             }
-        } catch {}
+        } catch {
+            dlog("[checkSession] failed: \(error.localizedDescription)")
+        }
     }
 
     func checkCronResults() async {
@@ -181,7 +183,7 @@ class NovaService: ObservableObject {
             }
             saveMessages()
             lastCronCheck = Date()
-        } catch { print("[cron] check error: \(error)") }
+        } catch { dlog("[cron] check error: \(error)") }
     }
 
     func clearDevHistory() async {
@@ -210,7 +212,7 @@ class NovaService: ObservableObject {
                let facts = json["facts"] as? [String] {
                 memoryFacts = facts
             }
-        } catch { print("[memory] fetch error: \(error)") }
+        } catch { dlog("[memory] fetch error: \(error)") }
     }
 
     func deleteMemoryFact(at index: Int) async {
@@ -223,7 +225,7 @@ class NovaService: ObservableObject {
             if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
                 await fetchMemory()
             }
-        } catch { print("[memory] delete error: \(error)") }
+        } catch { dlog("[memory] delete error: \(error)") }
     }
 
     func clearAllMemory() async {
@@ -234,7 +236,7 @@ class NovaService: ObservableObject {
         do {
             let (_, _) = try await URLSession.shared.data(for: req)
             memoryFacts = []
-        } catch { print("[memory] clear error: \(error)") }
+        } catch { dlog("[memory] clear error: \(error)") }
     }
 
     // MARK: - Recap (automatické připomenutí po neaktivitě)
@@ -312,7 +314,7 @@ class NovaService: ObservableObject {
                        let text = pollJson["text"] as? String,
                        !text.isEmpty {
                         recapText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                        print("[recap] \(recapText ?? "")")
+                        dlog("[recap] \(recapText ?? "")")
                         // Auto-hide po 15s
                         Task { @MainActor in
                             try? await Task.sleep(nanoseconds: 15_000_000_000)
@@ -323,7 +325,7 @@ class NovaService: ObservableObject {
                 }
             }
         } catch {
-            print("[recap] error: \(error.localizedDescription)")
+            dlog("[recap] error: \(error.localizedDescription)")
         }
     }
 
@@ -365,7 +367,7 @@ class NovaService: ObservableObject {
         // Network reachability — auto-reconnect WebSocket on network changes
         networkMonitor.onConnectionChange = { [weak self] isConnected in
             guard let self = self else { return }
-            print("[network] connection changed: \(isConnected ? "ONLINE" : "OFFLINE")")
+            dlog("[network] connection changed: \(isConnected ? "ONLINE" : "OFFLINE")")
             if isConnected {
                 // Network is back — force ping + reconnect WebSocket
                 Task {
@@ -377,7 +379,7 @@ class NovaService: ObservableObject {
         // Wake word: když zachytí "Hi Nova" / "Ahoj Nova", rovnou startuj konverzaci.
         wakeWord.onWakeDetected = { [weak self] in
             guard let self = self else { return }
-            print("[wake] ▶️ triggering startConversation")
+            dlog("[wake] ▶️ triggering startConversation")
             HapticManager.shared.conversationToggle()
             self.startConversation()
         }
@@ -392,7 +394,7 @@ class NovaService: ObservableObject {
         // Demo mode bez serveru: wake word může klidně běžet, jen startConversation zobrazí banner.
         let ok = await wakeWord.requestAuthorization()
         guard ok else {
-            print("[wake] speech auth denied — wake word disabled")
+            dlog("[wake] speech auth denied — wake word disabled")
             return
         }
         wakeWord.start()
@@ -676,14 +678,14 @@ class NovaService: ObservableObject {
 
         isSending = true
         lastSendTime = now
-        print("[chat] === SENDING: \(text.prefix(40)) ===")
+        dlog("[chat] === SENDING: \(text.prefix(40)) ===")
 
         // Whisper běží ale transcripty se ignorují (guard state == .listening)
         // Whisper běží pro VAD barge-in, ale transcripty se ignorují (guard state == .listening)
         if conversationActive {
             currentUtterance = ""
             interimText = ""
-            print("[chat] whisper on (VAD barge-in, threshold 0.06)")
+            dlog("[chat] whisper on (VAD barge-in, threshold 0.06)")
         }
 
         // Zastav TTS pokud Nova právě mluví
@@ -695,7 +697,7 @@ class NovaService: ObservableObject {
         saveMessages()
         state = .thinking
         thinkingStage = ThinkingStage(key: "understanding", detail: nil)
-        print("[stage] set to: understanding (sendMessage start)")
+        dlog("[stage] set to: understanding (sendMessage start)")
         streamingText = ""
         isStreaming = false
         streamReplacedText = nil
@@ -707,9 +709,9 @@ class NovaService: ObservableObject {
                 profileDict["latitude"] = "\(loc["latitude"] ?? "")"
                 profileDict["longitude"] = "\(loc["longitude"] ?? "")"
                 if let gpsCity = loc["city"] as? String { profileDict["city"] = gpsCity }
-                print("[GPS] sending: \(loc)")
+                dlog("[GPS] sending: location attached")
             } else {
-                print("[GPS] no location available")
+                dlog("[GPS] no location available")
             }
             var payload: [String: Any] = [
                 "messages": messages.suffix(50).map { ["role": $0.role == "user" ? "user" : "assistant", "content": $0.content] },
@@ -732,13 +734,13 @@ class NovaService: ObservableObject {
             request.httpBody = jsonData
             request.timeoutInterval = 60
 
-            print("[chat] POST \(serverURL)/api/chat, wsConnected=\(isConnected)")
+            dlog("[chat] POST \(serverURL)/api/chat, wsConnected=\(isConnected)")
             let (data, response) = try await URLSession.shared.data(for: request)
             let httpResponse = response as? HTTPURLResponse
-            print("[chat] response status: \(httpResponse?.statusCode ?? -1)")
+            dlog("[chat] response status: \(httpResponse?.statusCode ?? -1)")
             guard httpResponse?.statusCode == 200 else {
                 let body = String(data: data, encoding: .utf8) ?? ""
-                print("[chat] error body: \(body)")
+                dlog("[chat] error body: \(body)")
                 throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Server error (\(httpResponse?.statusCode ?? -1))"])
             }
 
@@ -773,10 +775,10 @@ class NovaService: ObservableObject {
                 if let url = URL(string: urlString),
                    let scheme = url.scheme?.lowercased(),
                    allowedSchemes.contains(scheme) {
-                    print("[openURL] \(scheme): \(url.host ?? "")")
+                    dlog("[openURL] \(scheme): \(url.host ?? "")")
                     await UIApplication.shared.open(url)
                 } else {
-                    print("[openURL] BLOCKED unsafe scheme: \(urlString.prefix(30))")
+                    dlog("[openURL] BLOCKED unsafe scheme: \(urlString.prefix(30))")
                 }
             }
 
@@ -863,7 +865,7 @@ class NovaService: ObservableObject {
                     if thinkingStage != newStage {
                         thinkingStage = newStage
                         updateModeFromStage()  // explicitní fallback
-                        print("[stage] received: \(stageKey)")
+                        dlog("[stage] received: \(stageKey)")
                         HapticManager.shared.selectionChanged()
                     }
                 } else if !text.isEmpty && thinkingStage?.key != "generating_response" && thinkingStage?.key != "composing" {
@@ -902,7 +904,7 @@ class NovaService: ObservableObject {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(token, forHTTPHeaderField: "X-Nova-Token")
             let selectedVoice = UserDefaults.standard.string(forKey: "nova_voice") ?? profile["voice"] ?? "cs-vlasta"
-            print("[TTS] sending voice: \(selectedVoice)")
+            dlog("[TTS] sending voice: \(selectedVoice)")
             let speedPct = Int(UserDefaults.standard.double(forKey: "nova_tts_speed"))
             let rate = speedPct >= 0 ? "+\(speedPct)%" : "\(speedPct)%"
             request.httpBody = try JSONSerialization.data(withJSONObject: ["text": text, "voice": selectedVoice, "rate": rate])
@@ -913,7 +915,7 @@ class NovaService: ObservableObject {
             let httpResponse = response as? HTTPURLResponse
             let contentType = httpResponse?.value(forHTTPHeaderField: "Content-Type") ?? ""
             guard httpResponse?.statusCode == 200, contentType.contains("audio"), data.count > 200 else {
-                print("[TTS] server error: HTTP \(httpResponse?.statusCode ?? 0), type=\(contentType), size=\(data.count)")
+                dlog("[TTS] server error: HTTP \(httpResponse?.statusCode ?? 0), type=\(contentType), size=\(data.count)")
                 state = .idle
                 return
             }
@@ -941,7 +943,7 @@ class NovaService: ObservableObject {
             audioPlayer = nil
             currentTTSText = ""
         } catch {
-            print("[TTS] playback error: \(error.localizedDescription) — skipping voice")
+            dlog("[TTS] playback error: \(error.localizedDescription) — skipping voice")
             state = .idle
         }
     }
@@ -1000,9 +1002,9 @@ class NovaService: ObservableObject {
     // MARK: - Push-to-Talk
     // Drž mic tlačítko → spustí SR, uvolnění → pošle finální text
     func startPushToTalk() {
-        print("[ptt] startPushToTalk called — muted: \(isMuted), conversationActive: \(conversationActive), whisper: \(whisperState), useWhisper: \(useWhisper)")
-        guard !isMuted else { print("[ptt] BLOCKED: muted"); return }
-        guard !conversationActive else { print("[ptt] BLOCKED: conversation active"); return }
+        dlog("[ptt] startPushToTalk called — muted: \(isMuted), conversationActive: \(conversationActive), whisper: \(whisperState), useWhisper: \(useWhisper)")
+        guard !isMuted else { dlog("[ptt] BLOCKED: muted"); return }
+        guard !conversationActive else { dlog("[ptt] BLOCKED: conversation active"); return }
         HapticManager.shared.pushToTalkStart()
         pushToTalkActive = true
         currentUtterance = ""
@@ -1013,10 +1015,10 @@ class NovaService: ObservableObject {
             // PTT: nastav jazyk podle uživatelského nastavení (auto-detect na krátkých větách selhává)
             let lang = UserDefaults.standard.string(forKey: "nova_lang") ?? "cs"
             whisper.languageHint = lang
-            print("[ptt] using Whisper STT (lang: \(lang))")
+            dlog("[ptt] using Whisper STT (lang: \(lang))")
             startWhisperListening()
         } else {
-            print("[ptt] using DictationTranscriber fallback")
+            dlog("[ptt] using DictationTranscriber fallback")
             startDictation()
         }
     }
@@ -1044,11 +1046,11 @@ class NovaService: ObservableObject {
         // Pokud se nepoužívá dictation mode, vyčistí ho volající
 
         if text.isEmpty {
-            print("[ptt] no text captured")
+            dlog("[ptt] no text captured")
             interimText = ""
             state = .idle
         } else {
-            print("[ptt] captured: \(text)")
+            dlog("[ptt] captured: \(text)")
             interimText = text  // Uchovej pro review
             state = .idle  // UI rozhodne co dál
         }
@@ -1100,7 +1102,7 @@ class NovaService: ObservableObject {
                         self.bargeInVoiceStart = Date()
                     } else if Date().timeIntervalSince(self.bargeInVoiceStart!) >= self.bargeInDurationThreshold {
                         // Uživatel mluví 300ms+ → barge-in
-                        print("[barge-in] VAD detected user voice (RMS: \(String(format: "%.4f", rms))) — stopping TTS")
+                        dlog("[barge-in] VAD detected user voice (RMS: \(String(format: "%.4f", rms))) — stopping TTS")
                         self.bargeInVoiceStart = nil
                         self.interruptAndListen()
                     }
@@ -1124,7 +1126,7 @@ class NovaService: ObservableObject {
                         self.pttAccumulated = accumulated
                         self.currentUtterance = accumulated
                         self.interimText = accumulated
-                        print("[whisper-ptt] accumulated: \(accumulated)")
+                        dlog("[whisper-ptt] accumulated: \(accumulated)")
                     } else {
                         // Interim: ukaž dosavadní + aktuální rozpracovanou
                         let preview = self.pttAccumulated.isEmpty
@@ -1141,7 +1143,7 @@ class NovaService: ObservableObject {
                     self.currentUtterance = text
                     self.interimText = text
                     if isFinal {
-                        print("[whisper] final (\(language ?? "?")): \(text)")
+                        dlog("[whisper] final (\(language ?? "?")): \(text)")
                         await self.handleUtteranceEnd()
                     }
                 }
@@ -1153,9 +1155,9 @@ class NovaService: ObservableObject {
         do {
             try whisper.startListening()
             state = .listening
-            print("[whisper] listening started")
+            dlog("[whisper] listening started")
         } catch {
-            print("[whisper] start error: \(error) — fallback na DictationTranscriber")
+            dlog("[whisper] start error: \(error) — fallback na DictationTranscriber")
             startDictation()
         }
     }
@@ -1187,7 +1189,7 @@ class NovaService: ObservableObject {
         currentUtterance = ""
         interimText = ""
         state = .idle
-        print("[speech] conversation ended")
+        dlog("[speech] conversation ended")
         // Obnov wake word posluchače — aby mohl Ondřej hned říct "Hi Nova" znovu.
         if wakeWordEnabled && !wakeWord.isRunning {
             Task { await self.startWakeWordIfAllowed() }
@@ -1196,7 +1198,7 @@ class NovaService: ObservableObject {
 
     /// Přeruš TTS a začni poslouchat (VAD barge-in nebo tap na orb)
     func interruptAndListen() {
-        print("[speech] INTERRUPT — stopping TTS, clearing buffer, restarting whisper")
+        dlog("[speech] INTERRUPT — stopping TTS, clearing buffer, restarting whisper")
         // Zastav TTS
         audioPlayer?.stop()
         audioPlayer = nil
@@ -1223,7 +1225,7 @@ class NovaService: ObservableObject {
             } else {
                 self.state = .listening
             }
-            print("[speech] buffer cleared, listening again")
+            dlog("[speech] buffer cleared, listening again")
         }
     }
 
@@ -1245,7 +1247,7 @@ class NovaService: ObservableObject {
             try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
             try session.setActive(true)
         } catch {
-            print("[speech] audio session reset error: \(error)")
+            dlog("[speech] audio session reset error: \(error)")
         }
 
         // Restartuj whisper (byl zastaven po TTS pro echo prevention)
@@ -1258,7 +1260,7 @@ class NovaService: ObservableObject {
         } else {
             state = .listening
         }
-        print("[speech] ready for next turn")
+        dlog("[speech] ready for next turn")
     }
 
     private var dictationTranscriber: DictationTranscriber?
@@ -1279,25 +1281,25 @@ class NovaService: ObservableObject {
             try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
-            print("[speech] audio session error: \(error)")
+            dlog("[speech] audio session error: \(error)")
             return
         }
 
         let locale = Locale(identifier: speechLocale)
         dictationTranscriber = DictationTranscriber(locale: locale, preset: .progressiveLongDictation)
         guard let transcriber = dictationTranscriber else {
-            print("[speech] DictationTranscriber init failed")
+            dlog("[speech] DictationTranscriber init failed")
             return
         }
         analyzer = SpeechAnalyzer(modules: [transcriber])
         guard let analyzer = analyzer else {
-            print("[speech] SpeechAnalyzer init failed")
+            dlog("[speech] SpeechAnalyzer init failed")
             return
         }
 
         state = .listening
         currentUtterance = ""
-        print("[speech] DictationTranscriber started (\(locale))")
+        dlog("[speech] DictationTranscriber started (\(locale))")
 
         let inputNode = audioEngine.inputNode
         inputNode.removeTap(onBus: 0)
@@ -1305,14 +1307,14 @@ class NovaService: ObservableObject {
         analyzerTask = Task { [weak self] in
             do {
                 guard let targetFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
-                    print("[speech] no compatible audio format")
+                    dlog("[speech] no compatible audio format")
                     return
                 }
                 let hwFormat = inputNode.inputFormat(forBus: 0)
-                print("[speech] hw format: \(hwFormat), target format: \(targetFormat)")
+                dlog("[speech] hw format: \(hwFormat), target format: \(targetFormat)")
 
                 guard let converter = AVAudioConverter(from: hwFormat, to: targetFormat) else {
-                    print("[speech] failed to create audio converter")
+                    dlog("[speech] failed to create audio converter")
                     return
                 }
 
@@ -1357,11 +1359,11 @@ class NovaService: ObservableObject {
 
                 // Alokuj locale modely
                 try await analyzer.prepareToAnalyze(in: targetFormat)
-                print("[speech] analyzer prepared")
+                dlog("[speech] analyzer prepared")
 
                 self?.audioEngine.prepare()
                 try self?.audioEngine.start()
-                print("[speech] engine running: \(self?.audioEngine.isRunning ?? false)")
+                dlog("[speech] engine running: \(self?.audioEngine.isRunning ?? false)")
 
                 // Čti výsledky souběžně
                 let resultsTask = Task { [weak self] in
@@ -1393,7 +1395,7 @@ class NovaService: ObservableObject {
                 // Čekej na resultsTask (nekanceluj — start() neblokuje)
                 try? await resultsTask.value
             } catch {
-                print("[speech] DictationTranscriber error: \(error)")
+                dlog("[speech] DictationTranscriber error: \(error)")
                 await MainActor.run { self?.state = .idle }
             }
         }
@@ -1402,20 +1404,20 @@ class NovaService: ObservableObject {
     private func handleUtteranceEnd() async {
         // Echo prevention — nezasílej pokud už probíhá zpracování nebo TTS
         guard state == .listening else {
-            print("[speech] utterance ignored (state: \(state))")
+            dlog("[speech] utterance ignored (state: \(state))")
             return
         }
         let text = currentUtterance.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         currentUtterance = ""
         interimText = ""
-        print("[speech] utterance end: \(text)")
+        dlog("[speech] utterance end: \(text)")
 
         // Voice ID verifikace — pokud profil existuje a enforcement je ON
         if voiceVerificationEnforced && voiceProfile.state == .enrolled {
             let verified = await verifyRecentAudio()
             if !verified {
-                print("[voice-id] ❌ verification failed — ignoring utterance")
+                dlog("[voice-id] ❌ verification failed — ignoring utterance")
                 lastVerificationFailed = true
                 HapticManager.shared.voiceVerificationFailed()
                 // Zobraz červenou indikaci na ~2s
@@ -1425,7 +1427,7 @@ class NovaService: ObservableObject {
                 }
                 return
             }
-            print("[voice-id] ✅ verified — proceeding with utterance")
+            dlog("[voice-id] ✅ verified — proceeding with utterance")
             HapticManager.shared.voiceVerificationSuccess()
         }
 
@@ -1507,7 +1509,7 @@ class NovaService: ObservableObject {
             try data.write(to: url)
             return url
         } catch {
-            print("[voice-id] failed to write WAV: \(error)")
+            dlog("[voice-id] failed to write WAV: \(error)")
             return nil
         }
     }
@@ -1522,17 +1524,17 @@ class NovaService: ObservableObject {
         let recentSamples = Array(ringSnapshot.suffix(Int(16000 * 3.0)))
         if recentSamples.count >= 16000 {
             let liveness = livenessDetector.analyze(samples: recentSamples)
-            print("[liveness] flatness=\(String(format: "%.3f", liveness.spectralFlatness)) variance=\(String(format: "%.4f", liveness.energyVariance)) rmsCV=\(String(format: "%.3f", liveness.rmsCV)) → live=\(liveness.isLive)")
+            dlog("[liveness] flatness=\(String(format: "%.3f", liveness.spectralFlatness)) variance=\(String(format: "%.4f", liveness.energyVariance)) rmsCV=\(String(format: "%.3f", liveness.rmsCV)) → live=\(liveness.isLive)")
 
             if !liveness.isLive {
-                print("[voice-id] ❌ liveness check failed: \(liveness.reason ?? "unknown")")
+                dlog("[voice-id] ❌ liveness check failed: \(liveness.reason ?? "unknown")")
                 return false
             }
         }
 
         // 2. Speaker verification (Mac server ECAPA-TDNN)
         guard let wavURL = saveRingBufferToWAV(seconds: 3.0) else {
-            print("[voice-id] no audio in ring buffer for verification")
+            dlog("[voice-id] no audio in ring buffer for verification")
             return false  // fail-close: bez audia nepustím nikoho
         }
         defer {
@@ -1575,8 +1577,12 @@ class NovaService: ObservableObject {
     private let wsMaxReconnects = 5
 
     func connectWebSocket() {
-        // WS disabled — používáme HTTP polling
+        // WS disabled — používáme HTTP polling. Dead code below kept for possible future revival.
         return
+    }
+
+    #if false
+    private func _connectWebSocketImpl() {
         guard !serverURL.isEmpty, !isReconnecting, wsReconnectCount < wsMaxReconnects else { return }
         isReconnecting = true
 
@@ -1595,7 +1601,7 @@ class NovaService: ObservableObject {
             isReconnecting = false
             return
         }
-        print("[ws] connecting to: \(url.absoluteString)")
+        dlog("[ws] connecting to: \(url.absoluteString)")
 
         let config = URLSessionConfiguration.default
         config.waitsForConnectivity = false
@@ -1610,6 +1616,7 @@ class NovaService: ObservableObject {
         // isConnected set to true after first successful receive
         receiveWebSocket()
     }
+    #endif
 
     private func receiveWebSocket() {
         webSocket?.receive { [weak self] result in
@@ -1636,14 +1643,14 @@ class NovaService: ObservableObject {
                 Task { @MainActor in
                     if self?.isConnected != false { self?.isConnected = false }
                     self?.wsReconnectCount += 1
-                    print("[ws] receive failed (\(self?.wsReconnectCount ?? 0)/\(self?.wsMaxReconnects ?? 3)): \(error.localizedDescription)")
+                    dlog("[ws] receive failed (\(self?.wsReconnectCount ?? 0)/\(self?.wsMaxReconnects ?? 3)): \(error.localizedDescription)")
                     // Resume pending stream continuation only if one exists (user was waiting for response)
                     if let completion = self?.streamCompletion {
                         completion.resume(throwing: NSError(domain: "nova.ws", code: -1, userInfo: [NSLocalizedDescriptionKey: "Spojení se serverem se přerušilo"]))
                         self?.streamCompletion = nil
                     }
                     guard (self?.wsReconnectCount ?? 99) < (self?.wsMaxReconnects ?? 3) else {
-                        print("[ws] max reconnects reached, stopping")
+                        dlog("[ws] max reconnects reached, stopping")
                         return
                     }
                     try? await Task.sleep(nanoseconds: 10_000_000_000)

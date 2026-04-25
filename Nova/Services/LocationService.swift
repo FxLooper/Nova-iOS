@@ -72,6 +72,6 @@ class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("[location] error: \(error.localizedDescription)")
+        dlog("[location] error: \(error.localizedDescription)")
     }
 }

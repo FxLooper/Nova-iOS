@@ -1,6 +1,16 @@
 import Foundation
 import Security
 
+// MARK: - Debug logging
+// V DEBUG buildech se chová jako print, v RELEASE buildech je no-op.
+// Používej dlog(...) místo print(...) pro všechny vývojářské logy.
+@inline(__always)
+func dlog(_ items: Any..., separator: String = " ", terminator: String = "\n") {
+    #if DEBUG
+    Swift.print(items.map { "\($0)" }.joined(separator: separator), terminator: terminator)
+    #endif
+}
+
 struct KeychainHelper {
     @discardableResult
     static func save(key: String, value: String) -> Bool {
@@ -12,13 +22,13 @@ struct KeychainHelper {
         ]
         let deleteStatus = SecItemDelete(query as CFDictionary)
         if deleteStatus != errSecSuccess && deleteStatus != errSecItemNotFound {
-            print("[keychain] delete failed for \(key): \(deleteStatus)")
+            dlog("[keychain] delete failed for \(key): \(deleteStatus)")
         }
         var add = query
         add[kSecValueData as String] = data
         let addStatus = SecItemAdd(add as CFDictionary, nil)
         if addStatus != errSecSuccess {
-            print("[keychain] save failed for \(key): \(addStatus)")
+            dlog("[keychain] save failed for \(key): \(addStatus)")
             return false
         }
         return true

@@ -17,10 +17,15 @@ Zaškrtni v App Store Connect tyto kategorie:
   - Purposes: **App Functionality** (Nova oslovuje uživatele jménem)
 
 ### User Content
-- **Audio Data** — ANO. Hlasové nahrávky během konverzace.
+- **Audio Data** — ANO. Hlasové nahrávky během konverzace + voice ID enrollment vzorky pro ECAPA-TDNN.
   - Linked to user: **No**
   - Used for tracking: **No**
-  - Purposes: **App Functionality** (STT + speaker recognition)
+  - Purposes: **App Functionality** (STT, speaker recognition, anti-spoofing)
+
+- **Photos or Videos** — ANO. Pouze pokud uživatel přiloží foto/video do konverzace (do 200 MB).
+  - Linked to user: **No**
+  - Used for tracking: **No**
+  - Purposes: **App Functionality** (vizuální analýza obsahu)
 
 - **Other User Content** — ANO. Texty zpráv v konverzaci.
   - Linked to user: **No**
@@ -29,10 +34,10 @@ Zaškrtni v App Store Connect tyto kategorie:
 
 ### Identifiers
 - **User ID** — NE (žádný account identifier, Nova nemá účty).
-- **Device ID** — NE (APNS device token se posílá výhradně na uživatelův vlastní server pro push notifikace, ne třetí straně).
+- **Device ID** — NE (APNS device token se posílá výhradně na uživatelův vlastní server pro push notifikace a naplánované úkoly, ne třetí straně).
 
 ### Location
-- **Coarse Location** — ANO, pouze pokud uživatel povolí.
+- **Coarse Location** — ANO, pouze pokud uživatel povolí (NSLocationWhenInUseUsageDescription).
   - Linked to user: **No**
   - Used for tracking: **No**
   - Purposes: **App Functionality** (počasí, nearby places)
@@ -72,3 +77,16 @@ Návrh umístění (zdarma):
 - [ ] V Xcode: `ITSAppUsesNonExemptEncryption = false` (už hotové)
 - [ ] Usage description stringy v Info.plist přesně popisují, co Nova dělá (už hotové)
 - [ ] App Privacy Report generovaný systémem odpovídá (ověř po prvním TestFlight buildu)
+
+## 6. Permissions v aktuálním Info.plist (stav verze 13.4.7)
+
+Aktuálně Nova v `Nova/Info.plist` deklaruje tyto usage description stringy — všechny musí mít odpovídající záznam v App Privacy:
+
+- `NSMicrophoneUsageDescription` — mikrofon (povinné, vždy on)
+- `NSSpeechRecognitionUsageDescription` — on-device + serverové STT
+- `NSLocationWhenInUseUsageDescription` — lokace (volitelné, pro počasí a místa)
+- `NSCameraUsageDescription` — kamera (volitelné, pro vizuální analýzu)
+- `NSPhotoLibraryAddUsageDescription` — uložení vygenerovaných obrázků do Fotek
+- `NSLocalNetworkUsageDescription` — připojení k Nova serveru přes Bonjour / Tailscale
+
+Push notifikace se registrují runtime přes UNUserNotificationCenter — nevyžaduje string v Info.plist, ale uživatel potvrzuje runtime alert.

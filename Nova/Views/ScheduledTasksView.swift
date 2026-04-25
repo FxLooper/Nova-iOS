@@ -172,7 +172,7 @@ struct ScheduledTasksView: View {
                 }
                 recentResults = json["recentResults"] as? [[String: Any]] ?? []
             }
-        } catch { print("[scheduled] load error: \(error)") }
+        } catch { dlog("[scheduled] load error: \(error)") }
     }
 
     private func addTask(_ task: ScheduledTask) async {
