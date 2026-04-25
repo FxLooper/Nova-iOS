@@ -19,8 +19,15 @@ final class WakeWordService: ObservableObject {
     private var request: SNClassifySoundRequest?
     private let analysisQueue = DispatchQueue(label: "com.fxlooper.nova.wakeword")
 
-    /// Confidence threshold — jak moc si musí být model jistý
-    private let confidenceThreshold: Double = 0.7
+    /// Confidence threshold — adaptivní podle ambient noise.
+    /// V tichu citlivější (lépe zachytí), v hluku odolnější (méně false triggers).
+    private let minThreshold: Double = 0.62
+    private let maxThreshold: Double = 0.80
+    private var currentThreshold: Double = 0.70
+
+    /// Ambient RMS — exponential moving average pro adaptivní threshold
+    private var ambientRMS: Float = 0.0
+    private let rmsAlpha: Float = 0.05  // pomalá adaptace ~30s timeconstant
 
     /// Debounce — cooldown mezi triggery
     private var lastTriggerAt: Date = .distantPast
@@ -105,6 +112,12 @@ final class WakeWordService: ObservableObject {
             self?.analysisQueue.async {
                 self?.analyzer?.analyze(buffer, atAudioFramePosition: time.sampleTime)
             }
+            // Adaptivní threshold — počítej ambient RMS a aktualizuj práh
+            if let rms = WakeWordService.computeRMS(buffer) {
+                Task { @MainActor in
+                    self?.updateAmbientRMS(rms)
+                }
+            }
         }
 
         do {
@@ -112,7 +125,7 @@ final class WakeWordService: ObservableObject {
             try engine.start()
             isRunning = true
             lastError = nil
-            dlog("[wake] ✅ started — CoreML SoundAnalysis, threshold: \(confidenceThreshold)")
+            dlog("[wake] ✅ started — CoreML SoundAnalysis, adaptive threshold \(minThreshold)–\(maxThreshold)")
         } catch {
             lastError = "Engine start: \(error.localizedDescription)"
             dlog("[wake] engine start failed: \(error)")
@@ -131,17 +144,42 @@ final class WakeWordService: ObservableObject {
 
     // MARK: - Detection
     private func handleDetection(label: String, confidence: Double) {
-        guard label == "hey_nova" && confidence >= confidenceThreshold else { return }
+        guard label == "hey_nova" && confidence >= currentThreshold else { return }
 
         let now = Date()
         guard now.timeIntervalSince(lastTriggerAt) > triggerCooldown else { return }
         lastTriggerAt = now
 
         lastHeardText = "Hey Nova (\(Int(confidence * 100))%)"
-        dlog("[wake] 🔥 HEY NOVA detected! confidence: \(Int(confidence * 100))%")
+        dlog("[wake] 🔥 HEY NOVA detected! confidence: \(Int(confidence * 100))% (threshold: \(String(format: "%.2f", currentThreshold)))")
 
         HapticManager.shared.conversationToggle()
         onWakeDetected?()
+    }
+
+    // MARK: - Adaptive Threshold
+
+    /// Spočítá RMS jednoho audio bufferu. Statická → bezpečná z analysisQueue.
+    private static func computeRMS(_ buffer: AVAudioPCMBuffer) -> Float? {
+        guard let channelData = buffer.floatChannelData?[0] else { return nil }
+        let frameLength = Int(buffer.frameLength)
+        guard frameLength > 0 else { return nil }
+        var sum: Float = 0
+        for i in 0..<frameLength {
+            let s = channelData[i]
+            sum += s * s
+        }
+        return sqrt(sum / Float(frameLength))
+    }
+
+    /// Aktualizuje ambient RMS (EMA) a přepočítá adaptivní threshold.
+    /// Kvalitní mikrofon: ticho ~0.003-0.008, normální místnost ~0.01-0.02, hlasitý ambient 0.04+.
+    private func updateAmbientRMS(_ rms: Float) {
+        ambientRMS = ambientRMS * (1 - rmsAlpha) + rms * rmsAlpha
+        let quietRMS: Float = 0.005
+        let loudRMS: Float = 0.04
+        let normalized = max(0.0, min(1.0, (ambientRMS - quietRMS) / (loudRMS - quietRMS)))
+        currentThreshold = minThreshold + Double(normalized) * (maxThreshold - minThreshold)
     }
 }
 
