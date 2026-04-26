@@ -42,8 +42,8 @@ class NovaService: ObservableObject {
     var currentTTSText: String = ""
     /// VAD barge-in — sleduje amplitude během TTS
     private var bargeInVoiceStart: Date? = nil
-    private let bargeInAmplitudeThreshold: Float = 0.06  // RMS threshold — echo ~0.005, hlas 0.06+ (vyšší = méně false triggers)
-    private let bargeInDurationThreshold: TimeInterval = 0.0  // okamžitý trigger — jeden spike stačí
+    private let bargeInAmplitudeThreshold: Float = 0.035  // RMS threshold — echo ~0.005, hlas 0.035+ (citlivější detekce, ale duration filtruje echo)
+    private let bargeInDurationThreshold: TimeInterval = 0.1  // 100 ms — musí mluvit alespoň desetinu vteřiny, vyhneme se false positives z reziduálního echa
 
     // MARK: - Whisper STT (experimentální)
     private let whisper = WhisperService()
