@@ -467,12 +467,12 @@ class NovaService: ObservableObject {
         case 3: // Dev mode
             messages = [
                 Message(role: "user", content: "Otevři projekt Nova-iOS a přidej lokalizaci"),
-                Message(role: "ai", content: "📂 Otevírám projekt Nova-iOS...\n\n✅ Přidáno 16 jazyků do Localization.swift\n✅ Onboarding, Settings, ChatView — vše lokalizováno\n✅ System language detekce při prvním spuštění\n\nCommit vytvořen: `Plná lokalizace do 16 jazyků`"),
+                Message(role: "ai", content: "📂 Otevírám projekt Nova-iOS...\n\n✅ Přidáno 16 jazyků do Localization.swift\n✅ Onboarding, Settings, ChatView — vše lokalizováno\n✅ System language detekce při prvním spuštění\n\nCommit vytvořen: Plná lokalizace do 16 jazyků"),
             ]
         case 4: // Privacy
             messages = [
                 Message(role: "user", content: "Kde jsou moje data?"),
-                Message(role: "ai", content: "🔒 Tvoje data nikdy neopouští tvoji síť:\n\n• Hlas se zpracovává on-device (WhisperKit)\n• AI běží na tvém Macu přes Claude Code\n• Žádný cloud, žádný tracking\n• Konverzace zůstávají mezi tebou a tvým Macem\n\nNova je 100% soukromá."),
+                Message(role: "ai", content: "🔒 Tvoje data nikdy neopouští tvoji síť.\n\nHlas se zpracovává přímo na iPhonu pomocí WhisperKit — nic se neodesílá.\n\nAI běží na tvém Macu přes Claude Code. Žádný cloud, žádný tracking, žádné cizí servery.\n\nKonverzace zůstávají mezi tebou a tvým Macem. Nova je 100% soukromá."),
             ]
         default:
             break
