@@ -16,6 +16,8 @@ class NovaService: ObservableObject {
     @Published var isConnected = false
     @Published var isMuted = false
     @Published var ttsEnabled: Bool = UserDefaults.standard.object(forKey: "nova_tts_enabled") == nil ? true : UserDefaults.standard.bool(forKey: "nova_tts_enabled")
+    /// Earpiece mode — hlas přes sluchátko (jako telefonát), lepší barge-in
+    @Published var earpieceMode: Bool = UserDefaults.standard.bool(forKey: "nova_earpiece_mode")
     @Published var interimText = ""
     @Published var pendingConfirmation: PendingConfirmation?
     @Published var conversationActive = false // Tap orb = zapni/vypni konverzaci
@@ -1011,7 +1013,7 @@ class NovaService: ObservableObject {
         do {
             let session = AVAudioSession.sharedInstance()
             if session.category != .playAndRecord {
-                try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
+                try session.setCategory(.playAndRecord, mode: .voiceChat, options: earpieceMode ? [] : [.defaultToSpeaker])
                 try session.setActive(true)
             }
         } catch {
@@ -1380,7 +1382,7 @@ class NovaService: ObservableObject {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setActive(false, options: .notifyOthersOnDeactivation)
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: earpieceMode ? [] : [.defaultToSpeaker])
             try session.setActive(true)
         } catch {
             dlog("[speech] audio session reset error: \(error)")
@@ -1414,7 +1416,7 @@ class NovaService: ObservableObject {
         // Audio session
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker])
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: earpieceMode ? [] : [.defaultToSpeaker])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             dlog("[speech] audio session error: \(error)")

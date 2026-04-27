@@ -201,6 +201,23 @@ struct SettingsView: View {
                                         .font(.system(size: 10, weight: .light))
                                 }
                                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+
+                                // Earpiece mode
+                                Divider().opacity(0.15).padding(.vertical, 4)
+                                Toggle(isOn: Binding(
+                                    get: { nova.earpieceMode },
+                                    set: { nova.earpieceMode = $0; UserDefaults.standard.set($0, forKey: "nova_earpiece_mode") }
+                                )) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Earpiece mode")
+                                            .font(.system(size: 15, weight: .regular))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                                        Text(nova.earpieceMode ? "Hlas přes sluchátko — lepší přerušení" : "Hlas přes reproduktor")
+                                            .font(.system(size: 12, weight: .light))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                                    }
+                                }
+                                .tint(Color(hex: "1a1a2e").opacity(0.7))
                             }
                             .padding(.top, 8)
                         }
