@@ -40,10 +40,12 @@ class NovaService: ObservableObject {
     private var audioPlayer: AVAudioPlayer?
     /// Text co Nova právě říká přes TTS
     var currentTTSText: String = ""
+    /// Barge-in flag — interruptAndListen() ho nastaví na true, playTTS smyčka ho kontroluje a utne zbylou frontu vět
+    private var ttsInterrupted: Bool = false
     /// VAD barge-in — sleduje amplitude během TTS
     private var bargeInVoiceStart: Date? = nil
-    private let bargeInAmplitudeThreshold: Float = 0.035  // RMS threshold — echo ~0.005, hlas 0.035+ (citlivější detekce, ale duration filtruje echo)
-    private let bargeInDurationThreshold: TimeInterval = 0.1  // 100 ms — musí mluvit alespoň desetinu vteřiny, vyhneme se false positives z reziduálního echa
+    private let bargeInAmplitudeThreshold: Float = 0.06  // RMS threshold — echo ~0.01, hlas 0.06+
+    private let bargeInDurationThreshold: TimeInterval = 0.15  // 150ms — musí mluvit, ne jen echo spike
 
     // MARK: - Whisper STT (experimentální)
     private let whisper = WhisperService()
@@ -978,7 +980,7 @@ class NovaService: ObservableObject {
             audioPlayer = try AVAudioPlayer(data: data)
             audioPlayer?.play()
             while audioPlayer?.isPlaying == true {
-                if !ttsEnabled {
+                if !ttsEnabled || ttsInterrupted {
                     audioPlayer?.stop()
                     audioPlayer = nil
                     return false
@@ -1019,6 +1021,7 @@ class NovaService: ObservableObject {
         let selectedVoice = UserDefaults.standard.string(forKey: "nova_voice") ?? profile["voice"] ?? "cs-vlasta"
         dlog("[TTS] streaming \(sentences.count) sentence(s), voice: \(selectedVoice)")
         currentTTSText = text.lowercased()
+        ttsInterrupted = false  // reset flag — barge-in ho nastaví na true během streamingu
 
         // Jediná věta → bez paralelizace, jeden fetch a play
         if sentences.count == 1 {
@@ -1040,12 +1043,12 @@ class NovaService: ObservableObject {
         }
 
         for (idx, task) in fetchTasks.enumerated() {
-            // Přerušení (toggle TTS off) → zruš zbytek a skonči
-            if !ttsEnabled {
+            // Přerušení (toggle TTS off NEBO barge-in) → zruš zbytek a skonči
+            if !ttsEnabled || ttsInterrupted {
+                dlog("[TTS] streaming aborted at sentence \(idx + 1)/\(sentences.count) (ttsEnabled=\(ttsEnabled), interrupted=\(ttsInterrupted))")
                 for t in fetchTasks[idx...] { t.cancel() }
                 audioPlayer = nil
                 currentTTSText = ""
-                state = .idle
                 return
             }
             guard let data = await task.value else {
@@ -1053,11 +1056,12 @@ class NovaService: ObservableObject {
                 continue
             }
             let played = await playTTSChunk(data)
-            if !played && !ttsEnabled {
+            if !played {
+                // playTTSChunk vrátí false jen při přerušení (ttsEnabled off, ttsInterrupted, error) → ukonči streaming
+                dlog("[TTS] chunk \(idx + 1)/\(sentences.count) interrupted — aborting queue")
                 for t in fetchTasks[(idx + 1)...] { t.cancel() }
                 audioPlayer = nil
                 currentTTSText = ""
-                state = .idle
                 return
             }
         }
@@ -1325,7 +1329,8 @@ class NovaService: ObservableObject {
     /// Přeruš TTS a začni poslouchat (VAD barge-in nebo tap na orb)
     func interruptAndListen() {
         dlog("[speech] INTERRUPT — stopping TTS, clearing buffer, restarting whisper")
-        // Zastav TTS
+        // Zastav TTS — flag musí být nastaven PŘED stop(), ať playTTS smyčka utne i frontu zbylých vět
+        ttsInterrupted = true
         audioPlayer?.stop()
         audioPlayer = nil
         currentTTSText = ""
