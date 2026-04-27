@@ -25,11 +25,24 @@ struct SetupView: View {
     @State private var orbOpacity: Double = 0
     @State private var userName = ""
     @State private var userCity = ""
-    @State private var selectedLang = "cs"
+    @State private var selectedLang = Self.detectSystemLanguage()
     @State private var selectedGender = "female"
 
     private let languages = SettingsView.languages
     private let totalSteps = 5
+
+    /// Detekuj jazyk iPhonu — pokud ho Nova podporuje, použij ho; jinak EN
+    private static func detectSystemLanguage() -> String {
+        let supported = ["cs","en","de","fr","es","it","pt","pl","sk","ru","ja","zh","ko","ar","tr","hi"]
+        let preferred = Locale.preferredLanguages.first ?? "en"
+        let langCode = String(preferred.prefix(2))
+        return supported.contains(langCode) ? langCode : "en"
+    }
+
+    /// Lokalizace pro onboarding — používá vybraný jazyk (ne UserDefaults, ten se nastaví až při connect)
+    private func t(_ key: String) -> String {
+        L10n.strings[selectedLang]?[key] ?? L10n.strings["en"]?[key] ?? key
+    }
 
     var body: some View {
         ZStack {
@@ -82,20 +95,20 @@ struct SetupView: View {
                     .font(.system(size: 48, weight: .light))
                     .tracking(14)
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
-                Text(L10n.t("personal_ai"))
+                Text(t("personal_ai"))
                     .font(.system(size: 15, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
             }
             Spacer()
             VStack(alignment: .leading, spacing: 16) {
-                welcomeFeature(icon: "waveform.circle", text: "Hlasová konverzace v 16 jazycích")
-                welcomeFeature(icon: "brain.head.profile", text: "AI asistent co si pamatuje a učí se")
-                welcomeFeature(icon: "chevron.left.forwardslash.chevron.right", text: "Programuj hlasem — Dev mode")
-                welcomeFeature(icon: "lock.icloud", text: "100% privátní, tvoje data zůstávají u tebe")
+                welcomeFeature(icon: "waveform.circle", text: t("feature_voice"))
+                welcomeFeature(icon: "brain.head.profile", text: t("feature_memory"))
+                welcomeFeature(icon: "chevron.left.forwardslash.chevron.right", text: t("feature_dev"))
+                welcomeFeature(icon: "lock.icloud", text: t("feature_private"))
             }
             .padding(.horizontal, 40)
             Spacer()
-            nextButton("Začít") { step = 1 }
+            nextButton(t("start")) { step = 1 }
         }
     }
 
@@ -106,30 +119,30 @@ struct SetupView: View {
             VStack(spacing: 8) {
                 Text("👋")
                     .font(.system(size: 48))
-                Text("Jak ti říkáš?")
+                Text(t("whats_your_name"))
                     .font(.system(size: 24, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
             }
             Spacer().frame(height: 40)
             VStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("JMÉNO")
+                    Text(t("name").uppercased())
                         .font(.system(size: 11, weight: .medium))
                         .tracking(2)
                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
-                    TextField("Tvoje jméno", text: $userName)
+                    TextField(t("name_placeholder"), text: $userName)
                         .textFieldStyle(NovaTextFieldStyle())
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("MĚSTO")
+                    Text(t("city").uppercased())
                         .font(.system(size: 11, weight: .medium))
                         .tracking(2)
                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
-                    TextField("Kde bydlíš?", text: $userCity)
+                    TextField(t("city_placeholder"), text: $userCity)
                         .textFieldStyle(NovaTextFieldStyle())
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("JAZYK")
+                    Text(t("language").uppercased())
                         .font(.system(size: 11, weight: .medium))
                         .tracking(2)
                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
@@ -152,7 +165,7 @@ struct SetupView: View {
             }
             .padding(.horizontal, 40)
             Spacer()
-            nextButton("Pokračovat") { step = 2 }
+            nextButton(t("continue_btn")) { step = 2 }
         }
     }
 
@@ -163,21 +176,21 @@ struct SetupView: View {
             VStack(spacing: 8) {
                 Text("🎙")
                     .font(.system(size: 48))
-                Text("Jaký hlas preferuješ?")
+                Text(t("voice_preference"))
                     .font(.system(size: 24, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-                Text("Hlas kterým Nova mluví")
+                Text(t("voice_subtitle"))
                     .font(.system(size: 14, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
             }
             Spacer().frame(height: 40)
             HStack(spacing: 20) {
-                voiceOption(label: "Ženský", icon: "person.fill", gender: "female")
-                voiceOption(label: "Mužský", icon: "person.fill", gender: "male")
+                voiceOption(label: t("female"), icon: "person.fill", gender: "female")
+                voiceOption(label: t("male"), icon: "person.fill", gender: "male")
             }
             .padding(.horizontal, 40)
             Spacer()
-            nextButton("Pokračovat") { step = 3 }
+            nextButton(t("continue_btn")) { step = 3 }
         }
     }
 
@@ -212,10 +225,10 @@ struct SetupView: View {
             VStack(spacing: 8) {
                 Text("🔗")
                     .font(.system(size: 48))
-                Text("Připojení k Macu")
+                Text(t("connect_mac"))
                     .font(.system(size: 24, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-                Text("Otevři na Macu v prohlížeči adresu serveru/setup")
+                Text(t("connect_mac_desc"))
                     .font(.system(size: 13, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
                     .multilineTextAlignment(.center)
@@ -227,7 +240,7 @@ struct SetupView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "qrcode.viewfinder")
                         .font(.system(size: 24))
-                    Text("Naskenovat QR kód")
+                    Text(t("scan_qr"))
                         .font(.system(size: 16, weight: .medium))
                 }
                 .foregroundColor(Color(hex: "f5f0e8"))
@@ -240,7 +253,7 @@ struct SetupView: View {
 
             // Ruční zadání — fallback
             VStack(spacing: 4) {
-                Text("nebo zadej ručně")
+                Text(t("or_manual"))
                     .font(.system(size: 12, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.3))
             }
@@ -259,7 +272,7 @@ struct SetupView: View {
 
             VStack(spacing: 12) {
                 Button(action: { connectAndFinish() }) {
-                    Text("Připojit")
+                    Text(t("connect"))
                         .font(.system(size: 16, weight: .medium))
                         .tracking(2)
                         .foregroundColor(Color(hex: "f5f0e8"))
@@ -273,7 +286,7 @@ struct SetupView: View {
 
                 // "Ještě nemám server" — guest/demo cesta pro uživatele bez Mac serveru
                 Button(action: { showNoServerInfo = true }) {
-                    Text("Ještě nemám Nova server")
+                    Text(t("no_server_yet"))
                         .font(.system(size: 13, weight: .light))
                         .underline()
                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
@@ -334,10 +347,10 @@ struct SetupView: View {
                 .font(.system(size: 64))
                 .foregroundColor(.green.opacity(0.7))
             Spacer().frame(height: 24)
-            Text("Nova je připravena")
+            Text(t("setup_complete"))
                 .font(.system(size: 24, weight: .light))
                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-            Text("Řekni \"Ahoj Novo\" a začni")
+            Text(t("say_hi_nova"))
                 .font(.system(size: 14, weight: .light))
                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
                 .padding(.top, 8)
@@ -381,7 +394,7 @@ struct SetupView: View {
         Button(action: {
             withAnimation { action() }
         }) {
-            Text("Zpět")
+            Text(t("back"))
                 .font(.system(size: 13, weight: .light))
                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
         }
@@ -401,35 +414,35 @@ struct NoServerInfoSheet: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("🖥")
                             .font(.system(size: 48))
-                        Text("Jak Nova funguje")
+                        Text(L10n.t("how_nova_works"))
                             .font(.system(size: 24, weight: .light))
                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
-                        Text("Nova je tvůj soukromý AI asistent — běží na tvém Macu, tvoje data zůstávají u tebe.")
+                        Text(L10n.t("how_nova_works_desc"))
                             .font(.system(size: 14, weight: .light))
                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
                     }
                     .padding(.top, 30)
 
                     VStack(alignment: .leading, spacing: 14) {
-                        infoRow(icon: "1.circle", title: "Stáhni Nova server", text: "Otevři na svém Macu nova.fxlooper.com a stáhni instalátor. Stačí jedno kliknutí.")
-                        infoRow(icon: "2.circle", title: "Spusť ho", text: "Server běží jen na tvém Macu. Bez cloudu, bez tracking, bez cizích serverů.")
-                        infoRow(icon: "3.circle", title: "Naskenuj QR", text: "Na Macu se ti zobrazí QR kód. Naskenuješ ho tady v appce a hotovo.")
+                        infoRow(icon: "1.circle", title: L10n.t("step1_title"), text: L10n.t("step1_desc"))
+                        infoRow(icon: "2.circle", title: L10n.t("step2_title"), text: L10n.t("step2_desc"))
+                        infoRow(icon: "3.circle", title: L10n.t("step3_title"), text: L10n.t("step3_desc"))
                     }
 
                     Divider().padding(.vertical, 4)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Zatím jen zkouším")
+                        Text(L10n.t("just_trying"))
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
-                        Text("Můžeš si projít appku v režimu ukázky. Uvidíš rozhraní a funkce, ale AI odpovědi vyžadují připojení k Nova serveru.")
+                        Text(L10n.t("just_trying_desc"))
                             .font(.system(size: 13, weight: .light))
                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.55))
                     }
 
                     VStack(spacing: 12) {
                         Button(action: onDemo) {
-                            Text("Prozkoumat v režimu ukázky")
+                            Text(L10n.t("explore_demo"))
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(Color(hex: "f5f0e8"))
                                 .frame(maxWidth: .infinity)
@@ -438,7 +451,7 @@ struct NoServerInfoSheet: View {
                                 .cornerRadius(999)
                         }
                         Button(action: { dismiss() }) {
-                            Text("Zpět na připojení")
+                            Text(L10n.t("back_to_connect"))
                                 .font(.system(size: 14, weight: .light))
                                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                         }
@@ -608,7 +621,7 @@ struct ChatView: View {
                         Image(systemName: "sparkles")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.55))
-                        Text("Ukázkový režim — AI odpovědi vyžadují Nova server")
+                        Text(L10n.t("demo_mode_banner"))
                             .font(.system(size: 12, weight: .light))
                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.6))
                             .lineLimit(1)
@@ -618,7 +631,7 @@ struct ChatView: View {
                             HapticManager.shared.selectionChanged()
                             nova.exitDemoMode()
                         }) {
-                            Text("Připojit")
+                            Text(L10n.t("connect"))
                                 .font(.system(size: 12, weight: .medium))
                                 .tracking(1)
                                 .foregroundColor(Color(hex: "f5f0e8"))
@@ -761,7 +774,7 @@ struct ChatView: View {
 
                             // Confirm buttons
                             if nova.pendingConfirmation != nil {
-                                ConfirmButtons(yesLabel: "Ano", noLabel: "Ne") { confirmed in
+                                ConfirmButtons(yesLabel: L10n.t("yes"), noLabel: L10n.t("no")) { confirmed in
                                     Task { await nova.confirmAction(confirmed) }
                                 }
                                 .padding(.horizontal, 20)
@@ -918,19 +931,19 @@ struct ChatView: View {
                                         HapticManager.shared.selectionChanged()
                                         showCamera = true
                                     }) {
-                                        Label("Kamera", systemImage: "camera")
+                                        Label(L10n.t("camera"), systemImage: "camera")
                                     }
                                     Button(action: {
                                         HapticManager.shared.selectionChanged()
                                         showPhotoPicker = true
                                     }) {
-                                        Label("Fotky", systemImage: "photo.on.rectangle")
+                                        Label(L10n.t("photos"), systemImage: "photo.on.rectangle")
                                     }
                                     Button(action: {
                                         HapticManager.shared.selectionChanged()
                                         showFilePicker = true
                                     }) {
-                                        Label("Soubory", systemImage: "doc")
+                                        Label(L10n.t("files"), systemImage: "doc")
                                     }
                                 } label: {
                                     Image(systemName: "plus.circle")
@@ -1285,17 +1298,17 @@ struct ChatView: View {
         let timeGreeting: String
         switch hour {
         case 5..<10:
-            timeGreeting = "Dobré ráno"
+            timeGreeting = L10n.t("greeting_morning")
         case 10..<12:
-            timeGreeting = "Krásné dopoledne"
+            timeGreeting = L10n.t("greeting_late_morning")
         case 12..<14:
-            timeGreeting = "Krásné poledne"
+            timeGreeting = L10n.t("greeting_noon")
         case 14..<18:
-            timeGreeting = "Hezké odpoledne"
+            timeGreeting = L10n.t("greeting_afternoon")
         case 18..<24:
-            timeGreeting = "Dobrý večer"
+            timeGreeting = L10n.t("greeting_evening")
         default:
-            timeGreeting = "Dobré ráno"
+            timeGreeting = L10n.t("greeting_morning")
         }
 
         return "\(timeGreeting)\(nameSuffix)"
@@ -1474,22 +1487,22 @@ struct MessageBubble: View {
                                     Button {
                                         Task { await ImageSaver.save(from: url) }
                                     } label: {
-                                        Label("Uložit do fotek", systemImage: "square.and.arrow.down")
+                                        Label(L10n.t("save_to_photos"), systemImage: "square.and.arrow.down")
                                     }
                                     ShareLink(item: url) {
-                                        Label("Sdílet", systemImage: "square.and.arrow.up")
+                                        Label(L10n.t("share"), systemImage: "square.and.arrow.up")
                                     }
                                     Button {
                                         UIPasteboard.general.string = imgURL
                                     } label: {
-                                        Label("Kopírovat URL", systemImage: "link")
+                                        Label(L10n.t("copy_url"), systemImage: "link")
                                     }
                                 }
                         case .failure:
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .fill(Color(hex: "1a1a2e").opacity(0.05))
                                 .frame(width: 240, height: 80)
-                                .overlay(Text("Obrázek se nepodařilo načíst").font(.system(size: 12)))
+                                .overlay(Text(L10n.t("image_load_error")).font(.system(size: 12)))
                         @unknown default: EmptyView()
                         }
                     }
@@ -1529,10 +1542,10 @@ struct MessageBubble: View {
                     Button {
                         UIPasteboard.general.string = MessageBubble.cleanContent(message.content, isUser: isUser)
                     } label: {
-                        Label("Kopírovat", systemImage: "doc.on.doc")
+                        Label(L10n.t("copy"), systemImage: "doc.on.doc")
                     }
                     ShareLink(item: MessageBubble.cleanContent(message.content, isUser: isUser)) {
-                        Label("Sdílet", systemImage: "square.and.arrow.up")
+                        Label(L10n.t("share"), systemImage: "square.and.arrow.up")
                     }
                 }
                 } // close if !message.content.isEmpty
@@ -2140,10 +2153,10 @@ struct QuickAction: Identifiable, Codable {
     }
 
     static let defaults: [QuickAction] = [
-        QuickAction(label: "Počasí", prompt: "Jaké je počasí?", icon: "cloud.sun"),
-        QuickAction(label: "Zprávy", prompt: "Přečti mi nejnovější zprávy", icon: "newspaper"),
-        QuickAction(label: "Kalendář", prompt: "Co mám dnes v kalendáři?", icon: "calendar"),
-        QuickAction(label: "Emaily", prompt: "Mám nějaké nové emaily?", icon: "envelope"),
+        QuickAction(label: L10n.t("qa_weather"), prompt: L10n.t("qa_weather_prompt"), icon: "cloud.sun"),
+        QuickAction(label: L10n.t("qa_news"), prompt: L10n.t("qa_news_prompt"), icon: "newspaper"),
+        QuickAction(label: L10n.t("qa_calendar"), prompt: L10n.t("qa_calendar_prompt"), icon: "calendar"),
+        QuickAction(label: L10n.t("qa_email"), prompt: L10n.t("qa_email_prompt"), icon: "envelope"),
     ]
 
     static func load() -> [QuickAction] {

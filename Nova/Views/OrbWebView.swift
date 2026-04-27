@@ -13,7 +13,9 @@ struct OrbWebView: UIViewRepresentable {
         webView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = false
         webView.scrollView.backgroundColor = .clear
-        webView.loadHTMLString(orbHTML, baseURL: nil)
+        // Load with baseURL pointing to bundle Resources → three.min.js loads locally
+        let resourceURL = Bundle.main.resourceURL ?? Bundle.main.bundleURL
+        webView.loadHTMLString(orbHTML, baseURL: resourceURL)
         return webView
     }
 
@@ -34,8 +36,7 @@ struct OrbWebView: UIViewRepresentable {
         </style>
         </head><body>
         <canvas id="c"></canvas>
-        <!-- TODO: Bundle three.min.js locally for offline support (add to Xcode project Resources) -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+        <script src="three.min.js"></script>
         <script>
         const canvas = document.getElementById('c');
         const W = window.innerWidth, H = window.innerHeight;

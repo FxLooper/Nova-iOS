@@ -15,6 +15,7 @@
 		A1000004 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004 /* KeychainHelper.swift */; };
 		A1000005 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000005 /* Message.swift */; };
 		A1000060 /* HeyNovaClassifier.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = B1000060 /* HeyNovaClassifier.mlmodel */; };
+		A1000070 /* three.min.js in Resources */ = {isa = PBXBuildFile; fileRef = B1000070 /* three.min.js */; };
 		A1000050 /* BannerItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000050 /* BannerItem.swift */; };
 		A1000052 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000052 /* QRScannerView.swift */; };
 		A1000051 /* NotificationBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000051 /* NotificationBanner.swift */; };
@@ -110,6 +111,7 @@
 		BB5926802F8BF10000A68034 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		B1000060 /* NovaIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NovaIntents.swift; path = ../Services/NovaIntents.swift; sourceTree = "<group>"; };
 		B1000061 /* WakeWordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeWordService.swift; sourceTree = "<group>"; };
+		B1000070 /* three.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "Resources/three.min.js"; sourceTree = "<group>"; };
 		BB9381AB2F92E72D000E7E5F /* Nova.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Nova.entitlements; sourceTree = "<group>"; };
 		C1000001 /* Nova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nova.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C3A1892705B12EAC8698D5AD /* NovaBackground.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaBackground.swift; sourceTree = "<group>"; };
@@ -181,6 +183,7 @@
 				D1000004 /* Views */,
 				D1000005 /* Services */,
 				D1000006 /* Models */,
+				B1000070 /* three.min.js */,
 			);
 			path = Nova;
 			sourceTree = "<group>";
@@ -338,6 +341,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000006 /* Assets.xcassets in Resources */,
+				A1000070 /* three.min.js in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
