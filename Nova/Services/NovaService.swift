@@ -144,6 +144,16 @@ class NovaService: ObservableObject {
     // MARK: - Project Session
     @Published var activeSession: String? = nil  // název aktivního projektu
 
+    func resetSession() async {
+        activeSession = nil
+        guard let url = URL(string: "\(serverURL)/api/session/reset") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(token, forHTTPHeaderField: "X-Nova-Token")
+        _ = try? await URLSession.shared.data(for: req)
+        dlog("[session] reset from iOS")
+    }
+
     func checkSession() async {
         guard let url = URL(string: "\(serverURL)/api/session") else { return }
         var req = URLRequest(url: url)

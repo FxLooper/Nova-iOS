@@ -470,6 +470,9 @@ struct SettingsView: View {
                                 .pickerStyle(.segmented)
                                 .onChange(of: forceRouting) { _, newValue in
                                     UserDefaults.standard.set(newValue, forKey: "nova_force_routing")
+                                    if newValue != "dev" {
+                                        Task { await nova.resetSession() }
+                                    }
                                 }
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 4)
