@@ -1218,16 +1218,16 @@ struct ChatView: View {
         let (title, subtitle) = titles[sceneIndex]
 
         return VStack {
-            VStack(spacing: 6) {
+            VStack(spacing: 8) {
                 Text(title)
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.9))
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
                     .multilineTextAlignment(.center)
                 Text(subtitle)
-                    .font(.system(size: 15, weight: .light))
-                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+                    .font(.system(size: 14, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
             }
-            .padding(.top, 60)
+            .padding(.top, 95)
             .padding(.horizontal, 30)
             Spacer()
         }
