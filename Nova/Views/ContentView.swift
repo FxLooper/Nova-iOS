@@ -1218,7 +1218,8 @@ struct ChatView: View {
         let (title, subtitle) = titles[sceneIndex]
 
         return VStack {
-            VStack(spacing: 8) {
+            Spacer()
+            VStack(spacing: 6) {
                 Text(title)
                     .font(.system(size: 26, weight: .bold))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.85))
@@ -1227,9 +1228,8 @@ struct ChatView: View {
                     .font(.system(size: 14, weight: .light))
                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
             }
-            .padding(.top, 95)
             .padding(.horizontal, 30)
-            Spacer()
+            .padding(.bottom, 100)
         }
     }
 
