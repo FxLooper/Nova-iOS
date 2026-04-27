@@ -1298,7 +1298,8 @@ class NovaService: ObservableObject {
 
     func endConversation() {
         conversationActive = false
-        // Zastav TTS pokud Nova mluví
+        // Zastav TTS streaming + player
+        ttsInterrupted = true
         audioPlayer?.stop()
         audioPlayer = nil
         // Zruš aktivní úlohy
