@@ -1073,10 +1073,7 @@ struct ChatView: View {
                 )
             }
 
-            // Screenshot overlay — marketing text pro App Store
-            if nova.screenshotMode {
-                screenshotOverlay
-            }
+            // Screenshot overlay je vypnutý — čistý UI vypadá lépe
         }
         .onAppear {
             nova.connectWebSocket()
