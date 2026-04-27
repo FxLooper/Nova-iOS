@@ -251,19 +251,19 @@ struct SettingsView: View {
                         }
 
                         // Wake Word ("Hi Nova")
-                        SettingsSection(title: "Wake word „Hi Nova“") {
+                        SettingsSection(title: L10n.t(“wake_word_title”)) {
                             VStack(alignment: .leading, spacing: 10) {
                                 Toggle(isOn: Binding(
                                     get: { nova.wakeWordEnabled },
                                     set: { nova.wakeWordEnabled = $0 }
                                 )) {
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text("Poslouchat „Hi Nova“")
+                                        Text(L10n.t(“listen_hi_nova”))
                                             .font(.system(size: 15, weight: .regular))
-                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
+                                            .foregroundColor(Color(hex: “1a1a2e”).opacity(0.8))
                                         Text(nova.wakeWordEnabled
-                                             ? "Nova naslouchá, když je appka otevřená."
-                                             : "Zapni, ať Nova reaguje na „Hi Nova“ nebo „Ahoj Nova“.")
+                                             ? L10n.t(“wake_word_on”)
+                                             : L10n.t(“wake_word_off”))
                                             .font(.system(size: 12, weight: .light))
                                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                                     }
@@ -275,13 +275,13 @@ struct SettingsView: View {
                                         Circle()
                                             .fill(nova.wakeWord.isRunning ? Color.green.opacity(0.7) : Color.orange.opacity(0.7))
                                             .frame(width: 8, height: 8)
-                                        Text(nova.wakeWord.isRunning ? "Naslouchám" : "Čekám na oprávnění / spuštění")
+                                        Text(nova.wakeWord.isRunning ? L10n.t("listening") : L10n.t("wake_word_waiting"))
                                             .font(.system(size: 12, weight: .light))
                                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                                     }
                                 }
 
-                                Text("Tip: mimo aplikaci řekni „Hey Siri, Hi Nova“ — Siri otevře Novu do konverzace.")
+                                Text(L10n.t(“siri_tip”))
                                     .font(.system(size: 11, weight: .light))
                                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
                             }
@@ -398,7 +398,7 @@ struct SettingsView: View {
                                                 HStack(spacing: 6) {
                                                     Image(systemName: "calendar")
                                                         .font(.system(size: 11))
-                                                    Text("Vytvořeno: \(date.formatted(date: .abbreviated, time: .shortened))")
+                                                    Text("\(L10n.t("created")): \(date.formatted(date: .abbreviated, time: .shortened))")
                                                 }
                                                 .font(.system(size: 11, weight: .light))
                                                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
@@ -408,7 +408,7 @@ struct SettingsView: View {
                                                 HStack(spacing: 6) {
                                                     Image(systemName: "checkmark.shield")
                                                         .font(.system(size: 11))
-                                                    Text("Ověření: \(voiceProfile.successfulVerifications)/\(voiceProfile.totalVerifications) (\(Int(voiceProfile.successRate * 100))%)")
+                                                    Text("\(L10n.t("verification")): \(voiceProfile.successfulVerifications)/\(voiceProfile.totalVerifications) (\(Int(voiceProfile.successRate * 100))%)")
                                                 }
                                                 .font(.system(size: 11, weight: .light))
                                                 .foregroundColor(Color(hex: "1a1a2e").opacity(0.45))
@@ -473,9 +473,9 @@ struct SettingsView: View {
                         }
 
                         // Vynutit routing — override automatické klasifikace
-                        SettingsSection(title: "Vynutit routing") {
+                        SettingsSection(title: L10n.t("force_routing")) {
                             VStack(alignment: .leading, spacing: 10) {
-                                Text("Běžně Nova sama pozná jestli jde o kód, web nebo chat. Tady to můžeš přepsat ručně.")
+                                Text(L10n.t("force_routing_desc"))
                                     .font(.system(size: 12, weight: .light))
                                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
 
@@ -584,7 +584,7 @@ struct SettingsView: View {
                                         HStack(spacing: 8) {
                                             Image(systemName: "square.and.arrow.up")
                                                 .font(.system(size: 12))
-                                            Text("Exportovat konverzaci")
+                                            Text(L10n.t("export_conversation"))
                                                 .font(.system(size: 14, weight: .light))
                                         }
                                         .foregroundColor(Color(hex: "1a1a2e").opacity(0.7))
@@ -601,7 +601,7 @@ struct SettingsView: View {
                                     HStack(spacing: 8) {
                                         Image(systemName: "trash")
                                             .font(.system(size: 12))
-                                        Text("Smazat historii konverzace")
+                                        Text(L10n.t("delete_history"))
                                             .font(.system(size: 14, weight: .light))
                                     }
                                     .foregroundColor(.red.opacity(0.7))
