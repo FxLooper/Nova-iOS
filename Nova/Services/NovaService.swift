@@ -429,6 +429,7 @@ class NovaService: ObservableObject {
     // Demo režim — appka funguje bez Mac serveru pro prohlížení UI a seznámení.
     // Zprávy se lokálně odpoví tipem, že je potřeba připojit server pro plný provoz.
     @Published var demoMode: Bool = UserDefaults.standard.bool(forKey: "nova_demo_mode")
+    @Published var screenshotMode: Bool = false
 
     func resetConfig() {
         serverURL = ""
@@ -450,6 +451,7 @@ class NovaService: ObservableObject {
     /// Volej z debug menu nebo Settings. Scény odpovídají SCREENSHOTS_GUIDE.md.
     func loadScreenshotData(scene: Int = 1) {
         messages.removeAll()
+        screenshotMode = true
         switch scene {
         case 1: // Hero — uvítací konverzace
             messages = [

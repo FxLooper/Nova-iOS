@@ -615,8 +615,8 @@ struct ChatView: View {
 
                 Divider().opacity(0.15)
 
-                // Demo režim banner — decentní pruh s CTA na připojení serveru
-                if nova.demoMode {
+                // Demo režim banner — decentní pruh s CTA na připojení serveru (schovej v screenshot modu)
+                if nova.demoMode && !nova.screenshotMode {
                     HStack(spacing: 10) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 12, weight: .medium))
@@ -724,8 +724,8 @@ struct ChatView: View {
                     .padding(.horizontal, 16)
                 }
 
-                // Server offline banner
-                if nova.serverHealth.status == .offline {
+                // Server offline banner (schovej v screenshot modu)
+                if nova.serverHealth.status == .offline && !nova.screenshotMode {
                     offlineBanner
                 }
 
