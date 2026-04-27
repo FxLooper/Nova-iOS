@@ -688,6 +688,28 @@ struct SettingsView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
+                        // Screenshot mode — jen pro debug/App Store screenshoty
+                        #if DEBUG
+                        SettingsSection(title: "Screenshots") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("App Store screenshot data")
+                                    .font(.system(size: 12, weight: .light))
+                                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
+                                HStack(spacing: 8) {
+                                    ForEach(1...4, id: \.self) { scene in
+                                        Button("S\(scene)") {
+                                            nova.loadScreenshotData(scene: scene)
+                                        }
+                                        .font(.system(size: 13, weight: .medium))
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 8)
+                                        .background(Color(hex: "1a1a2e").opacity(0.06))
+                                        .cornerRadius(8)
+                                    }
+                                }
+                            }
+                        }
+                        #endif
                     }
                     .padding(.horizontal, 24)
                     .padding(.bottom, 40)

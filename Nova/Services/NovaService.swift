@@ -446,6 +446,39 @@ class NovaService: ObservableObject {
         UserDefaults.standard.set(true, forKey: "nova_demo_mode")
     }
 
+    /// Screenshot mode — naplní chat profesionálními ukázkovými zprávami pro App Store.
+    /// Volej z debug menu nebo Settings. Scény odpovídají SCREENSHOTS_GUIDE.md.
+    func loadScreenshotData(scene: Int = 1) {
+        messages.removeAll()
+        switch scene {
+        case 1: // Hero — uvítací konverzace
+            messages = [
+                Message(role: "ai", content: L10n.t("greeting_morning") + ", Ondřeji 👋\n\nDnes je krásný den. Máš dvě schůzky a jeden nedokončený pull request. Chceš začít briefingem?"),
+            ]
+        case 2: // Aktivní konverzace
+            messages = [
+                Message(role: "user", content: "Nova, jaké je počasí v Praze?"),
+                Message(role: "ai", content: "V Praze je teď 18°C, jasno ☀️ Odpoledne se oteplí až na 23°C. Ideální den na procházku! Večer lehký vítr od západu, bez deště."),
+                Message(role: "user", content: "A co zítra?"),
+                Message(role: "ai", content: "Zítra polojasno, 15–20°C. Ráno možná mlha, ale do oběda se rozjasní. Žádný déšť v dohledu na celý týden."),
+            ]
+        case 3: // Dev mode
+            messages = [
+                Message(role: "user", content: "Otevři projekt Nova-iOS a přidej lokalizaci"),
+                Message(role: "ai", content: "📂 Otevírám projekt Nova-iOS...\n\n✅ Přidáno 16 jazyků do Localization.swift\n✅ Onboarding, Settings, ChatView — vše lokalizováno\n✅ System language detekce při prvním spuštění\n\nCommit vytvořen: `Plná lokalizace do 16 jazyků`"),
+            ]
+        case 4: // Privacy
+            messages = [
+                Message(role: "user", content: "Kde jsou moje data?"),
+                Message(role: "ai", content: "🔒 Tvoje data nikdy neopouští tvoji síť:\n\n• Hlas se zpracovává on-device (WhisperKit)\n• AI běží na tvém Macu přes Claude Code\n• Žádný cloud, žádný tracking\n• Konverzace zůstávají mezi tebou a tvým Macem\n\nNova je 100% soukromá."),
+            ]
+        default:
+            break
+        }
+        saveMessages()
+        HapticManager.shared.novaResponseChord()
+    }
+
     func exitDemoMode() {
         demoMode = false
         UserDefaults.standard.set(false, forKey: "nova_demo_mode")
