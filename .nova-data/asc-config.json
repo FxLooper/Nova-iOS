@@ -1,0 +1,7 @@
+{
+  "lastMarketingVersion": "13.4.7",
+  "lastBuildNumber": 48,
+  "lastUploadTimestamp": "2026-04-25T15:30:00Z",
+  "branch": "nova-v11-evolution",
+  "notes": "Build 48 na iPhonu, obsahuje fix konverzačního módu (50fa66bb) + perf-v2 merge (TTS streamování + adaptivní wake word + adaptivní polling)"
+}

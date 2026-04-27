@@ -3,66 +3,173 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1945184AAD129CB2E186CB62 /* NovaActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A96B3E306013AEBBF048A70D /* NovaActivityAttributes.swift */; };
+		81444B0B44D70FB2A0FAF578 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43046AE88E9A830AE6C06A5E /* LiveActivityManager.swift */; };
 		A1000001 /* NovaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001 /* NovaApp.swift */; };
 		A1000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002 /* ContentView.swift */; };
 		A1000003 /* NovaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003 /* NovaService.swift */; };
 		A1000004 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004 /* KeychainHelper.swift */; };
 		A1000005 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000005 /* Message.swift */; };
-		A1000011 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000011 /* Localization.swift */; };
+		A1000060 /* HeyNovaClassifier.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = B1000060 /* HeyNovaClassifier.mlmodel */; };
+		A1000070 /* three.min.js in Resources */ = {isa = PBXBuildFile; fileRef = B1000070 /* three.min.js */; };
+		A1000050 /* BannerItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000050 /* BannerItem.swift */; };
+		A1000052 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000052 /* QRScannerView.swift */; };
+		A1000051 /* NotificationBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000051 /* NotificationBanner.swift */; };
+		A1000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB5926452F87BECD00A68034 /* Assets.xcassets */; };
 		A1000007 /* OrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000007 /* OrbView.swift */; };
 		A1000008 /* ConfirmButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000008 /* ConfirmButtons.swift */; };
 		A1000009 /* OrbWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000009 /* OrbWebView.swift */; };
 		A1000010 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000010 /* SettingsView.swift */; };
-		A1000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB5926452F87BECD00A68034 /* Assets.xcassets */; };
+		A1000011 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000011 /* Localization.swift */; };
+		A1000012 /* ThinkingBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000012 /* ThinkingBubbleView.swift */; };
+		A1000020 /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020 /* CameraCaptureView.swift */; };
+		A1000030 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000030 /* TerminalView.swift */; };
+		A1000031 /* ScheduledTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000031 /* ScheduledTasksView.swift */; };
+		BB59264A2F8972B000A68034 /* WhisperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926492F8972B000A68034 /* WhisperService.swift */; };
+		BB59264D2F89753F00A68034 /* SpeakerKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB59264C2F89753F00A68034 /* SpeakerKit */; };
+		BB59264F2F89753F00A68034 /* TTSKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB59264E2F89753F00A68034 /* TTSKit */; };
+		BB5926512F89753F00A68034 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB5926502F89753F00A68034 /* WhisperKit */; };
+		BB5926532F89A94F00A68034 /* VoiceProfileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926522F89A94F00A68034 /* VoiceProfileService.swift */; };
+		BB5926552F89A98C00A68034 /* VoiceEnrollmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926542F89A98C00A68034 /* VoiceEnrollmentView.swift */; };
+		BB5926572F89B00100A68034 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926562F89B00100A68034 /* HapticManager.swift */; };
+		BB5926592F89B05000A68034 /* AudioLivenessDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926582F89B05000A68034 /* AudioLivenessDetector.swift */; };
+		BB59265B2F89B0A000A68034 /* ServerHealthMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB59265A2F89B0A000A68034 /* ServerHealthMonitor.swift */; };
+		BB59265D2F89B0F000A68034 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB59265C2F89B0F000A68034 /* NetworkMonitor.swift */; };
+		BB59265D2F8AC79000A68034 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB59265C2F8AC79000A68034 /* WidgetKit.framework */; };
+		BB59265F2F8AC79000A68034 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB59265E2F8AC79000A68034 /* SwiftUI.framework */; };
+		BB5926702F8AC79100A68034 /* NovaWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB59265A2F8AC79000A68034 /* NovaWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BB5926812F8BF10000A68034 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5926802F8BF10000A68034 /* LocationService.swift */; };
+		A1000060 /* NovaIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000060 /* NovaIntents.swift */; };
+		A1000061 /* WakeWordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000061 /* WakeWordService.swift */; };
+		C7E988545A0BE51007A0A104 /* NovaActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A96B3E306013AEBBF048A70D /* NovaActivityAttributes.swift */; };
+		E4F40B93ACE31CA32FC21494 /* VoiceConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821C6E9AC660CB24563D6197 /* VoiceConversationView.swift */; };
+		FEC05D9A3E4DEBDDFB50F58F /* NovaBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3A1892705B12EAC8698D5AD /* NovaBackground.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		BB59266E2F8AC79100A68034 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = G1000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB5926592F8AC79000A68034;
+			remoteInfo = NovaWidgetsExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BB5926712F8AC79100A68034 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BB5926702F8AC79100A68034 /* NovaWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		43046AE88E9A830AE6C06A5E /* LiveActivityManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		821C6E9AC660CB24563D6197 /* VoiceConversationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VoiceConversationView.swift; sourceTree = "<group>"; };
+		A96B3E306013AEBBF048A70D /* NovaActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaActivityAttributes.swift; sourceTree = "<group>"; };
 		B1000001 /* NovaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaApp.swift; sourceTree = "<group>"; };
 		B1000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B1000003 /* NovaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaService.swift; sourceTree = "<group>"; };
 		B1000004 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		B1000005 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
-		B1000011 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
+		B1000060 /* HeyNovaClassifier.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; name = HeyNovaClassifier.mlmodel; path = ../HeyNovaClassifier.mlmodel; sourceTree = "<group>"; };
+		B1000050 /* BannerItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BannerItem.swift; sourceTree = "<group>"; };
+		B1000052 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
+		B1000051 /* NotificationBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationBanner.swift; sourceTree = "<group>"; };
 		B1000006 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1000007 /* OrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbView.swift; sourceTree = "<group>"; };
 		B1000008 /* ConfirmButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmButtons.swift; sourceTree = "<group>"; };
 		B1000009 /* OrbWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbWebView.swift; sourceTree = "<group>"; };
 		B1000010 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B1000011 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
+		B1000012 /* ThinkingBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThinkingBubbleView.swift; sourceTree = "<group>"; };
+		B1000020 /* CameraCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
+		B1000030 /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
+		B1000031 /* ScheduledTasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledTasksView.swift; sourceTree = "<group>"; };
 		BB5926452F87BECD00A68034 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BB5926492F8972B000A68034 /* WhisperService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperService.swift; sourceTree = "<group>"; };
+		BB5926522F89A94F00A68034 /* VoiceProfileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceProfileService.swift; sourceTree = "<group>"; };
+		BB5926542F89A98C00A68034 /* VoiceEnrollmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceEnrollmentView.swift; sourceTree = "<group>"; };
+		BB5926562F89B00100A68034 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
+		BB5926582F89B05000A68034 /* AudioLivenessDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioLivenessDetector.swift; sourceTree = "<group>"; };
+		BB59265A2F89B0A000A68034 /* ServerHealthMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerHealthMonitor.swift; sourceTree = "<group>"; };
+		BB59265A2F8AC79000A68034 /* NovaWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NovaWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB59265C2F89B0F000A68034 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		BB59265C2F8AC79000A68034 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		BB59265E2F8AC79000A68034 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		BB5926802F8BF10000A68034 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		B1000060 /* NovaIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NovaIntents.swift; path = ../Services/NovaIntents.swift; sourceTree = "<group>"; };
+		B1000061 /* WakeWordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeWordService.swift; sourceTree = "<group>"; };
+		B1000070 /* three.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "Resources/three.min.js"; sourceTree = "<group>"; };
+		BB9381AB2F92E72D000E7E5F /* Nova.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Nova.entitlements; sourceTree = "<group>"; };
 		C1000001 /* Nova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nova.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C3A1892705B12EAC8698D5AD /* NovaBackground.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaBackground.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BB5926742F8AC79100A68034 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BB5926592F8AC79000A68034 /* NovaWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		BB5926602F8AC79000A68034 /* NovaWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (BB5926742F8AC79100A68034 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = NovaWidgets; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
+		BB5926572F8AC79000A68034 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB59265F2F8AC79000A68034 /* SwiftUI.framework in Frameworks */,
+				BB59265D2F8AC79000A68034 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E1000003 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB5926512F89753F00A68034 /* WhisperKit in Frameworks */,
+				BB59264D2F89753F00A68034 /* SpeakerKit in Frameworks */,
+				BB59264F2F89753F00A68034 /* TTSKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
-/* Begin PBXResourcesBuildPhase section */
-		E1000004 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A1000006 /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
 /* Begin PBXGroup section */
+		BB59265B2F8AC79000A68034 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				BB59265C2F8AC79000A68034 /* WidgetKit.framework */,
+				BB59265E2F8AC79000A68034 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		D1000001 = {
 			isa = PBXGroup;
 			children = (
 				BB5926452F87BECD00A68034 /* Assets.xcassets */,
 				D1000002 /* Nova */,
+				BB5926602F8AC79000A68034 /* NovaWidgets */,
+				BB59265B2F8AC79000A68034 /* Frameworks */,
 				D1000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -70,11 +177,13 @@
 		D1000002 /* Nova */ = {
 			isa = PBXGroup;
 			children = (
+				BB9381AB2F92E72D000E7E5F /* Nova.entitlements */,
 				B1000001 /* NovaApp.swift */,
 				B1000006 /* Info.plist */,
 				D1000004 /* Views */,
 				D1000005 /* Services */,
 				D1000006 /* Models */,
+				B1000070 /* three.min.js */,
 			);
 			path = Nova;
 			sourceTree = "<group>";
@@ -83,6 +192,7 @@
 			isa = PBXGroup;
 			children = (
 				C1000001 /* Nova.app */,
+				BB59265A2F8AC79000A68034 /* NovaWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -90,11 +200,18 @@
 		D1000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				BB5926542F89A98C00A68034 /* VoiceEnrollmentView.swift */,
 				B1000002 /* ContentView.swift */,
 				B1000007 /* OrbView.swift */,
 				B1000008 /* ConfirmButtons.swift */,
 				B1000009 /* OrbWebView.swift */,
 				B1000010 /* SettingsView.swift */,
+				B1000030 /* TerminalView.swift */,
+				B1000031 /* ScheduledTasksView.swift */,
+				B1000012 /* ThinkingBubbleView.swift */,
+				B1000020 /* CameraCaptureView.swift */,
+				C3A1892705B12EAC8698D5AD /* NovaBackground.swift */,
+				821C6E9AC660CB24563D6197 /* VoiceConversationView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -102,8 +219,18 @@
 		D1000005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				BB5926522F89A94F00A68034 /* VoiceProfileService.swift */,
+				BB5926582F89B05000A68034 /* AudioLivenessDetector.swift */,
+				BB5926562F89B00100A68034 /* HapticManager.swift */,
+				BB59265A2F89B0A000A68034 /* ServerHealthMonitor.swift */,
+				BB59265C2F89B0F000A68034 /* NetworkMonitor.swift */,
+				BB5926802F8BF10000A68034 /* LocationService.swift */,
+				BB5926492F8972B000A68034 /* WhisperService.swift */,
 				B1000003 /* NovaService.swift */,
 				B1000004 /* KeychainHelper.swift */,
+				43046AE88E9A830AE6C06A5E /* LiveActivityManager.swift */,
+				B1000060 /* NovaIntents.swift */,
+				B1000061 /* WakeWordService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -112,7 +239,10 @@
 			isa = PBXGroup;
 			children = (
 				B1000005 /* Message.swift */,
+				B1000060 /* HeyNovaClassifier.mlmodel */,
+				B1000050 /* BannerItem.swift */,
 				B1000011 /* Localization.swift */,
+				A96B3E306013AEBBF048A70D /* NovaActivityAttributes.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -120,6 +250,26 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		BB5926592F8AC79000A68034 /* NovaWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB5926752F8AC79100A68034 /* Build configuration list for PBXNativeTarget "NovaWidgetsExtension" */;
+			buildPhases = (
+				BB5926562F8AC79000A68034 /* Sources */,
+				BB5926572F8AC79000A68034 /* Frameworks */,
+				BB5926582F8AC79000A68034 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BB5926602F8AC79000A68034 /* NovaWidgets */,
+			);
+			name = NovaWidgetsExtension;
+			productName = NovaWidgetsExtension;
+			productReference = BB59265A2F8AC79000A68034 /* NovaWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		E1000001 /* Nova */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F1000002 /* Build configuration list for PBXNativeTarget "Nova" */;
@@ -127,10 +277,12 @@
 				E1000002 /* Sources */,
 				E1000003 /* Frameworks */,
 				E1000004 /* Resources */,
+				BB5926712F8AC79100A68034 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BB59266F2F8AC79100A68034 /* PBXTargetDependency */,
 			);
 			name = Nova;
 			productName = Nova;
@@ -144,9 +296,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1540;
+				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 1540;
 				ORGANIZATIONNAME = FxLooper;
+				TargetAttributes = {
+					BB5926592F8AC79000A68034 = {
+						CreatedOnToolsVersion = 26.4;
+					};
+				};
 			};
 			buildConfigurationList = F1000001 /* Build configuration list for PBXProject "Nova" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -158,43 +315,246 @@
 				Base,
 			);
 			mainGroup = D1000001;
+			packageReferences = (
+				BB59264B2F89753F00A68034 /* XCRemoteSwiftPackageReference "WhisperKit" */,
+			);
 			productRefGroup = D1000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				E1000001 /* Nova */,
+				BB5926592F8AC79000A68034 /* NovaWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		BB5926582F8AC79000A68034 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1000004 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000006 /* Assets.xcassets in Resources */,
+				A1000070 /* three.min.js in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
+		BB5926562F8AC79000A68034 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1945184AAD129CB2E186CB62 /* NovaActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E1000002 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB59265D2F89B0F000A68034 /* NetworkMonitor.swift in Sources */,
+				BB5926812F8BF10000A68034 /* LocationService.swift in Sources */,
+				BB59265B2F89B0A000A68034 /* ServerHealthMonitor.swift in Sources */,
+				BB5926592F89B05000A68034 /* AudioLivenessDetector.swift in Sources */,
+				BB5926572F89B00100A68034 /* HapticManager.swift in Sources */,
+				BB5926532F89A94F00A68034 /* VoiceProfileService.swift in Sources */,
 				A1000001 /* NovaApp.swift in Sources */,
 				A1000002 /* ContentView.swift in Sources */,
+				BB59264A2F8972B000A68034 /* WhisperService.swift in Sources */,
 				A1000003 /* NovaService.swift in Sources */,
 				A1000004 /* KeychainHelper.swift in Sources */,
 				A1000005 /* Message.swift in Sources */,
+				A1000060 /* HeyNovaClassifier.mlmodel in Sources */,
+				A1000050 /* BannerItem.swift in Sources */,
 				A1000007 /* OrbView.swift in Sources */,
 				A1000008 /* ConfirmButtons.swift in Sources */,
+				BB5926552F89A98C00A68034 /* VoiceEnrollmentView.swift in Sources */,
 				A1000009 /* OrbWebView.swift in Sources */,
 				A1000010 /* SettingsView.swift in Sources */,
+				A1000030 /* TerminalView.swift in Sources */,
+				A1000031 /* ScheduledTasksView.swift in Sources */,
 				A1000011 /* Localization.swift in Sources */,
+				A1000012 /* ThinkingBubbleView.swift in Sources */,
+				A1000020 /* CameraCaptureView.swift in Sources */,
+				C7E988545A0BE51007A0A104 /* NovaActivityAttributes.swift in Sources */,
+				81444B0B44D70FB2A0FAF578 /* LiveActivityManager.swift in Sources */,
+				A1000060 /* NovaIntents.swift in Sources */,
+				A1000061 /* WakeWordService.swift in Sources */,
+				FEC05D9A3E4DEBDDFB50F58F /* NovaBackground.swift in Sources */,
+				E4F40B93ACE31CA32FC21494 /* VoiceConversationView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		BB59266F2F8AC79100A68034 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB5926592F8AC79000A68034 /* NovaWidgetsExtension */;
+			targetProxy = BB59266E2F8AC79100A68034 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
-		F1000003 /* Debug */ = {
+		BB5926722F8AC79100A68034 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 52;
+				DEVELOPMENT_TEAM = WDSRL83RUZ;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NovaWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NovaWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 FxLooper. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 28.4.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				CURRENT_PROJECT_VERSION = 52;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fxlooper.nova.NovaWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BB5926732F8AC79100A68034 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 52;
+				DEVELOPMENT_TEAM = WDSRL83RUZ;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NovaWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NovaWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 FxLooper. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 28.4.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				CURRENT_PROJECT_VERSION = 52;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fxlooper.nova.NovaWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F1000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 52;
 				DEVELOPMENT_TEAM = WDSRL83RUZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Nova/Info.plist;
@@ -203,10 +563,12 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 28.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fxlooper.nova;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
+				tttttCODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 			};
 			name = Debug;
 		};
@@ -214,9 +576,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 52;
 				DEVELOPMENT_TEAM = WDSRL83RUZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Nova/Info.plist;
@@ -225,10 +590,12 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 28.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fxlooper.nova;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
+				tttttCODE_SIGN_ENTITLEMENTS = Nova/Nova.entitlements;
 			};
 			name = Release;
 		};
@@ -279,6 +646,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		BB5926752F8AC79100A68034 /* Build configuration list for PBXNativeTarget "NovaWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB5926722F8AC79100A68034 /* Debug */,
+				BB5926732F8AC79100A68034 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F1000001 /* Build configuration list for PBXProject "Nova" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -298,6 +674,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BB59264B2F89753F00A68034 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/argmaxinc/WhisperKit";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BB59264C2F89753F00A68034 /* SpeakerKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB59264B2F89753F00A68034 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = SpeakerKit;
+		};
+		BB59264E2F89753F00A68034 /* TTSKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB59264B2F89753F00A68034 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = TTSKit;
+		};
+		BB5926502F89753F00A68034 /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB59264B2F89753F00A68034 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = WhisperKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = G1000001 /* Project object */;
 }
