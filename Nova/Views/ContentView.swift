@@ -1072,6 +1072,11 @@ struct ChatView: View {
                     alignment: .top
                 )
             }
+
+            // Screenshot overlay — marketing text pro App Store
+            if nova.screenshotMode {
+                screenshotOverlay
+            }
         }
         .onAppear {
             nova.connectWebSocket()
@@ -1189,6 +1194,42 @@ struct ChatView: View {
             case .failure(let error):
                 dlog("[file] error: \(error.localizedDescription)")
             }
+        }
+    }
+
+    // MARK: - Screenshot Overlay (App Store marketing text)
+    private var screenshotOverlay: some View {
+        let titles: [(String, String)] = [
+            ("Řekni \"Hey Nova\" a jedeš", "Hands-free hlasový AI parťák"),
+            ("Přeruš ji kdykoli", "Jako v reálné konverzaci"),
+            ("Programuj hlasem", "Claude Code na tvém Macu"),
+            ("Tvá data zůstávají u tebe", "100% soukromí, zero cloud"),
+        ]
+        let scene = max(0, min(nova.messages.count > 2 ? 1 : 0, titles.count - 1))
+        // Determine scene from message content
+        let sceneIndex: Int = {
+            guard let first = nova.messages.first else { return 0 }
+            if first.content.contains("briefing") { return 0 }
+            if first.content.contains("počasí") || first.content.contains("weather") { return 1 }
+            if first.content.contains("projekt") || first.content.contains("lokalizac") { return 2 }
+            if first.content.contains("data") || first.content.contains("soukrom") { return 3 }
+            return 0
+        }()
+        let (title, subtitle) = titles[sceneIndex]
+
+        return VStack {
+            VStack(spacing: 6) {
+                Text(title)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.9))
+                    .multilineTextAlignment(.center)
+                Text(subtitle)
+                    .font(.system(size: 15, weight: .light))
+                    .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
+            }
+            .padding(.top, 60)
+            .padding(.horizontal, 30)
+            Spacer()
         }
     }
 
