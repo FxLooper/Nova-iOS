@@ -251,19 +251,19 @@ struct SettingsView: View {
                         }
 
                         // Wake Word ("Hi Nova")
-                        SettingsSection(title: L10n.t(\"wake_word_title\")) {
+                        SettingsSection(title: L10n.t("wake_word_title")) {
                             VStack(alignment: .leading, spacing: 10) {
                                 Toggle(isOn: Binding(
                                     get: { nova.wakeWordEnabled },
                                     set: { nova.wakeWordEnabled = $0 }
                                 )) {
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text(L10n.t(\"listen_hi_nova\"))
+                                        Text(L10n.t("listen_hi_nova"))
                                             .font(.system(size: 15, weight: .regular))
-                                            .foregroundColor(Color(hex: \"1a1a2e\").opacity(0.8))
+                                            .foregroundColor(Color(hex: "1a1a2e").opacity(0.8))
                                         Text(nova.wakeWordEnabled
-                                             ? L10n.t(\"wake_word_on\")
-                                             : L10n.t(\"wake_word_off\"))
+                                             ? L10n.t("wake_word_on")
+                                             : L10n.t("wake_word_off"))
                                             .font(.system(size: 12, weight: .light))
                                             .foregroundColor(Color(hex: "1a1a2e").opacity(0.5))
                                     }
@@ -281,7 +281,7 @@ struct SettingsView: View {
                                     }
                                 }
 
-                                Text(L10n.t(\"siri_tip\"))
+                                Text(L10n.t("siri_tip"))
                                     .font(.system(size: 11, weight: .light))
                                     .foregroundColor(Color(hex: "1a1a2e").opacity(0.4))
                             }

@@ -648,7 +648,7 @@ struct L10n {
             "qa_email": "邮件", "qa_email_prompt": "有新邮件吗？",
             "listen_hi_nova": "监听'Hi Nova'",
             "wake_word_on": "应用打开时Nova在监听。",
-            "wake_word_off": "启用后Nova会响应"Hi Nova"。",
+            "wake_word_off": "启用后Nova会响应'Hi Nova'。",
             "wake_word_waiting": "等待权限/启动",
             "wake_word_title": "唤醒词'Hi Nova'",
             "siri_tip": "提示：在应用外说'Hey Siri, Hi Nova'——Siri会打开Nova进入对话模式。",
