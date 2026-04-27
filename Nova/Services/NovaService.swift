@@ -699,7 +699,7 @@ class NovaService: ObservableObject {
         if conversationActive {
             currentUtterance = ""
             interimText = ""
-            dlog("[chat] whisper on (VAD barge-in, threshold 0.06)")
+            dlog("[chat] whisper on (VAD barge-in, threshold \(bargeInAmplitudeThreshold), duration \(bargeInDurationThreshold)s)")
         }
 
         // Zastav TTS pokud Nova právě mluví
@@ -1220,15 +1220,11 @@ class NovaService: ObservableObject {
                 }
                 // Spočítej RMS amplitude
                 let rms = sqrt(samples.map { $0 * $0 }.reduce(0, +) / Float(max(samples.count, 1)))
-                // Debug: loguj každou ~1s
-                if Int.random(in: 0..<4) == 0 {
-                    dlog("[vad] state=\(self.state) RMS=\(String(format: "%.4f", rms)) thresh=\(self.bargeInAmplitudeThreshold)")
-                }
                 if rms > self.bargeInAmplitudeThreshold {
                     if self.bargeInVoiceStart == nil {
                         self.bargeInVoiceStart = Date()
                     } else if Date().timeIntervalSince(self.bargeInVoiceStart!) >= self.bargeInDurationThreshold {
-                        // Uživatel mluví 300ms+ → barge-in
+                        // Uživatel mluví 100ms+ → barge-in
                         dlog("[barge-in] VAD detected user voice (RMS: \(String(format: "%.4f", rms))) — stopping TTS")
                         self.bargeInVoiceStart = nil
                         self.interruptAndListen()
