@@ -1212,8 +1212,7 @@ class NovaService: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self = self,
                       self.state == .speaking,
-                      self.conversationActive,
-                      self.audioPlayer?.isPlaying == true else {
+                      self.conversationActive else {
                     self?.bargeInVoiceStart = nil
                     return
                 }
